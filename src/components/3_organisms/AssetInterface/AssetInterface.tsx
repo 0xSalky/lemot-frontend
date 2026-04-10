@@ -1,5 +1,5 @@
 import { toaster } from "@/components/ui/toaster";
-import { TP_PRESETS } from "@/services/config";
+import { DEFAULT_RISK, DEFAULT_STOP_LOSS, DEFAULT_TP_PRESET, TP_PRESETS } from "@/services/config";
 import { Button, Flex, SegmentGroup, Stack, Text, VStack } from "@chakra-ui/react";
 import { useState } from "react";
 
@@ -24,9 +24,9 @@ interface AssetInterfaceProps {
 }
 
 const AssetInterface = ({ pair }: AssetInterfaceProps) => {
-    const [stopLoss, setStopLoss] = useState("natr");
-    const [risk, setRisk] = useState("1");
-    const [tpPresets, setTpPresets] = useState("2");
+    const [stopLoss, setStopLoss] = useState(DEFAULT_STOP_LOSS);
+    const [risk, setRisk] = useState(DEFAULT_RISK);
+    const [tpPresets, setTpPresets] = useState(DEFAULT_TP_PRESET);
     const [submitting, setSubmitting] = useState(false);
 
     const executeTrade = async (side: "long" | "short") => {
