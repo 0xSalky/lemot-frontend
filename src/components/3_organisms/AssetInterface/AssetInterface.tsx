@@ -158,7 +158,7 @@ const AssetInterface = ({ pair }: AssetInterfaceProps) => {
                         loading={submitting}
                         disabled={submitting}
                     >
-                        LONG
+                        LONG {pair}
                     </Button>
                 </Flex>
                 <Flex w="50%">
@@ -170,7 +170,7 @@ const AssetInterface = ({ pair }: AssetInterfaceProps) => {
                         loading={submitting}
                         disabled={submitting}
                     >
-                        SHORT
+                        SHORT {pair}
                     </Button>
                 </Flex>
             </Stack>
