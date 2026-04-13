@@ -109,7 +109,7 @@ const AssetInterface = ({ pair }: AssetInterfaceProps) => {
                             }}
                         >
                             <SegmentGroup.Indicator />
-                            <SegmentGroup.Items items={["natr", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "1", "1.5", "2"]} />
+                            <SegmentGroup.Items items={["natr", "0.2", "0.3", "0.4", "0.5", "0.6", "0.8", "1", "1.5", "2", "2.5"]} />
                         </SegmentGroup.Root>
                     </VStack>
                 </Stack>
@@ -127,7 +127,7 @@ const AssetInterface = ({ pair }: AssetInterfaceProps) => {
                             }}
                         >
                             <SegmentGroup.Indicator />
-                            <SegmentGroup.Items items={["0.5", "1", "2", "3"]} />
+                            <SegmentGroup.Items items={["0.5", "1", "1.5", "2"]} />
                         </SegmentGroup.Root>
                     </VStack>
                     <VStack align="flex-start">

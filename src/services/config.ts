@@ -26,7 +26,7 @@ export const TP_PRESETS = {
   ],
 };
 
-export const DEFAULT_TP_PRESET = "2";
+export const DEFAULT_TP_PRESET = "1-3 50";
 export const DEFAULT_RISK = "1";
 export const DEFAULT_STOP_LOSS = "natr";
 
