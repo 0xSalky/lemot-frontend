@@ -19,7 +19,7 @@ export const TP_PRESETS = {
 };
 
 export const DEFAULT_TP_PRESET = "1-3 50";
-export const DEFAULT_RISK = "1.5";
+export const DEFAULT_RISK = "2";
 export const DEFAULT_STOP_LOSS = "natr";
 
 export const DEFAULT_TRADING_API_URL = "http://127.0.0.1:8000";
