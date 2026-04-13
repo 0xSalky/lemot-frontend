@@ -1,6 +1,5 @@
+import { DEFAULT_TRADING_API_URL } from "@/services/config";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-const DEFAULT_TRADING_API_URL = "http://127.0.0.1:8000";
 
 export default async function handler(
   req: NextApiRequest,
