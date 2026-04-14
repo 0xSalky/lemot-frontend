@@ -1,12 +1,4 @@
-export const TRADING_PAIRS = [
-  "BTC",
-  "ETH",
-  "SOL",
-  "TAO",
-  "HYPE",
-  "DOGE",
-  "1000PEPE",
-];
+export const TRADING_PAIRS = ["BTC", "ETH", "SOL", "TAO", "HYPE", "DOGE"];
 
 export const TP_PRESETS = {
   "2": [{ rr: 2, tp_percent: 100 }],

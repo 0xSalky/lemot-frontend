@@ -103,7 +103,15 @@ const AssetInterface = ({ pair }: AssetInterfaceProps) => {
                                 <Text fontSize="sm">Stop Loss</Text>
                             </Stack>
                             <Flex>
-                                <Input size="xs" value={stopLossPrice} onChange={(e) => setStopLossPrice(e.target.value)} placeholder="Stop Loss Price" type="number" variant="flushed" />
+                                <Input
+                                    size="xs"
+                                    value={stopLossPrice}
+                                    onChange={(e) => setStopLossPrice(e.target.value)}
+                                    placeholder="Stop Loss Price"
+                                    type="number"
+                                    variant="flushed"
+                                    disabled={stopLoss !== "price"}
+                                />
                             </Flex>
                         </Stack>
                         <SegmentGroup.Root
