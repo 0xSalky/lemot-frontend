@@ -1,6 +1,6 @@
 import { toaster } from "@/components/ui/toaster";
 import { DEFAULT_RISK, DEFAULT_STOP_LOSS, DEFAULT_TP_PRESET, TP_PRESETS } from "@/services/config";
-import { Button, Flex, SegmentGroup, Stack, Text, VStack } from "@chakra-ui/react";
+import { Button, Flex, Input, SegmentGroup, Stack, Text, VStack } from "@chakra-ui/react";
 import { useState } from "react";
 
 function formatTradeApiError(data: unknown): string {
@@ -28,6 +28,7 @@ const AssetInterface = ({ pair }: AssetInterfaceProps) => {
     const [risk, setRisk] = useState(DEFAULT_RISK);
     const [tpPresets, setTpPresets] = useState(DEFAULT_TP_PRESET);
     const [submitting, setSubmitting] = useState(false);
+    const [stopLossPrice, setStopLossPrice] = useState("");
 
     const executeTrade = async (side: "long" | "short") => {
         setSubmitting(true);
@@ -37,7 +38,8 @@ const AssetInterface = ({ pair }: AssetInterfaceProps) => {
                 symbol: `${pair}USDT`,
                 direction: side,
                 risk_percent: Number(risk),
-                stop_loss_percent: stopLoss === "natr" ? stopLoss : Number(stopLoss),
+                stop_loss_percent: stopLoss === "natr" || stopLoss === "price" ? stopLoss : Number(stopLoss),
+                stop_loss_price: stopLossPrice ? Number(stopLossPrice) : undefined,
                 tp_levels,
             };
             const res = await fetch("/api/trade/execute", {
@@ -79,6 +81,7 @@ const AssetInterface = ({ pair }: AssetInterfaceProps) => {
                 title: "Trade executed",
                 description: `${pair} ${side.toUpperCase()}`,
             });
+            setStopLossPrice("");
         } catch (e) {
             toaster.error({
                 title: "Trade failed",
@@ -93,10 +96,15 @@ const AssetInterface = ({ pair }: AssetInterfaceProps) => {
         <Stack w="30rem" border="1px solid" borderColor="gray.200" borderRadius="md" p="1rem">
             <Stack gap="1rem">
                 <Stack direction="row" gap="1rem" align="flex-start" justify="space-between">
-                    <VStack align="flex-start">
-                        <Stack direction="row" gap="0.5rem" align="center">
-                            <Text fontSize="xl" fontWeight="bold" color="yellow.500">{pair}</Text>
-                            <Text fontSize="sm">Stop Loss %</Text>
+                    <VStack align="flex-start" w="100%">
+                        <Stack direction="row" alignItems="center" justifyContent="space-between" w="100%">
+                            <Stack direction="row" gap="0.5rem" align="center">
+                                <Text fontSize="xl" fontWeight="bold" color="yellow.500">{pair}</Text>
+                                <Text fontSize="sm">Stop Loss</Text>
+                            </Stack>
+                            <Flex>
+                                <Input size="xs" onChange={(e) => setStopLossPrice(e.target.value)} placeholder="Stop Loss Price" type="number" variant="flushed" />
+                            </Flex>
                         </Stack>
                         <SegmentGroup.Root
                             defaultValue={stopLoss}
@@ -109,7 +117,7 @@ const AssetInterface = ({ pair }: AssetInterfaceProps) => {
                             }}
                         >
                             <SegmentGroup.Indicator />
-                            <SegmentGroup.Items items={["natr", "0.2", "0.3", "0.4", "0.5", "0.6", "0.8", "1", "1.5", "2", "2.5"]} />
+                            <SegmentGroup.Items items={["natr", "price", "0.2", "0.3", "0.4", "0.5", "0.6", "0.8", "1", "1.5"]} />
                         </SegmentGroup.Root>
                     </VStack>
                 </Stack>
@@ -156,7 +164,7 @@ const AssetInterface = ({ pair }: AssetInterfaceProps) => {
                         size="sm"
                         onClick={() => void executeTrade("long")}
                         loading={submitting}
-                        disabled={submitting}
+                        disabled={(stopLoss === "price" && stopLossPrice === "") || stopLossPrice === "0"}
                     >
                         LONG {pair}
                     </Button>
@@ -168,7 +176,7 @@ const AssetInterface = ({ pair }: AssetInterfaceProps) => {
                         size="sm"
                         onClick={() => void executeTrade("short")}
                         loading={submitting}
-                        disabled={submitting}
+                        disabled={(stopLoss === "price" && stopLossPrice === "") || stopLossPrice === "0"}
                     >
                         SHORT {pair}
                     </Button>
