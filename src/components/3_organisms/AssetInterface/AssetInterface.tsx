@@ -93,7 +93,7 @@ const AssetInterface = ({ pair }: AssetInterfaceProps) => {
     };
 
     return (
-        <Stack w="30rem" border="1px solid" borderColor="gray.200" borderRadius="md" p="1rem">
+        <Stack border="1px solid" borderColor="gray.200" borderRadius="md" p="1rem">
             <Stack gap="1rem">
                 <Stack direction="row" gap="1rem" align="flex-start" justify="space-between">
                     <VStack align="flex-start" w="100%">
