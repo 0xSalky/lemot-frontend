@@ -17,7 +17,9 @@ const AccountBalance = () => {
             } catch {
                 data = { message: raw || `HTTP ${res.status}` };
             }
-            setBalance((data as { balance: { total_wallet_balance: number } })?.balance?.total_wallet_balance);
+            console.log(data);
+            setBalance((data as { balance: { total_equity: number } })?.balance?.total_equity
+            );
             setLoading(false);
         } catch (error) {
             setLoading(false);
