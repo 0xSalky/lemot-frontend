@@ -24,7 +24,7 @@ const ScannerResults = ({ latestBatch }: ScannerResultsProps) => {
             <Table.Header>
                 <Table.Row>
                     <Table.ColumnHeader>Symbol</Table.ColumnHeader>
-                    <Table.ColumnHeader>Flip</Table.ColumnHeader>
+                    <Table.ColumnHeader>Bias</Table.ColumnHeader>
                     <Table.ColumnHeader>Volume</Table.ColumnHeader>
                 </Table.Row>
             </Table.Header>
@@ -32,7 +32,7 @@ const ScannerResults = ({ latestBatch }: ScannerResultsProps) => {
                 {matches.map((match) => (
                     <Table.Row key={match.id}>
                         <Table.Cell>{scannerSymbolToBase(match.symbol)}</Table.Cell>
-                        <Table.Cell color={match.flip_label === "BULLISH_FLIP" ? "green.500" : "red.500"}>{match.flip_label ?? "—"}</Table.Cell>
+                        <Table.Cell color={match.bias === "bullish" ? "green.500" : "red.500"}>{match.bias ?? "—"}</Table.Cell>
                         <Table.Cell>{formatUsDecimal(match.quote_volume_24h)}</Table.Cell>
                     </Table.Row>
                 ))}
