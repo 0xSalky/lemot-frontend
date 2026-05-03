@@ -47,8 +47,8 @@ const HomePage = () => {
                     <Tabs.Trigger value="favorites">
                         Favorites
                     </Tabs.Trigger>
-                    <Tabs.Trigger value="watchlist">
-                        Scanner Watchlist
+                    <Tabs.Trigger value="scanner-pairs">
+                        Scanner Pairs
                     </Tabs.Trigger>
                     <Tabs.Trigger value="results">
                         Scanner Results
@@ -72,7 +72,7 @@ const HomePage = () => {
                 ))}
                 <AccountBalance />
             </Stack></Tabs.Content>
-            <Tabs.Content value="watchlist">
+            <Tabs.Content value="scanner-pairs">
                 <Stack mt="1rem" gap="1rem" mb="1rem" w="30rem">
                     {scannerPairs.map((pair: string) => (
                         <AssetInterface key={pair} pair={pair} />
