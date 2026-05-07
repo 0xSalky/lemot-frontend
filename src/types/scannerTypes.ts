@@ -30,6 +30,7 @@ export interface ScannerMatchRow {
   candle_limit: number;
   min_quote_volume_usdt_24h: number;
   bias: string | null;
+  signal: string | null;
   close_last: number | null;
   adx_last: number | null;
   ema_triple_state_last: number | null;
