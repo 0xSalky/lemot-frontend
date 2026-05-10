@@ -12,22 +12,20 @@ export const TP_PRESETS = {
   "2": [{ rr: 2, tp_percent: 100 }],
   "3": [{ rr: 3, tp_percent: 100 }],
   "4": [{ rr: 4, tp_percent: 100 }],
-  "1-3 25": [
-    { rr: 1, tp_percent: 25 },
-    { rr: 3, tp_percent: 75 },
+  "6": [{ rr: 6, tp_percent: 100 }],
+  "8": [{ rr: 8, tp_percent: 100 }],
+  run40: [
+    { rr: 1, tp_percent: 10 },
+    { rr: 3, tp_percent: 30 },
   ],
-  "1-3 50": [
-    { rr: 1, tp_percent: 50 },
-    { rr: 3, tp_percent: 50 },
-  ],
-  "2-4 25": [
-    { rr: 2, tp_percent: 25 },
-    { rr: 4, tp_percent: 75 },
+  run60: [
+    { rr: 1, tp_percent: 20 },
+    { rr: 3, tp_percent: 40 },
   ],
 };
 
-export const DEFAULT_TP_PRESET = "2";
+export const DEFAULT_TP_PRESET = "run40";
 export const DEFAULT_RISK = "1";
-export const DEFAULT_STOP_LOSS = "natr";
+export const DEFAULT_STOP_LOSS = "price";
 
 export const DEFAULT_TRADING_API_URL = "http://127.0.0.1:8000";
