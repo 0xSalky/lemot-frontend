@@ -1,6 +1,8 @@
 import { toaster } from "@/components/ui/toaster";
+import { Tooltip } from "@/components/ui/tooltip";
 import { DEFAULT_RISK, DEFAULT_STOP_LOSS, DEFAULT_TP_PRESET, TP_PRESETS } from "@/services/config";
 import { Button, Flex, Input, SegmentGroup, Stack, Text, VStack } from "@chakra-ui/react";
+import type { ReactNode } from "react";
 import { useState } from "react";
 
 function formatTradeApiError(data: unknown): string {
@@ -159,7 +161,7 @@ const AssetInterface = ({ pair }: AssetInterfaceProps) => {
                             }}
                         >
                             <SegmentGroup.Indicator />
-                            <SegmentGroup.Items items={["2", "3", "4", "6", "8", "run40", "run60"]} />
+                            <SegmentGroup.Items items={TP_SEGMENT_ITEMS} />
                         </SegmentGroup.Root>
                     </VStack>
                 </Stack>
@@ -195,3 +197,51 @@ const AssetInterface = ({ pair }: AssetInterfaceProps) => {
 }
 
 export default AssetInterface;
+
+function segmentLabel(value: string, tip: string): ReactNode {
+    return (
+        <Tooltip content={tip}>
+            <span style={{ display: "inline-block" }}>{value}</span>
+        </Tooltip>
+    );
+}
+
+const TP_SEGMENT_ITEMS = [
+    {
+        value: "2",
+        label: segmentLabel("2", "One take-profit at 2R"),
+    },
+    {
+        value: "3",
+        label: segmentLabel("3", "One take-profit at 3R"),
+    },
+    {
+        value: "4",
+        label: segmentLabel("4", "One take-profit at 4R"),
+    },
+    {
+        value: "8",
+        label: segmentLabel("8", "One take-profit at 8R"),
+    },
+    {
+        value: "runA",
+        label: segmentLabel(
+            "runA",
+            "1R @ 10%, 2R @ 20%, runner 70% - 0.5R",
+        ),
+    },
+    {
+        value: "runB",
+        label: segmentLabel(
+            "runB",
+            "1R @ 15%, 3R @ 25%, runner 60% - 0.9R",
+        ),
+    },
+    {
+        value: "runC",
+        label: segmentLabel(
+            "runC",
+            "1R @ 20%, 4R @ 20%, runner 60% - 1R",
+        ),
+    },
+];

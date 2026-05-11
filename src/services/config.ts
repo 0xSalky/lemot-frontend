@@ -12,19 +12,22 @@ export const TP_PRESETS = {
   "2": [{ rr: 2, tp_percent: 100 }],
   "3": [{ rr: 3, tp_percent: 100 }],
   "4": [{ rr: 4, tp_percent: 100 }],
-  "6": [{ rr: 6, tp_percent: 100 }],
   "8": [{ rr: 8, tp_percent: 100 }],
-  run40: [
+  runA: [
     { rr: 1, tp_percent: 10 },
-    { rr: 3, tp_percent: 30 },
+    { rr: 2, tp_percent: 20 },
   ],
-  run60: [
+  runB: [
+    { rr: 1, tp_percent: 15 },
+    { rr: 3, tp_percent: 25 },
+  ],
+  runC: [
     { rr: 1, tp_percent: 20 },
-    { rr: 3, tp_percent: 40 },
+    { rr: 4, tp_percent: 20 },
   ],
 };
 
-export const DEFAULT_TP_PRESET = "run40";
+export const DEFAULT_TP_PRESET = "runB";
 export const DEFAULT_RISK = "1";
 export const DEFAULT_STOP_LOSS = "price";
 
