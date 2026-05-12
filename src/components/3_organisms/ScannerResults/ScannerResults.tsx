@@ -2,7 +2,7 @@ import type {
     ScannerLatestBatchFetchResult,
     ScannerMatchRow,
 } from "@/types/scannerTypes";
-import { formatUsCompact, scannerSymbolToBase } from "@/utils/scannerUtils";
+import { formatUsCompact, scannerSymbolToBase } from "@/services/scannerUtils";
 import { Table } from "@chakra-ui/react";
 
 type ScannerResultsProps = {

@@ -1,12 +1,4 @@
-export const TRADING_PAIRS = [
-  "BTC",
-  "ETH",
-  "SOL",
-  "TAO",
-  "1000PEPE",
-  "HYPE",
-  "DOGE",
-];
+export const TRADING_PAIRS = ["BTC", "ETH", "SOL", "1000PEPE", "HYPE", "DOGE"];
 
 export const TP_PRESETS = {
   "2": [{ rr: 2, tp_percent: 100 }],
@@ -27,7 +19,7 @@ export const TP_PRESETS = {
   ],
 };
 
-export const DEFAULT_TP_PRESET = "runB";
+export const DEFAULT_TP_PRESET = "2";
 export const DEFAULT_RISK = "1";
 export const DEFAULT_STOP_LOSS = "price";
 

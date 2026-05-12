@@ -3,7 +3,7 @@ import AssetInterface from "@/components/3_organisms/AssetInterface/AssetInterfa
 import ScannerResults from "@/components/3_organisms/ScannerResults/ScannerResults";
 import { TRADING_PAIRS } from "@/services/config";
 import type { ScannerLatestBatchFetchResult } from "@/types/scannerTypes";
-import { fetchLatestScannerBatch, scannerSymbolToBase } from "@/utils/scannerUtils";
+import { fetchLatestScannerBatch, scannerSymbolToBase } from "@/services/scannerUtils";
 import { Button, Flex, Stack, Tabs } from "@chakra-ui/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
