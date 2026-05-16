@@ -1,6 +1,6 @@
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
-import { DEFAULT_RISK, DEFAULT_STOP_LOSS, DEFAULT_TP_PRESET, TP_PRESETS } from "@/services/config";
+import { DEFAULT_RISK, DEFAULT_STOP_LOSS, DEFAULT_TP_PRESET, NATR_MULTIPLIER, TP_PRESETS } from "@/services/config";
 import { Button, Flex, Input, SegmentGroup, Stack, Text, VStack } from "@chakra-ui/react";
 import type { ReactNode } from "react";
 import { useState } from "react";
@@ -36,11 +36,12 @@ const AssetInterface = ({ pair }: AssetInterfaceProps) => {
         setSubmitting(true);
         try {
             const tp_levels = TP_PRESETS[tpPresets as keyof typeof TP_PRESETS];
+            const stop_loss_text_formatted = stopLoss.startsWith("natr_") ? `${stopLoss}_${NATR_MULTIPLIER}` : stopLoss;
             const body = {
                 symbol: `${pair}USDT`,
                 direction: side,
                 risk_percent: Number(risk),
-                stop_loss_percent: stopLoss === "natr" || stopLoss === "price" ? stopLoss : Number(stopLoss),
+                stop_loss_percent: stopLoss.startsWith("natr_") || stopLoss === "price" ? stop_loss_text_formatted : Number(stopLoss),
                 stop_loss_price: stopLossPrice ? Number(stopLossPrice) : undefined,
                 tp_levels,
             };
@@ -127,7 +128,7 @@ const AssetInterface = ({ pair }: AssetInterfaceProps) => {
                             }}
                         >
                             <SegmentGroup.Indicator />
-                            <SegmentGroup.Items items={["natr", "price", "0.2", "0.3", "0.4", "0.5", "0.6", "0.8", "1", "1.5"]} />
+                            <SegmentGroup.Items items={["price", "natr_5m", "natr_15m", "natr_30m", "0.3", "0.5", "0.8", "1"]} />
                         </SegmentGroup.Root>
                     </VStack>
                 </Stack>

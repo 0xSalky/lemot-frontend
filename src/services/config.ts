@@ -24,3 +24,5 @@ export const DEFAULT_RISK = "1";
 export const DEFAULT_STOP_LOSS = "price";
 
 export const DEFAULT_TRADING_API_URL = "http://127.0.0.1:8000";
+
+export const NATR_MULTIPLIER = "2";
