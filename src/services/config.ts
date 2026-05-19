@@ -1,4 +1,12 @@
-export const TRADING_PAIRS = ["BTC", "ETH", "SOL", "1000PEPE", "HYPE", "DOGE"];
+export const TRADING_PAIRS = [
+  "BTC",
+  "ETH",
+  "SOL",
+  "1000PEPE",
+  "HYPE",
+  "DOGE",
+  "BNB",
+];
 
 export const TP_PRESETS = {
   "2": [{ rr: 2, tp_percent: 100 }],
@@ -25,4 +33,4 @@ export const DEFAULT_STOP_LOSS = "price";
 
 export const DEFAULT_TRADING_API_URL = "http://127.0.0.1:8000";
 
-export const NATR_MULTIPLIER = "2";
+export const NATR_MULTIPLIER = "1.5";

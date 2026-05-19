@@ -66,14 +66,14 @@ const HomePage = () => {
                     </Button>
                 </Flex>
             </Stack>
-            <Tabs.Content value="favorites"><Stack mt="1rem" gap="1rem" mb="1rem" w="30rem">
+            <Tabs.Content value="favorites"><Stack mt="1rem" gap="1rem" mb="1rem" w="31rem">
                 {TRADING_PAIRS.map((pair: string) => (
                     <AssetInterface key={pair} pair={pair} />
                 ))}
                 <AccountBalance />
             </Stack></Tabs.Content>
             <Tabs.Content value="scanner-pairs">
-                <Stack mt="1rem" gap="1rem" mb="1rem" w="30rem">
+                <Stack mt="1rem" gap="1rem" mb="1rem" w="31rem">
                     {scannerPairs.map((pair: string) => (
                         <AssetInterface key={pair} pair={pair} />
                     ))}
