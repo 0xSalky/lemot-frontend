@@ -6,6 +6,7 @@ import type { ScannerLatestBatchFetchResult } from "@/types/scannerTypes";
 import { fetchLatestScannerBatch, scannerSymbolToBase } from "@/services/scannerUtils";
 import { Button, Flex, Stack, Tabs } from "@chakra-ui/react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ColorModeButton } from "@/components/ui/color-mode";
 
 const HomePage = () => {
     const [latestBatch, setLatestBatch] = useState<ScannerLatestBatchFetchResult | null>(
@@ -66,12 +67,17 @@ const HomePage = () => {
                     </Button>
                 </Flex>
             </Stack>
-            <Tabs.Content value="favorites"><Stack mt="1rem" gap="1rem" mb="1rem" w="31rem">
-                {TRADING_PAIRS.map((pair: string) => (
-                    <AssetInterface key={pair} pair={pair} />
-                ))}
-                <AccountBalance />
-            </Stack></Tabs.Content>
+            <Tabs.Content value="favorites">
+                <Stack mt="1rem" gap="1rem" mb="1rem" w="31rem">
+                    {TRADING_PAIRS.map((pair: string) => (
+                        <AssetInterface key={pair} pair={pair} />
+                    ))}
+                    <Stack direction="row" gap="1rem" justifyContent="flex-end">
+                        <ColorModeButton />
+                        <AccountBalance />
+                    </Stack>
+                </Stack>
+            </Tabs.Content>
             <Tabs.Content value="scanner-pairs">
                 <Stack mt="1rem" gap="1rem" mb="1rem" w="31rem">
                     {scannerPairs.map((pair: string) => (
