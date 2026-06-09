@@ -146,7 +146,7 @@ const AssetInterface = ({ pair }: AssetInterfaceProps) => {
                             }}
                         >
                             <SegmentGroup.Indicator />
-                            <SegmentGroup.Items items={["0.5", "1", "1.5", "2"]} />
+                            <SegmentGroup.Items items={["0.25", "0.5", "1", "1.5", "2"]} />
                         </SegmentGroup.Root>
                     </VStack>
                     <VStack align="flex-start">
@@ -221,27 +221,31 @@ const TP_SEGMENT_ITEMS = [
         label: segmentLabel("4", "One take-profit at 4R"),
     },
     {
+        value: "6",
+        label: segmentLabel("6", "One take-profit at 6R"),
+    },
+    {
         value: "8",
         label: segmentLabel("8", "One take-profit at 8R"),
     },
     {
-        value: "runA",
+        value: "A",
         label: segmentLabel(
-            "runA",
+            "A",
             "1R @ 10%, 2R @ 20%, runner 70% - 0.5R",
         ),
     },
     {
-        value: "runB",
+        value: "B",
         label: segmentLabel(
-            "runB",
+            "B",
             "1R @ 15%, 3R @ 25%, runner 60% - 0.9R",
         ),
     },
     {
-        value: "runC",
+        value: "C",
         label: segmentLabel(
-            "runC",
+            "C",
             "1R @ 20%, 4R @ 20%, runner 60% - 1R",
         ),
     },

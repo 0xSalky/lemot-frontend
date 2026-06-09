@@ -13,15 +13,15 @@ export const TP_PRESETS = {
   "3": [{ rr: 3, tp_percent: 100 }],
   "4": [{ rr: 4, tp_percent: 100 }],
   "8": [{ rr: 8, tp_percent: 100 }],
-  runA: [
+  A: [
     { rr: 1, tp_percent: 10 },
     { rr: 2, tp_percent: 20 },
   ],
-  runB: [
+  B: [
     { rr: 1, tp_percent: 15 },
     { rr: 3, tp_percent: 25 },
   ],
-  runC: [
+  C: [
     { rr: 1, tp_percent: 20 },
     { rr: 4, tp_percent: 20 },
   ],
