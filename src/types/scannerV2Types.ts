@@ -7,8 +7,8 @@ export interface ScannerV2LevelRow {
   level_type: string;
   level: number;
   weight?: number;
-  /** aVWAP swing anchor date (MM-DD-YY), when applicable. */
-  anchor_date?: string;
+  /** Session open date from API (MM-DD-YY); use formatLevelDateDisplay in UI. */
+  level_date?: string;
 }
 
 export interface ScannerV2BandRow {

@@ -8,7 +8,9 @@ import { scannerSymbolToBase } from "@/services/scannerUtils";
 export { scannerSymbolToBase };
 
 export async function fetchLatestScannerV2Batch(): Promise<ScannerV2LatestBatchFetchResult> {
-  const res = await fetch("/api/scanner-v2/latest-batch", { cache: "no-store" });
+  const res = await fetch("/api/scanner-v2/latest-batch", {
+    cache: "no-store",
+  });
   const raw = await res.text();
   try {
     return (raw ? JSON.parse(raw) : {}) as ScannerV2LatestBatchFetchResult;
@@ -79,7 +81,9 @@ export function formatSignalLabel(signal: string | null | undefined): string {
 }
 
 export function formatSetupHeaderLine1(setup: ScannerV2SetupRow): string {
-  const signalPart = setup.signal ? ` | ${formatSignalLabel(setup.signal)}` : "";
+  const signalPart = setup.signal
+    ? ` | ${formatSignalLabel(setup.signal)}`
+    : "";
   return (
     `#${setup.rank} | ${setup.symbol} | score=${setup.score.toFixed(1)} | ` +
     `${formatBiasLabel(setup.bias)}${signalPart} | ${formatAdxLine(setup.adx, setup.adx_regime)} | ` +
@@ -109,14 +113,43 @@ export function formatBandLine(band: ScannerV2BandRow): string {
   );
 }
 
+const LEVEL_DATE_MONTHS = [
+  "jan",
+  "feb",
+  "mar",
+  "apr",
+  "may",
+  "jun",
+  "jul",
+  "aug",
+  "sep",
+  "oct",
+  "nov",
+  "dec",
+] as const;
+
+/** Backend sends MM-DD-YY; display as DD-mon-YY (e.g. ``05-jun-26``). */
+export function formatLevelDateDisplay(levelDate?: string | null): string {
+  if (!levelDate) return "";
+  const match = /^(\d{2})-(\d{2})-(\d{2})$/.exec(levelDate.trim());
+  if (!match) return levelDate;
+  const month = Number(match[1]);
+  const day = match[2];
+  const year = match[3];
+  const monthLabel = LEVEL_DATE_MONTHS[month - 1];
+  if (!monthLabel) return levelDate;
+  return `${day}-${monthLabel}-${year}`;
+}
+
 export function formatCompactLevel(level: {
   timeframe: string;
   level_type: string;
   level: number;
-  anchor_date?: string;
+  level_date?: string;
 }): string {
   const base = `${level.timeframe} ${level.level_type} ${formatLevelPrice(level.level)}`;
-  return level.anchor_date ? `${base} ${level.anchor_date}` : base;
+  const date = formatLevelDateDisplay(level.level_date);
+  return date ? `${base} - ${date}` : base;
 }
 
 /** RES first, then SUP (matches scanner console output). */
@@ -134,7 +167,10 @@ export function bandBySide(
   return bands.find((b) => b.side === side);
 }
 
-export function levelLabel(level: { timeframe: string; level_type: string }): string {
+export function levelLabel(level: {
+  timeframe: string;
+  level_type: string;
+}): string {
   return `${level.timeframe} ${level.level_type.replace(/_/g, " ")}`;
 }
 
