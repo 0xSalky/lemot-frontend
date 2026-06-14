@@ -4,7 +4,6 @@ import {
     formatBandLine,
     formatCompactLevel,
     formatSetupHeaderLine1,
-    formatSetupHeaderLine2,
     orderedBands,
     setupsFromBatch,
 } from "@/services/scannerV2Utils";
@@ -28,14 +27,9 @@ function SetupCard({ setup }: { setup: ScannerV2SetupRow }) {
             fontSize="xs"
             lineHeight="1.6"
         >
-            <Stack gap="0">
-                <Text whiteSpace="pre-wrap" wordBreak="break-word">
-                    {formatSetupHeaderLine1(setup)}
-                </Text>
-                <Text whiteSpace="pre-wrap" wordBreak="break-word">
-                    {formatSetupHeaderLine2(setup)}
-                </Text>
-            </Stack>
+            <Text whiteSpace="pre-wrap" wordBreak="break-word">
+                {formatSetupHeaderLine1(setup)}
+            </Text>
             <Separator my="2" />
             <Stack gap="3">
                 {bands.map((band, bandIdx) => (

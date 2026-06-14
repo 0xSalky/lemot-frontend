@@ -40,6 +40,7 @@ export interface ScannerV2SetupRow {
   symbol: string;
   score: number;
   bias: string;
+  signal?: string | null;
   adx: number;
   adx_regime: string;
   price: number;

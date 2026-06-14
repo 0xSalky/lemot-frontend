@@ -71,21 +71,24 @@ export function formatVolDollar(value: number): string {
   return `$${Math.round(v)}`;
 }
 
-export function formatSetupHeaderLine1(setup: ScannerV2SetupRow): string {
-  return (
-    `#${setup.rank} | ${setup.symbol} | score=${setup.score.toFixed(1)} | ` +
-    `${formatBiasLabel(setup.bias)} | ${formatAdxLine(setup.adx, setup.adx_regime)}`
-  );
+export function formatSignalLabel(signal: string | null | undefined): string {
+  const s = (signal ?? "").toUpperCase();
+  if (s === "IN_RANGE") return "🟡 IN RANGE";
+  if (s === "OUT_OF_RANGE") return "⚫ OUT OF RANGE";
+  return signal ?? "—";
 }
 
-export function formatSetupHeaderLine2(setup: ScannerV2SetupRow): string {
+export function formatSetupHeaderLine1(setup: ScannerV2SetupRow): string {
+  const signalPart = setup.signal ? ` | ${formatSignalLabel(setup.signal)}` : "";
   return (
+    `#${setup.rank} | ${setup.symbol} | score=${setup.score.toFixed(1)} | ` +
+    `${formatBiasLabel(setup.bias)}${signalPart} | ${formatAdxLine(setup.adx, setup.adx_regime)} | ` +
     `price=${formatLevelPrice(setup.price)} | 24h vol=${formatVolDollar(setup.quote_volume_24h)}`
   );
 }
 
 export function formatSetupHeader(setup: ScannerV2SetupRow): string {
-  return `${formatSetupHeaderLine1(setup)}\n${formatSetupHeaderLine2(setup)}`;
+  return formatSetupHeaderLine1(setup);
 }
 
 export function formatBandLine(band: ScannerV2BandRow): string {
