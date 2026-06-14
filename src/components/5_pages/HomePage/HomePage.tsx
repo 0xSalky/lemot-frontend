@@ -63,7 +63,7 @@ const HomePage = () => {
     }, [loadScanner]);
 
     return (
-        <Stack w={CARD_WIDTH} gap="2rem">
+        <Stack w={CARD_WIDTH} gap="1rem">
             <Tabs.Root defaultValue="favorites">
                 <Stack direction="row" gap="1rem">
                     <Box>

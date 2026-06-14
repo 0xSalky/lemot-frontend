@@ -113,8 +113,10 @@ export function formatCompactLevel(level: {
   timeframe: string;
   level_type: string;
   level: number;
+  anchor_date?: string;
 }): string {
-  return `${level.timeframe} ${level.level_type} ${formatLevelPrice(level.level)}`;
+  const base = `${level.timeframe} ${level.level_type} ${formatLevelPrice(level.level)}`;
+  return level.anchor_date ? `${base} ${level.anchor_date}` : base;
 }
 
 /** RES first, then SUP (matches scanner console output). */
