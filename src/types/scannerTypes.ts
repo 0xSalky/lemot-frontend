@@ -9,12 +9,10 @@ export interface ScannerBatchRow {
   timeframe: string;
   candle_limit: number;
   min_quote_volume_usdt_24h: number;
-  ema_len1: number;
-  ema_len2: number;
-  ema_len3: number;
-  ema_signal_lookback: number;
+  ma_len1: number;
+  ma_len2: number;
+  ma_len3: number;
   adx_trend_threshold: number;
-  flip_lookback_bars: number;
   high_volume_candidates: number;
   match_count: number;
 }
@@ -33,11 +31,6 @@ export interface ScannerMatchRow {
   signal: string | null;
   close_last: number | null;
   adx_last: number | null;
-  ema_triple_state_last: number | null;
-  /** SQLite 0/1 — last bar instant triple-EMA buy flag. */
-  ema_triple_buy_signal_recent: number;
-  /** SQLite 0/1 — last bar instant triple-EMA sell flag. */
-  ema_triple_sell_signal_recent: number;
   /**
    * JSON array of OHLCV + indicator row objects (`orient="records"`).
    * Omitted when the API strips heavy payloads (same as `include_dataframe=False` in Python).

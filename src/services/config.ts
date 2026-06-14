@@ -34,3 +34,5 @@ export const DEFAULT_STOP_LOSS = "price";
 export const DEFAULT_TRADING_API_URL = "http://127.0.0.1:8000";
 
 export const NATR_MULTIPLIER = "1.5";
+
+export const CARD_WIDTH = "31rem";

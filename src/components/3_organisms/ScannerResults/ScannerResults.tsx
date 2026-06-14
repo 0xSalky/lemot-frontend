@@ -1,45 +1,101 @@
 import type {
+    ScannerBatchRow,
     ScannerLatestBatchFetchResult,
     ScannerMatchRow,
 } from "@/types/scannerTypes";
-import { formatUsCompact, scannerSymbolToBase } from "@/services/scannerUtils";
-import { Table } from "@chakra-ui/react";
+import {
+    formatBatchMetaLine,
+    formatMatchDetailLines,
+    formatMatchHeaderLine1,
+    formatMatchHeaderLine2,
+    matchesFromBatch,
+} from "@/services/scannerUtils";
+import { Box, Separator, Stack, Text } from "@chakra-ui/react";
 
 type ScannerResultsProps = {
     latestBatch: ScannerLatestBatchFetchResult | null;
 };
 
-function matchesFromBatch(
-    latestBatch: ScannerLatestBatchFetchResult | null,
-): ScannerMatchRow[] {
-    if (latestBatch == null || "message" in latestBatch) return [];
-    return latestBatch.matches;
+function MatchCard({
+    match,
+    rank,
+    batch,
+}: {
+    match: ScannerMatchRow;
+    rank: number;
+    batch: ScannerBatchRow;
+}) {
+    const details = formatMatchDetailLines(match, batch);
+
+    return (
+        <Box
+            borderWidth="1px"
+            borderColor="border.emphasized"
+            rounded="md"
+            p="3"
+            w="100%"
+            fontFamily="mono"
+            fontSize="xs"
+            lineHeight="1.6"
+        >
+            <Stack gap="0">
+                <Text whiteSpace="pre-wrap" wordBreak="break-word">
+                    {formatMatchHeaderLine1(match, rank)}
+                </Text>
+                <Text whiteSpace="pre-wrap" wordBreak="break-word">
+                    {formatMatchHeaderLine2(match)}
+                </Text>
+            </Stack>
+            <Separator my="2" />
+            <Stack gap="0">
+                {details.map((line, i) => (
+                    <Text key={i} color="fg.muted">
+                        {line}
+                    </Text>
+                ))}
+            </Stack>
+        </Box>
+    );
 }
 
 const ScannerResults = ({ latestBatch }: ScannerResultsProps) => {
     const matches = matchesFromBatch(latestBatch);
 
+    if (latestBatch != null && "message" in latestBatch) {
+        return (
+            <Text fontSize="sm" color="fg.muted" mt="1rem">
+                {latestBatch.message}
+            </Text>
+        );
+    }
+
+    if (matches.length === 0) {
+        return (
+            <Text fontSize="sm" color="fg.muted" mt="1rem">
+                No scanner v1 matches yet.
+            </Text>
+        );
+    }
+
+    const batch =
+        latestBatch != null && !("message" in latestBatch) ? latestBatch.batch : null;
+
     return (
-        <Table.Root size="sm">
-            <Table.Header>
-                <Table.Row>
-                    <Table.ColumnHeader>Symbol</Table.ColumnHeader>
-                    <Table.ColumnHeader>Bias</Table.ColumnHeader>
-                    <Table.ColumnHeader>Signal</Table.ColumnHeader>
-                    <Table.ColumnHeader>Volume</Table.ColumnHeader>
-                </Table.Row>
-            </Table.Header>
-            <Table.Body>
-                {matches.map((match) => (
-                    <Table.Row key={match.id}>
-                        <Table.Cell>{scannerSymbolToBase(match.symbol)}</Table.Cell>
-                        <Table.Cell>{match.bias === "BULLISH" ? "🟢" : "🔴"}</Table.Cell>
-                        <Table.Cell>{match.signal === "IN_RANGE" ? "🟡" : "--"}</Table.Cell>
-                        <Table.Cell>{formatUsCompact(match.quote_volume_24h)}</Table.Cell>
-                    </Table.Row>
-                ))}
-            </Table.Body>
-        </Table.Root>
+        <Stack mt="1rem" gap="3" align="stretch">
+            {batch ? (
+                <Text fontSize="xs" color="fg.muted" fontFamily="sans">
+                    {formatBatchMetaLine(batch)}
+                </Text>
+            ) : null}
+            {matches.map((match, index) => (
+                <MatchCard
+                    key={match.id}
+                    match={match}
+                    rank={index + 1}
+                    batch={batch!}
+                />
+            ))}
+        </Stack>
     );
 };
 
