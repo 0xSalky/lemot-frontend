@@ -58,6 +58,29 @@ export function formatVolDollar(value: number): string {
     return `$${Math.round(v)}`;
 }
 
+/** UTC ISO timestamp from the API → `YYYY-MM-DD HH:MM:SS TZ` in local time. */
+export function formatUtcIsoLocal(iso: string): string {
+    const trimmed = iso.trim();
+    const normalized =
+        trimmed.endsWith("Z") || /[+-]\d{2}:\d{2}$/.test(trimmed)
+            ? trimmed
+            : `${trimmed.slice(0, 19)}Z`;
+    const d = new Date(normalized);
+    if (Number.isNaN(d.getTime())) {
+        return trimmed.slice(0, 19).replace("T", " ");
+    }
+    const tz =
+        new Intl.DateTimeFormat("en-US", { timeZoneName: "short" })
+            .formatToParts(d)
+            .find((p) => p.type === "timeZoneName")?.value ?? "";
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return (
+        `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
+        `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}` +
+        (tz ? ` ${tz}` : "")
+    );
+}
+
 export function formatBiasLabel(bias: string | null | undefined): string {
     const b = (bias ?? "").toUpperCase();
     if (b === "BULLISH") return "🟢 BULLISH";
@@ -127,7 +150,7 @@ export function formatBatchMetaLine(batch: ScannerBatchRow): string {
     return (
         `Batch #${batch.id} · ${batch.timeframe} · ${batch.match_count} matches · ` +
         `${batch.high_volume_candidates} candidates · ` +
-        `${batch.created_at.slice(0, 19).replace("T", " ")} UTC`
+        formatUtcIsoLocal(batch.created_at)
     );
 }
 

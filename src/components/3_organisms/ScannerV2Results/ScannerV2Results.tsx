@@ -1,5 +1,6 @@
 import type { ScannerV2BandRow, ScannerV2LatestBatchFetchResult } from "@/types/scannerV2Types";
 import type { ScannerV2SetupRow } from "@/types/scannerV2Types";
+import { formatUtcIsoLocal } from "@/services/scannerUtils";
 import {
     formatBandLine,
     formatCompactLevel,
@@ -80,7 +81,7 @@ const ScannerV2Results = ({ latestBatch }: ScannerV2ResultsProps) => {
             {batchMeta ? (
                 <Text fontSize="xs" color="fg.muted" fontFamily="sans">
                     Batch #{batchMeta.id} · {batchMeta.mode} · {batchMeta.match_count} setups ·{" "}
-                    {batchMeta.created_at.slice(0, 19).replace("T", " ")} UTC
+                    {formatUtcIsoLocal(batchMeta.created_at)}
                 </Text>
             ) : null}
             {setups.map((setup) => (
