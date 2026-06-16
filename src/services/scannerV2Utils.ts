@@ -99,22 +99,50 @@ export function formatSetupHeader(setup: ScannerV2SetupRow): string {
   return formatSetupHeaderLine1(setup);
 }
 
-export function formatBandLine(band: ScannerV2BandRow): string {
-  const side = band.side;
+const BAND_LINE_SEP = " · ";
+
+export interface BandLineSection {
+  text: string;
+  emphasis?: boolean;
+}
+
+export function bandLineMarker(side: ScannerV2BandRow["side"]): string {
+  if (side === "RES") return "🔴";
+  if (side === "SUP") return "🟢";
+  return "  ";
+}
+
+export function bandLineSections(band: ScannerV2BandRow): BandLineSection[] {
   const dist = band.distance_pct ?? 0;
-  let marker = "  ";
   let distText = "at price";
-  if (side === "RES") {
-    marker = "🔴";
+  if (band.side === "RES") {
     distText = `${dist.toFixed(2)}% above`;
-  } else if (side === "SUP") {
-    marker = "🟢";
+  } else if (band.side === "SUP") {
     distText = `${dist.toFixed(2)}% below`;
   }
-  return (
-    `${marker} ${formatLevelPrice(band.low)} – ${formatLevelPrice(band.high)}  ` +
-    `w=${band.total_weight}  ${distText}`
-  );
+
+  const sections: BandLineSection[] = [
+    {
+      text: `${formatLevelPrice(band.low)} – ${formatLevelPrice(band.high)}`,
+      emphasis: true,
+    },
+    { text: `w=${band.total_weight}` },
+  ];
+
+  if (band.span_pct != null && Number.isFinite(band.span_pct)) {
+    sections.push({ text: `${band.span_pct.toFixed(2)}% span` });
+  }
+
+  sections.push({ text: distText });
+  return sections;
+}
+
+export function formatBandLine(band: ScannerV2BandRow): string {
+  const marker = bandLineMarker(band.side);
+  const body = bandLineSections(band)
+    .map((section) => section.text)
+    .join(BAND_LINE_SEP);
+  return `${marker} ${body}`;
 }
 
 const LEVEL_DATE_MONTHS = [

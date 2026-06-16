@@ -17,6 +17,8 @@ export interface ScannerV2BandRow {
   high: number;
   total_weight: number;
   distance_pct?: number | null;
+  /** Percent from lowest to highest level in the band. */
+  span_pct?: number | null;
   level_count?: number;
   levels: ScannerV2LevelRow[];
 }

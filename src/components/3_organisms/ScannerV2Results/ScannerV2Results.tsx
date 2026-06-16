@@ -2,7 +2,8 @@ import type { ScannerV2BandRow, ScannerV2LatestBatchFetchResult } from "@/types/
 import type { ScannerV2SetupRow } from "@/types/scannerV2Types";
 import { formatUtcIsoLocal } from "@/services/scannerUtils";
 import {
-    formatBandLine,
+    bandLineMarker,
+    bandLineSections,
     formatCompactLevel,
     formatSetupHeaderLine1,
     orderedBands,
@@ -42,9 +43,29 @@ function SetupCard({ setup }: { setup: ScannerV2SetupRow }) {
 }
 
 function BandBlock({ band }: { band: ScannerV2BandRow }) {
+    const sections = bandLineSections(band);
+
     return (
         <Stack gap="0">
-            <Text>{formatBandLine(band)}</Text>
+            <Box display="flex" flexWrap="wrap" alignItems="baseline" columnGap="1" rowGap="0.5">
+                <Text as="span">{bandLineMarker(band.side)}</Text>
+                {sections.map((section, i) => (
+                    <Box key={`${section.text}-${i}`} display="flex" alignItems="baseline" gap="1">
+                        {i > 0 ? (
+                            <Text as="span" color="fg.subtle" userSelect="none">
+                                ·
+                            </Text>
+                        ) : null}
+                        <Text
+                            as="span"
+                            color={section.emphasis ? undefined : "fg.muted"}
+                            fontWeight={section.emphasis ? "medium" : undefined}
+                        >
+                            {section.text}
+                        </Text>
+                    </Box>
+                ))}
+            </Box>
             {band.levels.map((level, i) => (
                 <Text key={`${level.timeframe}-${level.level_type}-${i}`} pl="4" color="fg.muted">
                     {formatCompactLevel(level)}
