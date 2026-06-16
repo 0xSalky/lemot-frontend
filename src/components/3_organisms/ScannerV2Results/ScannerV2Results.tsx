@@ -6,6 +6,7 @@ import {
     bandLineSections,
     formatCompactLevel,
     formatSetupHeaderLine1,
+    levelsHighToLow,
     orderedBands,
     setupsFromBatch,
 } from "@/services/scannerV2Utils";
@@ -13,10 +14,11 @@ import { Box, Separator, Stack, Text } from "@chakra-ui/react";
 
 type ScannerV2ResultsProps = {
     latestBatch: ScannerV2LatestBatchFetchResult | null;
+    loading?: boolean;
 };
 
 function SetupCard({ setup }: { setup: ScannerV2SetupRow }) {
-    const bands = orderedBands(setup.bands);
+    const bands = orderedBands(Array.isArray(setup.bands) ? setup.bands : []);
 
     return (
         <Box
@@ -66,7 +68,7 @@ function BandBlock({ band }: { band: ScannerV2BandRow }) {
                     </Box>
                 ))}
             </Box>
-            {band.levels.map((level, i) => (
+            {levelsHighToLow(band.levels).map((level, i) => (
                 <Text key={`${level.timeframe}-${level.level_type}-${i}`} pl="4" color="fg.muted">
                     {formatCompactLevel(level)}
                 </Text>
@@ -75,8 +77,16 @@ function BandBlock({ band }: { band: ScannerV2BandRow }) {
     );
 }
 
-const ScannerV2Results = ({ latestBatch }: ScannerV2ResultsProps) => {
+const ScannerV2Results = ({ latestBatch, loading = false }: ScannerV2ResultsProps) => {
     const setups = setupsFromBatch(latestBatch);
+
+    if (loading && latestBatch == null) {
+        return (
+            <Text fontSize="sm" color="fg.muted" mt="1rem">
+                Loading scanner v2 results…
+            </Text>
+        );
+    }
 
     if (latestBatch != null && "message" in latestBatch) {
         return (
@@ -89,7 +99,7 @@ const ScannerV2Results = ({ latestBatch }: ScannerV2ResultsProps) => {
     if (setups.length === 0) {
         return (
             <Text fontSize="sm" color="fg.muted" mt="1rem">
-                No scanner v2 setups yet.
+                No scanner v2 setups yet. Run a scan to populate results.
             </Text>
         );
     }
@@ -98,7 +108,7 @@ const ScannerV2Results = ({ latestBatch }: ScannerV2ResultsProps) => {
         latestBatch != null && !("message" in latestBatch) ? latestBatch.batch : null;
 
     return (
-        <Stack mt="1rem" gap="3" align="stretch">
+        <Stack gap="3" align="stretch">
             {batchMeta ? (
                 <Text fontSize="xs" color="fg.muted" fontFamily="sans">
                     Batch #{batchMeta.id} · {batchMeta.mode} · {batchMeta.match_count} setups ·{" "}

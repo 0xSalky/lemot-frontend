@@ -1,22 +1,77 @@
 import type {
   ScannerV2BandRow,
   ScannerV2LatestBatchFetchResult,
+  ScannerV2LatestBatchPayload,
+  ScannerV2LevelRow,
   ScannerV2SetupRow,
 } from "@/types/scannerV2Types";
 import { scannerSymbolToBase } from "@/services/scannerUtils";
 
 export { scannerSymbolToBase };
 
+function apiErrorMessage(data: unknown, status: number): string {
+  if (data && typeof data === "object") {
+    const record = data as Record<string, unknown>;
+    if (typeof record.detail === "string") return record.detail;
+    if (typeof record.message === "string") return record.message;
+    if (typeof record.error === "string") return record.error;
+  }
+  return `HTTP ${status}`;
+}
+
 export async function fetchLatestScannerV2Batch(): Promise<ScannerV2LatestBatchFetchResult> {
   const res = await fetch("/api/scanner-v2/latest-batch", {
     cache: "no-store",
   });
   const raw = await res.text();
+  let data: unknown;
   try {
-    return (raw ? JSON.parse(raw) : {}) as ScannerV2LatestBatchFetchResult;
+    data = raw ? JSON.parse(raw) : {};
   } catch {
     return { message: raw || String(res.status) };
   }
+
+  if (!res.ok) {
+    return { message: apiErrorMessage(data, res.status) };
+  }
+
+  const payload = data as Partial<ScannerV2LatestBatchPayload>;
+  if (!payload.batch) {
+    return { message: "Invalid scanner v2 response" };
+  }
+
+  return {
+    batch: payload.batch,
+    setups: Array.isArray(payload.setups) ? payload.setups : [],
+  };
+}
+
+export type ScannerV2RunResult =
+  | { success: true; setup_count?: number }
+  | { success: false; message: string };
+
+export async function runScannerV2(): Promise<ScannerV2RunResult> {
+  const res = await fetch("/api/scanner-v2/run", { method: "POST" });
+  const raw = await res.text();
+  let data: unknown;
+  try {
+    data = raw ? JSON.parse(raw) : {};
+  } catch {
+    return { success: false, message: raw || String(res.status) };
+  }
+
+  if (!res.ok) {
+    return { success: false, message: apiErrorMessage(data, res.status) };
+  }
+
+  const record = data as { success?: boolean; setup_count?: number };
+  if (record.success !== true) {
+    return { success: false, message: apiErrorMessage(data, res.status) };
+  }
+  return {
+    success: true,
+    setup_count: record.setup_count,
+  };
 }
 
 export function formatLevelPrice(price: number): string {
@@ -112,6 +167,12 @@ export function bandLineMarker(side: ScannerV2BandRow["side"]): string {
   return "  ";
 }
 
+export function levelsHighToLow(
+  levels: ScannerV2LevelRow[],
+): ScannerV2LevelRow[] {
+  return [...levels].sort((a, b) => b.level - a.level);
+}
+
 export function bandLineSections(band: ScannerV2BandRow): BandLineSection[] {
   const dist = band.distance_pct ?? 0;
   let distText = "at price";
@@ -121,9 +182,12 @@ export function bandLineSections(band: ScannerV2BandRow): BandLineSection[] {
     distText = `${dist.toFixed(2)}% below`;
   }
 
+  const high = Math.max(band.low, band.high);
+  const low = Math.min(band.low, band.high);
+
   const sections: BandLineSection[] = [
     {
-      text: `${formatLevelPrice(band.low)} – ${formatLevelPrice(band.high)}`,
+      text: `${formatLevelPrice(high)} – ${formatLevelPrice(low)}`,
       emphasis: true,
     },
     { text: `w=${band.total_weight}` },
@@ -184,12 +248,13 @@ export function formatCompactLevel(level: {
   return date ? `${base} - ${date}` : base;
 }
 
-/** RES first, then SUP (matches scanner console output). */
+/** RES first, then SUP; within each side, highest band price first. */
 export function orderedBands(bands: ScannerV2BandRow[]): ScannerV2BandRow[] {
   const res = bands.filter((b) => b.side === "RES");
   const sup = bands.filter((b) => b.side === "SUP");
   const rest = bands.filter((b) => b.side !== "RES" && b.side !== "SUP");
-  return [...res, ...sup, ...rest];
+  const byHighDesc = (a: ScannerV2BandRow, b: ScannerV2BandRow) => b.high - a.high;
+  return [...res.sort(byHighDesc), ...sup.sort(byHighDesc), ...rest];
 }
 
 export function bandBySide(
@@ -210,5 +275,7 @@ export function setupsFromBatch(
   latestBatch: ScannerV2LatestBatchFetchResult | null,
 ): ScannerV2SetupRow[] {
   if (latestBatch == null || "message" in latestBatch) return [];
-  return [...latestBatch.setups].sort((a, b) => a.rank - b.rank);
+  const setups = latestBatch.setups;
+  if (!Array.isArray(setups)) return [];
+  return [...setups].sort((a, b) => a.rank - b.rank);
 }

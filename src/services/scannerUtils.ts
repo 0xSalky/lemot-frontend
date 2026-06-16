@@ -1,6 +1,7 @@
 import type {
   ScannerBatchRow,
   ScannerLatestBatchFetchResult,
+  ScannerLatestBatchPayload,
   ScannerMatchRow,
 } from "@/types/scannerTypes";
 
@@ -158,15 +159,68 @@ export function matchesFromBatch(
     latestBatch: ScannerLatestBatchFetchResult | null,
 ): ScannerMatchRow[] {
     if (latestBatch == null || "message" in latestBatch) return [];
-    return [...latestBatch.matches];
+    return Array.isArray(latestBatch.matches) ? [...latestBatch.matches] : [];
+}
+
+function apiErrorMessage(data: unknown, status: number): string {
+    if (data && typeof data === "object") {
+        const record = data as Record<string, unknown>;
+        if (typeof record.detail === "string") return record.detail;
+        if (typeof record.message === "string") return record.message;
+        if (typeof record.error === "string") return record.error;
+    }
+    return `HTTP ${status}`;
 }
 
 export async function fetchLatestScannerBatch(): Promise<ScannerLatestBatchFetchResult> {
   const res = await fetch("/api/scanner/latest-batch", { cache: "no-store" });
   const raw = await res.text();
+  let data: unknown;
   try {
-    return (raw ? JSON.parse(raw) : {}) as ScannerLatestBatchFetchResult;
+    data = raw ? JSON.parse(raw) : {};
   } catch {
     return { message: raw || String(res.status) };
   }
+
+  if (!res.ok) {
+    return { message: apiErrorMessage(data, res.status) };
+  }
+
+  const payload = data as Partial<ScannerLatestBatchPayload>;
+  if (!payload.batch) {
+    return { message: "Invalid scanner response" };
+  }
+
+  return {
+    batch: payload.batch,
+    matches: Array.isArray(payload.matches) ? payload.matches : [],
+  };
+}
+
+export type ScannerRunResult =
+  | { success: true; match_count?: number }
+  | { success: false; message: string };
+
+export async function runScanner(): Promise<ScannerRunResult> {
+  const res = await fetch("/api/scanner/run", { method: "POST" });
+  const raw = await res.text();
+  let data: unknown;
+  try {
+    data = raw ? JSON.parse(raw) : {};
+  } catch {
+    return { success: false, message: raw || String(res.status) };
+  }
+
+  if (!res.ok) {
+    return { success: false, message: apiErrorMessage(data, res.status) };
+  }
+
+  const record = data as { success?: boolean; match_count?: number };
+  if (record.success !== true) {
+    return { success: false, message: apiErrorMessage(data, res.status) };
+  }
+  return {
+    success: true,
+    match_count: record.match_count,
+  };
 }

@@ -14,6 +14,7 @@ import { Box, Separator, Stack, Text } from "@chakra-ui/react";
 
 type ScannerResultsProps = {
     latestBatch: ScannerLatestBatchFetchResult | null;
+    loading?: boolean;
 };
 
 function MatchCard({
@@ -58,8 +59,16 @@ function MatchCard({
     );
 }
 
-const ScannerResults = ({ latestBatch }: ScannerResultsProps) => {
+const ScannerResults = ({ latestBatch, loading = false }: ScannerResultsProps) => {
     const matches = matchesFromBatch(latestBatch);
+
+    if (loading && latestBatch == null) {
+        return (
+            <Text fontSize="sm" color="fg.muted" mt="1rem">
+                Loading scanner v1 results…
+            </Text>
+        );
+    }
 
     if (latestBatch != null && "message" in latestBatch) {
         return (
@@ -72,7 +81,7 @@ const ScannerResults = ({ latestBatch }: ScannerResultsProps) => {
     if (matches.length === 0) {
         return (
             <Text fontSize="sm" color="fg.muted" mt="1rem">
-                No scanner v1 matches yet.
+                No scanner v1 matches yet. Run a scan to populate results.
             </Text>
         );
     }
@@ -81,7 +90,7 @@ const ScannerResults = ({ latestBatch }: ScannerResultsProps) => {
         latestBatch != null && !("message" in latestBatch) ? latestBatch.batch : null;
 
     return (
-        <Stack mt="1rem" gap="3" align="stretch">
+        <Stack gap="3" align="stretch">
             {batch ? (
                 <Text fontSize="xs" color="fg.muted" fontFamily="sans">
                     {formatBatchMetaLine(batch)}

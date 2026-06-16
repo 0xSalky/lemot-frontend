@@ -5,9 +5,9 @@ import ScannerV2Results from "@/components/3_organisms/ScannerV2Results/ScannerV
 import { CARD_WIDTH, TRADING_PAIRS } from "@/services/config";
 import type { ScannerLatestBatchFetchResult } from "@/types/scannerTypes";
 import type { ScannerV2LatestBatchFetchResult } from "@/types/scannerV2Types";
-import { fetchLatestScannerBatch, scannerSymbolToBase } from "@/services/scannerUtils";
-import { fetchLatestScannerV2Batch } from "@/services/scannerV2Utils";
-import { Button, Box, Stack, Tabs } from "@chakra-ui/react";
+import { fetchLatestScannerBatch, runScanner, scannerSymbolToBase } from "@/services/scannerUtils";
+import { fetchLatestScannerV2Batch, runScannerV2 } from "@/services/scannerV2Utils";
+import { Button, Box, Stack, Tabs, Text } from "@chakra-ui/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ColorModeButton } from "@/components/ui/color-mode";
 
@@ -21,6 +21,10 @@ const HomePage = () => {
     const [scannerPairs, setScannerPairs] = useState<string[]>([]);
     const [scannerV2Pairs, setScannerV2Pairs] = useState<string[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
+    const [runningV1, setRunningV1] = useState<boolean>(false);
+    const [runningV2, setRunningV2] = useState<boolean>(false);
+    const [runErrorV1, setRunErrorV1] = useState<string | null>(null);
+    const [runErrorV2, setRunErrorV2] = useState<string | null>(null);
     const loadIdRef = useRef(0);
 
 
@@ -58,6 +62,42 @@ const HomePage = () => {
             });
     }, []);
 
+    const runScannerV1 = useCallback(() => {
+        setRunErrorV1(null);
+        setRunningV1(true);
+        void runScanner()
+            .then((result) => {
+                if (!result.success) {
+                    setRunErrorV1(result.message);
+                    return;
+                }
+                return loadScanner();
+            })
+            .catch((e) => {
+                console.error("[scanner v1 run]", e);
+                setRunErrorV1("Scanner v1 run failed");
+            })
+            .finally(() => setRunningV1(false));
+    }, [loadScanner]);
+
+    const runScannerV2Scan = useCallback(() => {
+        setRunErrorV2(null);
+        setRunningV2(true);
+        void runScannerV2()
+            .then((result) => {
+                if (!result.success) {
+                    setRunErrorV2(result.message);
+                    return;
+                }
+                return loadScanner();
+            })
+            .catch((e) => {
+                console.error("[scanner v2 run]", e);
+                setRunErrorV2("Scanner v2 run failed");
+            })
+            .finally(() => setRunningV2(false));
+    }, [loadScanner]);
+
     useEffect(() => {
         loadScanner();
     }, [loadScanner]);
@@ -87,47 +127,81 @@ const HomePage = () => {
                     </Box>
                 </Stack>
                 <Tabs.Content value="favorites">
-                    <Stack mt="1rem" gap="1rem" mb="1rem">
+                    <Stack gap="1rem" mb="1rem">
                         {TRADING_PAIRS.map((pair: string) => (
                             <AssetInterface key={pair} pair={pair} />
                         ))}
                     </Stack>
                 </Tabs.Content>
                 <Tabs.Content value="scanner-v1-pairs">
-                    <Stack mt="1rem" gap="1rem" mb="1rem">
+                    <Stack gap="1rem" mb="1rem">
                         {scannerPairs.map((pair: string) => (
                             <AssetInterface key={pair} pair={pair} />
                         ))}
                     </Stack>
                 </Tabs.Content>
                 <Tabs.Content value="scanner-v2-pairs">
-                    <Stack mt="1rem" gap="1rem" mb="1rem">
+                    <Stack gap="1rem" mb="1rem">
                         {scannerV2Pairs.map((pair: string) => (
                             <AssetInterface key={pair} pair={pair} />
                         ))}
                     </Stack>
                 </Tabs.Content>
                 <Tabs.Content value="scanner-v1-results">
-                    <ScannerResults latestBatch={latestBatch} />
+                    <ScannerResults latestBatch={latestBatch} loading={loading} />
                 </Tabs.Content>
                 <Tabs.Content value="scanner-v2-results">
                     <Box>
-                        <ScannerV2Results latestBatch={latestBatchV2} />
+                        <ScannerV2Results latestBatch={latestBatchV2} loading={loading} />
                     </Box>
                 </Tabs.Content>
             </Tabs.Root>
-            <Stack direction="row" gap="1rem">
-                <ColorModeButton />
-                <AccountBalance />
-                <Button
-                    size="xs"
-                    variant="outline"
-                    colorPalette="teal"
-                    loading={loading}
-                    onClick={() => loadScanner()}
-                >
-                    Refresh
-                </Button>
+            <Stack gap="2">
+                <Stack direction="row" gap="1rem" flexWrap="wrap" align="center">
+                    <ColorModeButton />
+                    <AccountBalance />
+                    <Button
+                        size="xs"
+                        variant="outline"
+                        colorPalette="teal"
+                        loading={loading}
+                        onClick={() => loadScanner()}
+                    >
+                        Refresh
+                    </Button>
+                    <Button
+                        size="xs"
+                        variant="outline"
+                        colorPalette="teal"
+                        loading={runningV1}
+                        onClick={runScannerV1}
+                    >
+                        Run scanner v1
+                    </Button>
+                    <Button
+                        size="xs"
+                        variant="outline"
+                        colorPalette="teal"
+                        loading={runningV2}
+                        onClick={runScannerV2Scan}
+                    >
+                        Run scanner v2
+                    </Button>
+                </Stack>
+                {runErrorV1 || runErrorV2 ? (
+                    <Stack gap="0">
+                        {runErrorV1 ? (
+                            <Text fontSize="xs" color="red.400">
+                                Scanner v1: {runErrorV1}
+                            </Text>
+                        ) : null}
+                        {runErrorV2 ? (
+                            <Text fontSize="xs" color="red.400">
+                                Scanner v2: {runErrorV2}
+                            </Text>
+                        ) : null}
+                    </Stack>
+                ) : null}
             </Stack>
         </Stack>
 
