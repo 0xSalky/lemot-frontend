@@ -34,6 +34,45 @@ export interface ScannerV2BatchRow {
   high_volume_candidates: number;
   scanned_count: number;
   match_count: number;
+  ai_model?: string | null;
+  ai_generated_at?: string | null;
+  ai_status?: string | null;
+  ai_summary?: ScannerV2AiBatchSummary | null;
+  ai_btc_context?: Record<string, unknown> | null;
+}
+
+export interface ScannerV2AiSetupAnalysis {
+  symbol: string;
+  ai_action?: string;
+  ai_opportunity_type?: string;
+  ai_risk_level?: string;
+  ai_confidence?: number;
+  ai_btc_alignment?: string;
+  ai_rank_in_batch?: number;
+  ai_best_band?: {
+    side?: string;
+    price_high?: number;
+    price_low?: number;
+    total_weight?: number;
+  };
+  ai_entry_zone?: string;
+  ai_stop?: string;
+  ai_targets?: string[];
+  ai_thesis?: string;
+  ai_opportunity_notes?: string;
+  ai_risks?: string[];
+  fractal_vwap_notes?: string;
+}
+
+export interface ScannerV2AiBatchSummary {
+  btc_read?: string;
+  batch_rankings?: {
+    best_with_trend?: string[];
+    best_counter_trend_bounce?: string[];
+    best_fade_resistance?: string[];
+    best_buy_support?: string[];
+    skip_or_map_only?: string[];
+  };
 }
 
 export interface ScannerV2SetupRow {
@@ -50,6 +89,11 @@ export interface ScannerV2SetupRow {
   price: number;
   quote_volume_24h: number;
   bands: ScannerV2BandRow[];
+  ai?: ScannerV2AiSetupAnalysis | null;
+  ai_action?: string | null;
+  ai_confidence?: number | null;
+  ai_rank?: number | null;
+  ai_status?: string | null;
 }
 
 export interface ScannerV2LatestBatchPayload {

@@ -25,6 +25,7 @@ const HomePage = () => {
     const [runningV2, setRunningV2] = useState<boolean>(false);
     const [runErrorV1, setRunErrorV1] = useState<string | null>(null);
     const [runErrorV2, setRunErrorV2] = useState<string | null>(null);
+    const [runWarningV2, setRunWarningV2] = useState<string | null>(null);
     const loadIdRef = useRef(0);
 
 
@@ -82,12 +83,18 @@ const HomePage = () => {
 
     const runScannerV2Scan = useCallback(() => {
         setRunErrorV2(null);
+        setRunWarningV2(null);
         setRunningV2(true);
         void runScannerV2()
             .then((result) => {
                 if (!result.success) {
                     setRunErrorV2(result.message);
                     return;
+                }
+                if (result.ai_error) {
+                    setRunWarningV2(`Scan saved, but AI failed: ${result.ai_error}`);
+                } else if (result.ai_skip_reason) {
+                    setRunWarningV2(`Scan saved; AI skipped: ${result.ai_skip_reason}`);
                 }
                 return loadScanner();
             })
@@ -181,14 +188,14 @@ const HomePage = () => {
                     <Button
                         size="xs"
                         variant="outline"
-                        colorPalette="teal"
+                        colorPalette="purple"
                         loading={runningV2}
                         onClick={runScannerV2Scan}
                     >
                         Run scanner v2
                     </Button>
                 </Stack>
-                {runErrorV1 || runErrorV2 ? (
+                {runErrorV1 || runErrorV2 || runWarningV2 ? (
                     <Stack gap="0">
                         {runErrorV1 ? (
                             <Text fontSize="xs" color="red.400">
@@ -198,6 +205,11 @@ const HomePage = () => {
                         {runErrorV2 ? (
                             <Text fontSize="xs" color="red.400">
                                 Scanner v2: {runErrorV2}
+                            </Text>
+                        ) : null}
+                        {runWarningV2 ? (
+                            <Text fontSize="xs" color="orange.400">
+                                {runWarningV2}
                             </Text>
                         ) : null}
                     </Stack>

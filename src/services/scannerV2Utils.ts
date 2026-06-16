@@ -1,5 +1,6 @@
 import type {
   ScannerV2BandRow,
+  ScannerV2AiBatchSummary,
   ScannerV2LatestBatchFetchResult,
   ScannerV2LatestBatchPayload,
   ScannerV2LevelRow,
@@ -47,7 +48,24 @@ export async function fetchLatestScannerV2Batch(): Promise<ScannerV2LatestBatchF
 }
 
 export type ScannerV2RunResult =
-  | { success: true; setup_count?: number }
+  | {
+      success: true;
+      setup_count?: number;
+      ai_ran?: boolean;
+      ai_error?: string;
+      ai_skip_reason?: string;
+      btc_read?: string;
+    }
+  | { success: false; message: string };
+
+export type ScannerV2AnalyzeResult =
+  | {
+      success: true;
+      batch_id?: number;
+      setup_count?: number;
+      btc_read?: string;
+      batch_rankings?: ScannerV2AiBatchSummary["batch_rankings"];
+    }
   | { success: false; message: string };
 
 export async function runScannerV2(): Promise<ScannerV2RunResult> {
@@ -64,13 +82,61 @@ export async function runScannerV2(): Promise<ScannerV2RunResult> {
     return { success: false, message: apiErrorMessage(data, res.status) };
   }
 
-  const record = data as { success?: boolean; setup_count?: number };
+  const record = data as {
+    success?: boolean;
+    setup_count?: number;
+    ai_ran?: boolean;
+    ai_error?: string;
+    ai_skip_reason?: string;
+    btc_read?: string;
+  };
   if (record.success !== true) {
     return { success: false, message: apiErrorMessage(data, res.status) };
   }
   return {
     success: true,
     setup_count: record.setup_count,
+    ai_ran: record.ai_ran,
+    ai_error: record.ai_error,
+    ai_skip_reason: record.ai_skip_reason,
+    btc_read: record.btc_read,
+  };
+}
+
+export async function runScannerV2Analyze(
+  batchId?: number,
+): Promise<ScannerV2AnalyzeResult> {
+  const qs =
+    batchId != null ? `?batch_id=${encodeURIComponent(String(batchId))}` : "";
+  const res = await fetch(`/api/scanner-v2/analyze${qs}`, { method: "POST" });
+  const raw = await res.text();
+  let data: unknown;
+  try {
+    data = raw ? JSON.parse(raw) : {};
+  } catch {
+    return { success: false, message: raw || String(res.status) };
+  }
+
+  if (!res.ok) {
+    return { success: false, message: apiErrorMessage(data, res.status) };
+  }
+
+  const record = data as {
+    success?: boolean;
+    batch_id?: number;
+    setup_count?: number;
+    btc_read?: string;
+    batch_rankings?: ScannerV2AiBatchSummary["batch_rankings"];
+  };
+  if (record.success !== true) {
+    return { success: false, message: apiErrorMessage(data, res.status) };
+  }
+  return {
+    success: true,
+    batch_id: record.batch_id,
+    setup_count: record.setup_count,
+    btc_read: record.btc_read,
+    batch_rankings: record.batch_rankings,
   };
 }
 
