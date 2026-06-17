@@ -10,6 +10,7 @@ import {
     formatMatchHeaderLine2,
     matchesFromBatch,
 } from "@/services/scannerUtils";
+import ResponsiveCardGrid from "@/components/4_layouts/ResponsiveCardGrid/ResponsiveCardGrid";
 import { Box, Separator, Stack, Text } from "@chakra-ui/react";
 
 type ScannerResultsProps = {
@@ -96,14 +97,16 @@ const ScannerResults = ({ latestBatch, loading = false }: ScannerResultsProps) =
                     {formatBatchMetaLine(batch)}
                 </Text>
             ) : null}
-            {matches.map((match, index) => (
-                <MatchCard
-                    key={match.id}
-                    match={match}
-                    rank={index + 1}
-                    batch={batch!}
-                />
-            ))}
+            <ResponsiveCardGrid>
+                {matches.map((match, index) => (
+                    <MatchCard
+                        key={match.id}
+                        match={match}
+                        rank={index + 1}
+                        batch={batch!}
+                    />
+                ))}
+            </ResponsiveCardGrid>
         </Stack>
     );
 };

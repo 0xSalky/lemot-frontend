@@ -2,7 +2,8 @@ import AccountBalance from "@/components/3_organisms/AccountBalance/AccountBalan
 import AssetInterface from "@/components/3_organisms/AssetInterface/AssetInterface";
 import ScannerResults from "@/components/3_organisms/ScannerResults/ScannerResults";
 import ScannerV2Results from "@/components/3_organisms/ScannerV2Results/ScannerV2Results";
-import { CARD_WIDTH, TRADING_PAIRS } from "@/services/config";
+import ResponsiveCardGrid from "@/components/4_layouts/ResponsiveCardGrid/ResponsiveCardGrid";
+import { TRADING_PAIRS } from "@/services/config";
 import type { ScannerLatestBatchFetchResult } from "@/types/scannerTypes";
 import type { ScannerV2LatestBatchFetchResult } from "@/types/scannerV2Types";
 import { fetchLatestScannerBatch, runScanner, scannerSymbolToBase } from "@/services/scannerUtils";
@@ -110,49 +111,47 @@ const HomePage = () => {
     }, [loadScanner]);
 
     return (
-        <Stack w={CARD_WIDTH} gap="1rem">
+        <Stack w="100%" maxW="100%" gap="1rem">
             <Tabs.Root defaultValue="favorites">
-                <Stack direction="row" gap="1rem">
-                    <Box>
-                        <Tabs.List>
-                            <Tabs.Trigger value="favorites">
-                                Favorites
-                            </Tabs.Trigger>
-                            <Tabs.Trigger value="scanner-v1-pairs">
-                                Sc Pairs
-                            </Tabs.Trigger>
-                            <Tabs.Trigger value="scanner-v2-pairs">
-                                Sc2 Pairs
-                            </Tabs.Trigger>
-                            <Tabs.Trigger value="scanner-v1-results">
-                                Sc Results
-                            </Tabs.Trigger>
-                            <Tabs.Trigger value="scanner-v2-results">
-                                Sc2 Results
-                            </Tabs.Trigger>
-                        </Tabs.List>
-                    </Box>
-                </Stack>
+                <Box overflowX="auto" pb="1">
+                    <Tabs.List flexWrap="wrap" gap="1">
+                        <Tabs.Trigger value="favorites">
+                            Favorit
+                        </Tabs.Trigger>
+                        <Tabs.Trigger value="scanner-v1-pairs">
+                            Sc Pairs
+                        </Tabs.Trigger>
+                        <Tabs.Trigger value="scanner-v2-pairs">
+                            Sc2 Pairs
+                        </Tabs.Trigger>
+                        <Tabs.Trigger value="scanner-v1-results">
+                            Sc Results
+                        </Tabs.Trigger>
+                        <Tabs.Trigger value="scanner-v2-results">
+                            Sc2 Results
+                        </Tabs.Trigger>
+                    </Tabs.List>
+                </Box>
                 <Tabs.Content value="favorites">
-                    <Stack gap="1rem" mb="1rem">
+                    <ResponsiveCardGrid>
                         {TRADING_PAIRS.map((pair: string) => (
                             <AssetInterface key={pair} pair={pair} />
                         ))}
-                    </Stack>
+                    </ResponsiveCardGrid>
                 </Tabs.Content>
                 <Tabs.Content value="scanner-v1-pairs">
-                    <Stack gap="1rem" mb="1rem">
+                    <ResponsiveCardGrid>
                         {scannerPairs.map((pair: string) => (
                             <AssetInterface key={pair} pair={pair} />
                         ))}
-                    </Stack>
+                    </ResponsiveCardGrid>
                 </Tabs.Content>
                 <Tabs.Content value="scanner-v2-pairs">
-                    <Stack gap="1rem" mb="1rem">
+                    <ResponsiveCardGrid>
                         {scannerV2Pairs.map((pair: string) => (
                             <AssetInterface key={pair} pair={pair} />
                         ))}
-                    </Stack>
+                    </ResponsiveCardGrid>
                 </Tabs.Content>
                 <Tabs.Content value="scanner-v1-results">
                     <ScannerResults latestBatch={latestBatch} loading={loading} />

@@ -14,6 +14,7 @@ import {
     orderedBands,
     setupsFromBatch,
 } from "@/services/scannerV2Utils";
+import ResponsiveCardGrid from "@/components/4_layouts/ResponsiveCardGrid/ResponsiveCardGrid";
 import { Box, Separator, Stack, Text } from "@chakra-ui/react";
 import type { ReactNode } from "react";
 
@@ -320,7 +321,7 @@ const ScannerV2Results = ({ latestBatch, loading = false }: ScannerV2ResultsProp
         latestBatch != null && !("message" in latestBatch) ? latestBatch.batch : null;
 
     return (
-        <Stack gap="3" align="stretch" mt="1rem">
+        <Stack gap="3" align="stretch">
             {batchMeta ? (
                 <Stack gap="2">
                     <Text fontSize="xs" color="fg.muted" fontFamily="mono">
@@ -335,9 +336,11 @@ const ScannerV2Results = ({ latestBatch, loading = false }: ScannerV2ResultsProp
                     ) : null}
                 </Stack>
             ) : null}
-            {setups.map((setup) => (
-                <SetupCard key={setup.id} setup={setup} />
-            ))}
+            <ResponsiveCardGrid>
+                {setups.map((setup) => (
+                    <SetupCard key={setup.id} setup={setup} />
+                ))}
+            </ResponsiveCardGrid>
         </Stack>
     );
 };

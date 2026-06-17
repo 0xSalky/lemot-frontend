@@ -15,7 +15,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       <Theme appearance={colorMode} suppressHydrationWarning>
         <Flex
           flexDirection="column"
+          alignItems="stretch"
           minHeight="100vh"
+          w="100%"
+          maxW="100%"
           px={{
             base: "1rem",
             md: "1.5rem",
