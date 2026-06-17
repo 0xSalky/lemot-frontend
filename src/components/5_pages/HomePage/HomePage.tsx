@@ -2,7 +2,7 @@ import AccountBalance from "@/components/3_organisms/AccountBalance/AccountBalan
 import AssetInterface from "@/components/3_organisms/AssetInterface/AssetInterface";
 import ScannerResults from "@/components/3_organisms/ScannerResults/ScannerResults";
 import ResponsiveCardGrid from "@/components/4_layouts/ResponsiveCardGrid/ResponsiveCardGrid";
-import { TRADING_PAIRS } from "@/services/config";
+import { TRADING_PAIRS, CONTENT_MAX_WIDTH } from "@/services/config";
 import type { ScannerLatestBatchFetchResult } from "@/types/scannerTypes";
 import {
     fetchLatestScannerBatch,
@@ -76,7 +76,7 @@ const HomePage = () => {
     }, [loadScanner]);
 
     return (
-        <Stack w="100%" maxW="100%" gap="1rem">
+        <Stack w="100%" maxW={CONTENT_MAX_WIDTH} mx="auto" gap="1rem">
             <Tabs.Root defaultValue="favorites">
                 <Box overflowX="auto" pb="1">
                     <Tabs.List flexWrap="wrap" gap="1">

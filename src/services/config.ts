@@ -35,4 +35,5 @@ export const DEFAULT_TRADING_API_URL = "http://127.0.0.1:8000";
 
 export const NATR_MULTIPLIER = "1.5";
 
-export const CARD_WIDTH = "31rem";
+/** Main content column: full width on small screens, max half viewport on large. */
+export const CONTENT_MAX_WIDTH = { base: "100%", lg: "50vw" } as const;

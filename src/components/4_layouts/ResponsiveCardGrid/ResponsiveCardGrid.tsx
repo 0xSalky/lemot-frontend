@@ -1,4 +1,4 @@
-import { CARD_WIDTH } from "@/services/config";
+import { CONTENT_MAX_WIDTH } from "@/services/config";
 import { Box } from "@chakra-ui/react";
 import type { ReactNode } from "react";
 
@@ -7,18 +7,17 @@ type ResponsiveCardGridProps = {
     gap?: string;
 };
 
-/**
- * 1 column on narrow viewports; adds columns as space allows (typically 2–3 on desktop).
- * Each column targets CARD_WIDTH (31rem) minimum when there is room.
- */
+/** Single column; width capped at CONTENT_MAX_WIDTH (50vw on large screens). */
 const ResponsiveCardGrid = ({ children, gap = "1rem" }: ResponsiveCardGridProps) => {
     return (
         <Box
             display="grid"
             w="100%"
+            maxW={CONTENT_MAX_WIDTH}
+            mx="auto"
             gap={gap}
             alignItems="start"
-            gridTemplateColumns={`repeat(auto-fill, minmax(min(100%, ${CARD_WIDTH}), 1fr))`}
+            gridTemplateColumns="1fr"
         >
             {children}
         </Box>
