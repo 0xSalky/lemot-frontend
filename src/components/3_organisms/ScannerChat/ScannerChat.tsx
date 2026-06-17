@@ -9,40 +9,40 @@ import {
     sendScannerChatMessage,
 } from "@/services/scannerChatUtils";
 import { formatUtcIsoLocal } from "@/services/scannerUtils";
-import { Box, Button, Stack, Text, Textarea } from "@chakra-ui/react";
+import { Box, Button, Flex, Separator, Stack, Text, Textarea } from "@chakra-ui/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const CHAT_TEXT = {
+const MONO = {
     fontFamily: "mono",
     fontSize: "xs",
-    lineHeight: "1.75",
+    lineHeight: "1.7",
 } as const;
 
 function MessageBubble({ message }: { message: ScannerChatMessageRow }) {
     const isUser = message.role === "user";
 
     return (
-        <Box
-            alignSelf={isUser ? "flex-end" : "flex-start"}
-            maxW="95%"
-            px="3"
-            py="2"
-            rounded="md"
-            bg={isUser ? "purple.900" : "purple.950/60"}
-            borderWidth="1px"
-            borderColor={isUser ? "purple.700" : "purple.800"}
-        >
-            <Text {...CHAT_TEXT} color="purple.300" mb="1" fontSize="2xs">
-                {isUser ? "you" : "ai"} · {formatUtcIsoLocal(message.created_at)}
+        <Box alignSelf={isUser ? "flex-end" : "stretch"} maxW={isUser ? "88%" : "100%"}>
+            <Text {...MONO} color="fg.muted" fontSize="2xs" mb="1" textAlign={isUser ? "right" : "left"}>
+                {isUser ? "You" : "AI"} · {formatUtcIsoLocal(message.created_at)}
             </Text>
-            <Text
-                {...CHAT_TEXT}
-                color="purple.50"
-                whiteSpace="pre-wrap"
-                wordBreak="break-word"
+            <Box
+                px="3"
+                py="2.5"
+                rounded="md"
+                bg={isUser ? "purple.950/50" : "purple.950/30"}
+                borderWidth="1px"
+                borderColor={isUser ? "purple.800" : "purple.900"}
             >
-                {message.content}
-            </Text>
+                <Text
+                    {...MONO}
+                    color={isUser ? "purple.100" : "purple.50"}
+                    whiteSpace="pre-wrap"
+                    wordBreak="break-word"
+                >
+                    {message.content}
+                </Text>
+            </Box>
         </Box>
     );
 }
@@ -58,6 +58,7 @@ const ScannerChat = () => {
     const bottomRef = useRef<HTMLDivElement | null>(null);
 
     const canSend = messageHasDollarTicker(draft) && !loading;
+    const hasTranscript = messages.length > 0 || loading;
 
     const scrollToBottom = useCallback(() => {
         bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -121,117 +122,130 @@ const ScannerChat = () => {
             .finally(() => setLoading(false));
     };
 
-    return (
-        <Stack gap="3" w="100%">
-            <Box
-                borderWidth="1px"
-                borderColor="purple.800"
-                rounded="md"
-                p="3"
-                bg="purple.950/30"
-            >
-                <Text {...CHAT_TEXT} color="purple.200">
-                    Ask about any pair using <Text as="span" color="purple.100">$TICKER</Text>{" "}
-                    (e.g. &quot;Is $SOL a good long into support?&quot;). Up to 3 pairs per
-                    message. Fresh HTF levels are scanned before each answer.
+    const inputSection = (
+        <Stack gap="2">
+            <Textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder="$BTC $HYPE — is this a good short?"
+                rows={2}
+                resize="none"
+                fontFamily="mono"
+                fontSize="xs"
+                bg="transparent"
+                borderColor="border.emphasized"
+                disabled={loading}
+                onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        if (canSend) handleSend();
+                    }
+                }}
+            />
+            <Flex align="center" justify="space-between" gap="2">
+                <Text {...MONO} fontSize="2xs" color={canSend ? "green.400" : "fg.muted"}>
+                    {canSend ? "Ready" : "Need $pair"}
                 </Text>
-            </Box>
+                <Button
+                    size="sm"
+                    colorPalette="purple"
+                    loading={loading}
+                    disabled={!canSend}
+                    onClick={handleSend}
+                >
+                    Send
+                </Button>
+            </Flex>
+            {error ? (
+                <Text {...MONO} fontSize="2xs" color="red.400">
+                    {error}
+                </Text>
+            ) : null}
+        </Stack>
+    );
 
-            <Stack direction="row" gap="2" flexWrap="wrap" align="center">
-                <Button size="xs" variant="outline" colorPalette="purple" onClick={startNewChat}>
-                    New chat
+    return (
+        <Flex
+            w="100%"
+            direction="column"
+            borderWidth="1px"
+            borderColor="border.emphasized"
+            rounded="md"
+            overflow="hidden"
+            bg="bg.subtle"
+            minH={hasTranscript ? "calc(100vh - 6.5rem)" : undefined}
+            maxH={hasTranscript ? "calc(100vh - 6.5rem)" : undefined}
+        >
+            {/* threads */}
+            <Flex
+                px="3"
+                py="2"
+                gap="2"
+                flexWrap="wrap"
+                align="center"
+                borderBottomWidth="1px"
+                borderColor="border.emphasized"
+                flexShrink={0}
+            >
+                <Button
+                    size="xs"
+                    variant={threadId === null && messages.length === 0 ? "solid" : "outline"}
+                    colorPalette="purple"
+                    onClick={startNewChat}
+                >
+                    New
                 </Button>
                 {bootLoading ? (
-                    <Text {...CHAT_TEXT} color="fg.muted">
-                        Loading threads…
-                    </Text>
-                ) : threads.length === 0 ? (
-                    <Text {...CHAT_TEXT} color="fg.muted">
-                        No saved chats yet
+                    <Text {...MONO} color="fg.muted">
+                        …
                     </Text>
                 ) : (
-                    threads.slice(0, 8).map((thread) => (
+                    threads.slice(0, 10).map((thread) => (
                         <Button
                             key={thread.id}
                             size="xs"
-                            variant={threadId === thread.id ? "solid" : "outline"}
+                            variant={threadId === thread.id ? "solid" : "ghost"}
                             colorPalette="purple"
                             onClick={() => selectThread(thread.id)}
                         >
-                            {thread.title?.trim() || `Chat #${thread.id}`}
+                            {thread.title?.trim() || `#${thread.id}`}
                         </Button>
                     ))
                 )}
-            </Stack>
+            </Flex>
 
-            {messages.length > 0 || loading ? (
-                <Box
-                    borderWidth="1px"
-                    borderColor="border.emphasized"
-                    rounded="md"
-                    minH="6rem"
-                    maxH="40vh"
-                    overflowY="auto"
-                    p="3"
-                    bg="bg.subtle"
-                >
-                    <Stack gap="3">
-                        {messages.map((msg) => (
-                            <MessageBubble key={msg.id} message={msg} />
-                        ))}
-                        {loading ? (
-                            <Text {...CHAT_TEXT} color="purple.300">
-                                Scanning levels and asking AI…
-                            </Text>
-                        ) : null}
-                        <Box ref={bottomRef} />
-                    </Stack>
-                </Box>
+            {hasTranscript ? (
+                <>
+                    <Box flex="1" minH="0" overflowY="auto" px="3" py="3">
+                        <Stack gap="4">
+                            {messages.map((msg) => (
+                                <MessageBubble key={msg.id} message={msg} />
+                            ))}
+                            {loading ? (
+                                <Text {...MONO} color="purple.400">
+                                    Scanning & thinking…
+                                </Text>
+                            ) : null}
+                            <Box ref={bottomRef} />
+                        </Stack>
+                    </Box>
+
+                    <Box flexShrink={0} borderTopWidth="1px" borderColor="border.emphasized" bg="bg.subtle" px="3" py="3">
+                        {inputSection}
+                    </Box>
+                </>
             ) : (
-                <Text {...CHAT_TEXT} color="fg.muted" px="1">
-                    Start with a question that includes $SOL, $ETH, etc.
-                </Text>
+                <>
+                    <Box px="3" py="3">
+                        <Text {...MONO} color="fg.muted">
+                            Ask with <Text as="span" color="purple.300">$TICKER</Text> — e.g. $SOL $BTC
+                        </Text>
+                    </Box>
+                    <Separator />
+                    <Box px="3" py="3">{inputSection}</Box>
+                </>
             )}
-
-            <Stack gap="2">
-                <Textarea
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    placeholder="e.g. Is $SOL a good long if $BTC holds support?"
-                    rows={3}
-                    fontFamily="mono"
-                    fontSize="xs"
-                    disabled={loading}
-                    onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                            e.preventDefault();
-                            if (canSend) handleSend();
-                        }
-                    }}
-                />
-                <Stack direction="row" gap="2" align="center" justify="space-between">
-                    <Text {...CHAT_TEXT} color={canSend ? "green.400" : "fg.muted"}>
-                        {canSend
-                            ? "Ready to send"
-                            : "Include at least one $pair to send"}
-                    </Text>
-                    <Button
-                        size="sm"
-                        colorPalette="purple"
-                        loading={loading}
-                        disabled={!canSend}
-                        onClick={handleSend}
-                    >
-                        Send
-                    </Button>
-                </Stack>
-                {error ? (
-                    <Text {...CHAT_TEXT} color="red.400">
-                        {error}
-                    </Text>
-                ) : null}
-            </Stack>
-        </Stack>
+        </Flex>
     );
 };
 

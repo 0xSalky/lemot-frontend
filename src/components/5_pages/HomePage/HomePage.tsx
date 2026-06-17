@@ -81,10 +81,11 @@ const HomePage = () => {
             <Tabs.Root defaultValue="favorites">
                 <Box overflowX="auto" pb="1">
                     <Tabs.List flexWrap="wrap" gap="1">
-                        <Tabs.Trigger value="favorites">Favorites</Tabs.Trigger>
-                        <Tabs.Trigger value="scanner-pairs">Scanner Pairs</Tabs.Trigger>
-                        <Tabs.Trigger value="scanner-results">Scanner Results</Tabs.Trigger>
+                        <Tabs.Trigger value="favorites">Favs</Tabs.Trigger>
+                        <Tabs.Trigger value="scanner-pairs">Scan Pairs</Tabs.Trigger>
+                        <Tabs.Trigger value="scanner-results">Scan Results</Tabs.Trigger>
                         <Tabs.Trigger value="scanner-chat">Ask AI</Tabs.Trigger>
+                        <Tabs.Trigger value="config">Config</Tabs.Trigger>
                     </Tabs.List>
                 </Box>
                 <Tabs.Content value="favorites">
@@ -109,45 +110,48 @@ const HomePage = () => {
                 <Tabs.Content value="scanner-chat">
                     <ScannerChat />
                 </Tabs.Content>
-            </Tabs.Root>
-            <Stack gap="2">
-                <Stack direction="row" gap="1rem" flexWrap="wrap" align="center">
-                    <ColorModeButton />
-                    <AccountBalance />
-                    <Button
-                        size="xs"
-                        variant="outline"
-                        colorPalette="teal"
-                        loading={loading}
-                        onClick={() => loadScanner()}
-                    >
-                        Refresh
-                    </Button>
-                    <Button
-                        size="xs"
-                        variant="outline"
-                        colorPalette="purple"
-                        loading={running}
-                        onClick={runScannerScan}
-                    >
-                        Run scanner
-                    </Button>
-                </Stack>
-                {runError || runWarning ? (
-                    <Stack gap="0">
-                        {runError ? (
-                            <Text fontSize="xs" color="red.400">
-                                Scanner: {runError}
-                            </Text>
-                        ) : null}
-                        {runWarning ? (
-                            <Text fontSize="xs" color="orange.400">
-                                {runWarning}
-                            </Text>
+                <Tabs.Content value="config">
+
+                    <Stack gap="2">
+                        <Stack direction="row" gap="1rem" flexWrap="wrap" align="center">
+                            <ColorModeButton />
+                            <AccountBalance />
+                            <Button
+                                size="xs"
+                                variant="outline"
+                                colorPalette="teal"
+                                loading={loading}
+                                onClick={() => loadScanner()}
+                            >
+                                Refresh
+                            </Button>
+                            <Button
+                                size="xs"
+                                variant="outline"
+                                colorPalette="purple"
+                                loading={running}
+                                onClick={runScannerScan}
+                            >
+                                Run scanner
+                            </Button>
+                        </Stack>
+                        {runError || runWarning ? (
+                            <Stack gap="0">
+                                {runError ? (
+                                    <Text fontSize="xs" color="red.400">
+                                        Scanner: {runError}
+                                    </Text>
+                                ) : null}
+                                {runWarning ? (
+                                    <Text fontSize="xs" color="orange.400">
+                                        {runWarning}
+                                    </Text>
+                                ) : null}
+                            </Stack>
                         ) : null}
                     </Stack>
-                ) : null}
-            </Stack>
+                </Tabs.Content>
+            </Tabs.Root>
         </Stack>
     );
 };
