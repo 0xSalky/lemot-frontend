@@ -1,5 +1,6 @@
 import AccountBalance from "@/components/3_organisms/AccountBalance/AccountBalance";
 import AssetInterface from "@/components/3_organisms/AssetInterface/AssetInterface";
+import ScannerChat from "@/components/3_organisms/ScannerChat/ScannerChat";
 import ScannerResults from "@/components/3_organisms/ScannerResults/ScannerResults";
 import ResponsiveCardGrid from "@/components/4_layouts/ResponsiveCardGrid/ResponsiveCardGrid";
 import { TRADING_PAIRS, CONTENT_MAX_WIDTH } from "@/services/config";
@@ -83,6 +84,7 @@ const HomePage = () => {
                         <Tabs.Trigger value="favorites">Favorites</Tabs.Trigger>
                         <Tabs.Trigger value="scanner-pairs">Scanner Pairs</Tabs.Trigger>
                         <Tabs.Trigger value="scanner-results">Scanner Results</Tabs.Trigger>
+                        <Tabs.Trigger value="scanner-chat">Ask AI</Tabs.Trigger>
                     </Tabs.List>
                 </Box>
                 <Tabs.Content value="favorites">
@@ -103,6 +105,9 @@ const HomePage = () => {
                     <Box>
                         <ScannerResults latestBatch={latestBatch} loading={loading} />
                     </Box>
+                </Tabs.Content>
+                <Tabs.Content value="scanner-chat">
+                    <ScannerChat />
                 </Tabs.Content>
             </Tabs.Root>
             <Stack gap="2">
