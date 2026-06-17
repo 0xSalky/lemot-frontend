@@ -1,50 +1,104 @@
 /**
- * Mirrors `scanner_batches` / `scanner_matches` from the scanner SQLite schema (Python backend).
- * JSON keys use the same snake_case as column names.
+ * Mirrors `scanner_v2_batches` / `scanner_v2_setups` from the Python backend.
  */
+
+export interface ScannerLevelRow {
+  timeframe: string;
+  level_type: string;
+  level: number;
+  weight?: number;
+  /** Session open date from API (MM-DD-YY); use formatLevelDateDisplay in UI. */
+  level_date?: string;
+}
+
+export interface ScannerBandRow {
+  side: "RES" | "SUP" | "AT" | string | null;
+  low: number;
+  high: number;
+  total_weight: number;
+  distance_pct?: number | null;
+  /** Percent from lowest to highest level in the band. */
+  span_pct?: number | null;
+  level_count?: number;
+  levels: ScannerLevelRow[];
+}
 
 export interface ScannerBatchRow {
   id: number;
   created_at: string;
-  timeframe: string;
-  candle_limit: number;
+  mode: string;
   min_quote_volume_usdt_24h: number;
-  ma_len1: number;
-  ma_len2: number;
-  ma_len3: number;
-  adx_trend_threshold: number;
+  cluster_pct: number;
+  min_band_weight: number;
+  min_band_levels: number;
   high_volume_candidates: number;
+  scanned_count: number;
   match_count: number;
+  ai_model?: string | null;
+  ai_generated_at?: string | null;
+  ai_status?: string | null;
+  ai_summary?: ScannerAiBatchSummary | null;
+  ai_btc_context?: Record<string, unknown> | null;
 }
 
-export interface ScannerMatchRow {
-  id: number;
-  /** Nullable for legacy rows before `batch_id` migration. */
-  batch_id: number | null;
-  scanned_at: string;
+export interface ScannerAiSetupAnalysis {
   symbol: string;
-  quote_volume_24h: number;
-  timeframe: string;
-  candle_limit: number;
-  min_quote_volume_usdt_24h: number;
-  bias: string | null;
-  signal: string | null;
-  close_last: number | null;
-  adx_last: number | null;
-  /**
-   * JSON array of OHLCV + indicator row objects (`orient="records"`).
-   * Omitted when the API strips heavy payloads (same as `include_dataframe=False` in Python).
-   */
-  dataframe_json?: string;
+  ai_action?: string;
+  ai_opportunity_type?: string;
+  ai_risk_level?: string;
+  ai_confidence?: number;
+  ai_btc_alignment?: string;
+  ai_rank_in_batch?: number;
+  ai_best_band?: {
+    side?: string;
+    price_high?: number;
+    price_low?: number;
+    total_weight?: number;
+  };
+  ai_entry_zone?: string;
+  ai_stop?: string;
+  ai_targets?: string[];
+  ai_thesis?: string;
+  ai_opportunity_notes?: string;
+  ai_risks?: string[];
+  fractal_vwap_notes?: string;
 }
 
-/**
- * Expected envelope for `GET /scanner/latest-batch`.
- * Adjust if your FastAPI route uses a different shape (e.g. only `matches`).
- */
+export interface ScannerAiBatchSummary {
+  btc_read?: string;
+  batch_rankings?: {
+    best_with_trend?: string[];
+    best_counter_trend_bounce?: string[];
+    best_fade_resistance?: string[];
+    best_buy_support?: string[];
+    skip_or_map_only?: string[];
+  };
+}
+
+export interface ScannerSetupRow {
+  id: number;
+  batch_id: number;
+  scanned_at: string;
+  rank: number;
+  symbol: string;
+  score: number;
+  bias: string;
+  signal?: string | null;
+  adx: number;
+  adx_regime: string;
+  price: number;
+  quote_volume_24h: number;
+  bands: ScannerBandRow[];
+  ai?: ScannerAiSetupAnalysis | null;
+  ai_action?: string | null;
+  ai_confidence?: number | null;
+  ai_rank?: number | null;
+  ai_status?: string | null;
+}
+
 export interface ScannerLatestBatchPayload {
   batch: ScannerBatchRow;
-  matches: ScannerMatchRow[];
+  setups: ScannerSetupRow[];
 }
 
 export type ScannerLatestBatchFetchResult =

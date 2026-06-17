@@ -9,8 +9,8 @@ export default async function handler(
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Expires", "0");
 
-  if (req.method !== "GET") {
-    res.setHeader("Allow", "GET");
+  if (req.method !== "POST") {
+    res.setHeader("Allow", "POST");
     return res.status(405).json({ error: "Method not allowed" });
   }
 
@@ -25,8 +25,14 @@ export default async function handler(
     });
   }
 
-  const upstream = await fetch(`${baseUrl}/scanner-v2/latest-batch`, {
-    method: "GET",
+  const batchId = req.query.batch_id;
+  const qs =
+    batchId != null && String(batchId).trim() !== ""
+      ? `?batch_id=${encodeURIComponent(String(batchId))}`
+      : "";
+
+  const upstream = await fetch(`${baseUrl}/scanner/analyze${qs}`, {
+    method: "POST",
     headers: {
       "X-API-Key": apiKey,
     },

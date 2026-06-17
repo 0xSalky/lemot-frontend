@@ -1,13 +1,14 @@
 import AccountBalance from "@/components/3_organisms/AccountBalance/AccountBalance";
 import AssetInterface from "@/components/3_organisms/AssetInterface/AssetInterface";
 import ScannerResults from "@/components/3_organisms/ScannerResults/ScannerResults";
-import ScannerV2Results from "@/components/3_organisms/ScannerV2Results/ScannerV2Results";
 import ResponsiveCardGrid from "@/components/4_layouts/ResponsiveCardGrid/ResponsiveCardGrid";
 import { TRADING_PAIRS } from "@/services/config";
 import type { ScannerLatestBatchFetchResult } from "@/types/scannerTypes";
-import type { ScannerV2LatestBatchFetchResult } from "@/types/scannerV2Types";
-import { fetchLatestScannerBatch, runScanner, scannerSymbolToBase } from "@/services/scannerUtils";
-import { fetchLatestScannerV2Batch, runScannerV2 } from "@/services/scannerV2Utils";
+import {
+    fetchLatestScannerBatch,
+    runScanner,
+    scannerSymbolToBase,
+} from "@/services/scannerUtils";
 import { Button, Box, Stack, Tabs, Text } from "@chakra-ui/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ColorModeButton } from "@/components/ui/color-mode";
@@ -16,45 +17,27 @@ const HomePage = () => {
     const [latestBatch, setLatestBatch] = useState<ScannerLatestBatchFetchResult | null>(
         null,
     );
-    const [latestBatchV2, setLatestBatchV2] = useState<ScannerV2LatestBatchFetchResult | null>(
-        null,
-    );
     const [scannerPairs, setScannerPairs] = useState<string[]>([]);
-    const [scannerV2Pairs, setScannerV2Pairs] = useState<string[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
-    const [runningV1, setRunningV1] = useState<boolean>(false);
-    const [runningV2, setRunningV2] = useState<boolean>(false);
-    const [runErrorV1, setRunErrorV1] = useState<string | null>(null);
-    const [runErrorV2, setRunErrorV2] = useState<string | null>(null);
-    const [runWarningV2, setRunWarningV2] = useState<string | null>(null);
+    const [running, setRunning] = useState<boolean>(false);
+    const [runError, setRunError] = useState<string | null>(null);
+    const [runWarning, setRunWarning] = useState<string | null>(null);
     const loadIdRef = useRef(0);
-
-
-
-
 
     const loadScanner = useCallback(() => {
         const loadId = ++loadIdRef.current;
         queueMicrotask(() => setLoading(true));
 
-        void Promise.all([fetchLatestScannerBatch(), fetchLatestScannerV2Batch()])
-            .then(([v1, v2]) => {
+        void fetchLatestScannerBatch()
+            .then((batch) => {
                 if (loadId !== loadIdRef.current) return;
 
-                setLatestBatch(v1);
-                if ("message" in v1) {
+                setLatestBatch(batch);
+                if ("message" in batch) {
                     setScannerPairs([]);
                 } else {
-                    const bases = v1.matches.map((m) => scannerSymbolToBase(m.symbol));
+                    const bases = batch.setups.map((s) => scannerSymbolToBase(s.symbol));
                     setScannerPairs([...new Set(bases)]);
-                }
-
-                setLatestBatchV2(v2);
-                if ("message" in v2) {
-                    setScannerV2Pairs([]);
-                } else {
-                    const bases = v2.setups.map((s) => scannerSymbolToBase(s.symbol));
-                    setScannerV2Pairs([...new Set(bases)]);
                 }
             })
             .catch((e) => console.error("[scanner refresh]", e))
@@ -64,46 +47,28 @@ const HomePage = () => {
             });
     }, []);
 
-    const runScannerV1 = useCallback(() => {
-        setRunErrorV1(null);
-        setRunningV1(true);
+    const runScannerScan = useCallback(() => {
+        setRunError(null);
+        setRunWarning(null);
+        setRunning(true);
         void runScanner()
             .then((result) => {
                 if (!result.success) {
-                    setRunErrorV1(result.message);
-                    return;
-                }
-                return loadScanner();
-            })
-            .catch((e) => {
-                console.error("[scanner v1 run]", e);
-                setRunErrorV1("Scanner v1 run failed");
-            })
-            .finally(() => setRunningV1(false));
-    }, [loadScanner]);
-
-    const runScannerV2Scan = useCallback(() => {
-        setRunErrorV2(null);
-        setRunWarningV2(null);
-        setRunningV2(true);
-        void runScannerV2()
-            .then((result) => {
-                if (!result.success) {
-                    setRunErrorV2(result.message);
+                    setRunError(result.message);
                     return;
                 }
                 if (result.ai_error) {
-                    setRunWarningV2(`Scan saved, but AI failed: ${result.ai_error}`);
+                    setRunWarning(`Scan saved, but AI failed: ${result.ai_error}`);
                 } else if (result.ai_skip_reason) {
-                    setRunWarningV2(`Scan saved; AI skipped: ${result.ai_skip_reason}`);
+                    setRunWarning(`Scan saved; AI skipped: ${result.ai_skip_reason}`);
                 }
                 return loadScanner();
             })
             .catch((e) => {
-                console.error("[scanner v2 run]", e);
-                setRunErrorV2("Scanner v2 run failed");
+                console.error("[scanner run]", e);
+                setRunError("Scanner run failed");
             })
-            .finally(() => setRunningV2(false));
+            .finally(() => setRunning(false));
     }, [loadScanner]);
 
     useEffect(() => {
@@ -115,21 +80,9 @@ const HomePage = () => {
             <Tabs.Root defaultValue="favorites">
                 <Box overflowX="auto" pb="1">
                     <Tabs.List flexWrap="wrap" gap="1">
-                        <Tabs.Trigger value="favorites">
-                            Favorit
-                        </Tabs.Trigger>
-                        <Tabs.Trigger value="scanner-v1-pairs">
-                            Sc Pairs
-                        </Tabs.Trigger>
-                        <Tabs.Trigger value="scanner-v2-pairs">
-                            Sc2 Pairs
-                        </Tabs.Trigger>
-                        <Tabs.Trigger value="scanner-v1-results">
-                            Sc Results
-                        </Tabs.Trigger>
-                        <Tabs.Trigger value="scanner-v2-results">
-                            Sc2 Results
-                        </Tabs.Trigger>
+                        <Tabs.Trigger value="favorites">Favorites</Tabs.Trigger>
+                        <Tabs.Trigger value="scanner-pairs">Scanner Pairs</Tabs.Trigger>
+                        <Tabs.Trigger value="scanner-results">Scanner Results</Tabs.Trigger>
                     </Tabs.List>
                 </Box>
                 <Tabs.Content value="favorites">
@@ -139,26 +92,16 @@ const HomePage = () => {
                         ))}
                     </ResponsiveCardGrid>
                 </Tabs.Content>
-                <Tabs.Content value="scanner-v1-pairs">
+                <Tabs.Content value="scanner-pairs">
                     <ResponsiveCardGrid>
                         {scannerPairs.map((pair: string) => (
                             <AssetInterface key={pair} pair={pair} />
                         ))}
                     </ResponsiveCardGrid>
                 </Tabs.Content>
-                <Tabs.Content value="scanner-v2-pairs">
-                    <ResponsiveCardGrid>
-                        {scannerV2Pairs.map((pair: string) => (
-                            <AssetInterface key={pair} pair={pair} />
-                        ))}
-                    </ResponsiveCardGrid>
-                </Tabs.Content>
-                <Tabs.Content value="scanner-v1-results">
-                    <ScannerResults latestBatch={latestBatch} loading={loading} />
-                </Tabs.Content>
-                <Tabs.Content value="scanner-v2-results">
+                <Tabs.Content value="scanner-results">
                     <Box>
-                        <ScannerV2Results latestBatch={latestBatchV2} loading={loading} />
+                        <ScannerResults latestBatch={latestBatch} loading={loading} />
                     </Box>
                 </Tabs.Content>
             </Tabs.Root>
@@ -178,45 +121,30 @@ const HomePage = () => {
                     <Button
                         size="xs"
                         variant="outline"
-                        colorPalette="teal"
-                        loading={runningV1}
-                        onClick={runScannerV1}
-                    >
-                        Run scanner v1
-                    </Button>
-                    <Button
-                        size="xs"
-                        variant="outline"
                         colorPalette="purple"
-                        loading={runningV2}
-                        onClick={runScannerV2Scan}
+                        loading={running}
+                        onClick={runScannerScan}
                     >
-                        Run scanner v2
+                        Run scanner
                     </Button>
                 </Stack>
-                {runErrorV1 || runErrorV2 || runWarningV2 ? (
+                {runError || runWarning ? (
                     <Stack gap="0">
-                        {runErrorV1 ? (
+                        {runError ? (
                             <Text fontSize="xs" color="red.400">
-                                Scanner v1: {runErrorV1}
+                                Scanner: {runError}
                             </Text>
                         ) : null}
-                        {runErrorV2 ? (
-                            <Text fontSize="xs" color="red.400">
-                                Scanner v2: {runErrorV2}
-                            </Text>
-                        ) : null}
-                        {runWarningV2 ? (
+                        {runWarning ? (
                             <Text fontSize="xs" color="orange.400">
-                                {runWarningV2}
+                                {runWarning}
                             </Text>
                         ) : null}
                     </Stack>
                 ) : null}
             </Stack>
         </Stack>
-
     );
-}
+};
 
 export default HomePage;
