@@ -203,7 +203,8 @@ const AssetInterface = ({ pair }: AssetInterfaceProps) => {
             <Flex
                 px="3"
                 py="2"
-                align="center"
+                direction={{ base: "column", md: "row" }}
+                align={{ base: "stretch", md: "center" }}
                 justify="space-between"
                 gap="3"
                 borderBottomWidth="1px"
@@ -215,7 +216,8 @@ const AssetInterface = ({ pair }: AssetInterfaceProps) => {
                 </Text>
                 <Input
                     size="xs"
-                    w="8rem"
+                    w={{ base: "100%", md: "8rem" }}
+                    alignSelf={{ base: "stretch", md: "auto" }}
                     value={stopLossPrice}
                     onChange={(e) => setStopLossPrice(e.target.value)}
                     placeholder="SL price"
@@ -237,19 +239,20 @@ const AssetInterface = ({ pair }: AssetInterfaceProps) => {
                     onChange={setStopLoss}
                     items={STOP_LOSS_ITEMS}
                 />
-                <Flex gap="4" direction={{ base: "column", sm: "row" }} align="flex-start">
-                    <Box flex="1">
-                        <OptionRow label="risk %" value={risk} onChange={setRisk} items={RISK_ITEMS} />
-                    </Box>
-                    <Box flex="1">
-                        <OptionRow
-                            label="tp preset"
-                            value={tpPresets}
-                            onChange={setTpPresets}
-                            items={TP_SEGMENT_ITEMS}
-                        />
-                    </Box>
-                </Flex>
+                <Box
+                    display="grid"
+                    gap="3"
+                    w="100%"
+                    gridTemplateColumns={{ base: "1fr", md: "1fr 1fr" }}
+                >
+                    <OptionRow label="risk %" value={risk} onChange={setRisk} items={RISK_ITEMS} />
+                    <OptionRow
+                        label="tp preset"
+                        value={tpPresets}
+                        onChange={setTpPresets}
+                        items={TP_SEGMENT_ITEMS}
+                    />
+                </Box>
             </Stack>
 
             <Flex
