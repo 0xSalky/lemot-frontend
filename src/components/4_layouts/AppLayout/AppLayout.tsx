@@ -1,6 +1,7 @@
 import { Flex, Theme } from "@chakra-ui/react";
 import { useColorMode } from "@/components/ui/color-mode";
 import { Toaster } from "@/components/ui/toaster";
+import Head from "next/head";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -11,6 +12,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
   return (
     <>
+      <Head>
+        <title>LEMOT</title>
+      </Head>
       <Toaster />
       <Theme appearance={colorMode} suppressHydrationWarning>
         <Flex
