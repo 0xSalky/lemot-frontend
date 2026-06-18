@@ -1,0 +1,8 @@
+/* iOS Safari auto-zooms when focused fields use font-size < 16px */
+@media screen and (max-width: 767px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}

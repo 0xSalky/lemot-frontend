@@ -3,6 +3,7 @@ import { TradingAccessProvider } from "@/components/3_organisms/TradingAccess/Tr
 import { ColorModeProvider } from "@/components/ui/color-mode";
 import { ThemeColorProvider } from "@/components/ui/theme-color";
 import { system } from "@/theme/chakraTheme";
+import "@/styles/mobile-inputs.css";
 import { ChakraProvider } from "@chakra-ui/react";
 import type { AppProps } from "next/app";
 
