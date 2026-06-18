@@ -3,6 +3,7 @@ import AccountBalance from "@/components/3_organisms/AccountBalance/AccountBalan
 import AssetInterface from "@/components/3_organisms/AssetInterface/AssetInterface";
 import ScannerChat from "@/components/3_organisms/ScannerChat/ScannerChat";
 import ScannerResults from "@/components/3_organisms/ScannerResults/ScannerResults";
+import { useTradingAccess } from "@/components/3_organisms/TradingAccess/TradingAccess";
 import ResponsiveCardGrid from "@/components/4_layouts/ResponsiveCardGrid/ResponsiveCardGrid";
 import { ColorModeButton } from "@/components/ui/color-mode";
 import { ThemeColorSelector, accent, useThemeColor } from "@/components/ui/theme-color";
@@ -18,6 +19,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 const HomePage = () => {
     const { palette } = useThemeColor();
+    const { serverConfigured, signOut } = useTradingAccess();
     const [latestBatch, setLatestBatch] = useState<ScannerLatestBatchFetchResult | null>(
         null,
     );
@@ -137,6 +139,16 @@ const HomePage = () => {
                             >
                                 Run scanner
                             </Button>
+                            {!serverConfigured ? (
+                                <Button
+                                    size="xs"
+                                    variant="ghost"
+                                    colorPalette={palette}
+                                    onClick={signOut}
+                                >
+                                    Sign out
+                                </Button>
+                            ) : null}
                         </Stack>
                         {runError || runWarning ? (
                             <Stack gap="0">

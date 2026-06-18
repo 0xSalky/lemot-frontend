@@ -1,3 +1,4 @@
+import { apiFetch } from "@/services/apiFetch";
 import type {
   ScannerBandRow,
   ScannerAiBatchSummary,
@@ -48,7 +49,7 @@ function apiErrorMessage(data: unknown, status: number): string {
 }
 
 export async function fetchLatestScannerBatch(): Promise<ScannerLatestBatchFetchResult> {
-  const res = await fetch("/api/scanner/latest-batch", {
+  const res = await apiFetch("/api/scanner/latest-batch", {
     cache: "no-store",
   });
   const raw = await res.text();
@@ -96,7 +97,7 @@ export type ScannerAnalyzeResult =
   | { success: false; message: string };
 
 export async function runScanner(): Promise<ScannerRunResult> {
-  const res = await fetch("/api/scanner/run", { method: "POST" });
+  const res = await apiFetch("/api/scanner/run", { method: "POST" });
   const raw = await res.text();
   let data: unknown;
   try {
@@ -135,7 +136,7 @@ export async function runScannerAnalyze(
 ): Promise<ScannerAnalyzeResult> {
   const qs =
     batchId != null ? `?batch_id=${encodeURIComponent(String(batchId))}` : "";
-  const res = await fetch(`/api/scanner/analyze${qs}`, { method: "POST" });
+  const res = await apiFetch(`/api/scanner/analyze${qs}`, { method: "POST" });
   const raw = await res.text();
   let data: unknown;
   try {

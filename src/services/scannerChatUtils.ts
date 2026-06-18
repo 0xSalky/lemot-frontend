@@ -1,3 +1,4 @@
+import { apiFetch } from "@/services/apiFetch";
 import type {
   ScannerChatSendResponse,
   ScannerChatSendResult,
@@ -22,7 +23,7 @@ function apiErrorMessage(data: unknown, status: number): string {
 }
 
 export async function fetchScannerChatThreads(): Promise<ScannerChatThreadsPayload> {
-  const res = await fetch("/api/scanner/chat/threads", { cache: "no-store" });
+  const res = await apiFetch("/api/scanner/chat/threads", { cache: "no-store" });
   const data: unknown = await res.json();
   if (!res.ok) {
     throw new Error(apiErrorMessage(data, res.status));
@@ -33,7 +34,7 @@ export async function fetchScannerChatThreads(): Promise<ScannerChatThreadsPaylo
 export async function fetchScannerChatThread(
   threadId: number,
 ): Promise<ScannerChatThreadPayload> {
-  const res = await fetch(
+  const res = await apiFetch(
     `/api/scanner/chat/thread?thread_id=${encodeURIComponent(String(threadId))}`,
     { cache: "no-store" },
   );
@@ -48,7 +49,7 @@ export async function sendScannerChatMessage(
   message: string,
   threadId?: number | null,
 ): Promise<ScannerChatSendResult> {
-  const res = await fetch("/api/scanner/chat", {
+  const res = await apiFetch("/api/scanner/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

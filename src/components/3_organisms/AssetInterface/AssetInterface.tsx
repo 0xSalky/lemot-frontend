@@ -1,6 +1,7 @@
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
 import { accent, useThemeColor } from "@/components/ui/theme-color";
+import { apiFetch } from "@/services/apiFetch";
 import { DEFAULT_RISK, DEFAULT_STOP_LOSS, DEFAULT_TP_PRESET, NATR_MULTIPLIER, TP_PRESETS } from "@/services/config";
 import { Box, Button, Flex, Input, Stack, Text } from "@chakra-ui/react";
 import type { ReactNode } from "react";
@@ -140,7 +141,7 @@ const AssetInterface = ({ pair }: AssetInterfaceProps) => {
                 stop_loss_price: stopLossPrice ? Number(stopLossPrice) : undefined,
                 tp_levels,
             };
-            const res = await fetch("/api/trade/execute", {
+            const res = await apiFetch("/api/trade/execute", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(body),

@@ -1,3 +1,4 @@
+import { apiFetch } from "@/services/apiFetch";
 import { Button, Stack } from "@chakra-ui/react";
 import { useState } from "react";
 
@@ -8,7 +9,7 @@ const AccountBalance = () => {
     const fetchBalance = async () => {
         try {
             setLoading(true);
-            const res = await fetch("/api/account/balance", { cache: "no-store" });
+            const res = await apiFetch("/api/account/balance", { cache: "no-store" });
             const raw = await res.text();
 
             let data: unknown = {};

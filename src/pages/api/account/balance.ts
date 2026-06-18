@@ -1,4 +1,4 @@
-import { DEFAULT_TRADING_API_URL } from "@/services/config";
+import { proxyTradingGet } from "@/lib/tradingApiProxy";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export default async function handler(
@@ -14,30 +14,5 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const apiKey = process.env.TRADING_API_KEY;
-  const baseUrl = (
-    process.env.TRADING_API_URL ?? DEFAULT_TRADING_API_URL
-  ).replace(/\/$/, "");
-
-  if (!apiKey) {
-    return res.status(503).json({
-      detail: "TRADING_API_KEY is not configured on the Next.js server",
-    });
-  }
-
-  const upstream = await fetch(`${baseUrl}/account/balance`, {
-    method: "GET",
-    headers: {
-      "X-API-Key": apiKey,
-    },
-  });
-
-  const contentType = upstream.headers.get("content-type") ?? "";
-  if (contentType.includes("application/json")) {
-    const data = await upstream.json();
-    return res.status(upstream.status).json(data);
-  }
-
-  const text = await upstream.text();
-  return res.status(upstream.status).send(text);
+  await proxyTradingGet(req, res, "/account/balance");
 }

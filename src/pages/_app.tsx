@@ -1,4 +1,5 @@
 import AppLayout from "@/components/4_layouts/AppLayout/AppLayout";
+import { TradingAccessProvider } from "@/components/3_organisms/TradingAccess/TradingAccess";
 import { ColorModeProvider } from "@/components/ui/color-mode";
 import { ThemeColorProvider } from "@/components/ui/theme-color";
 import { system } from "@/theme/chakraTheme";
@@ -10,9 +11,11 @@ export default function App({ Component, pageProps }: AppProps) {
     <ChakraProvider value={system}>
       <ColorModeProvider>
         <ThemeColorProvider>
-          <AppLayout>
-            <Component {...pageProps} />
-          </AppLayout>
+          <TradingAccessProvider>
+            <AppLayout>
+              <Component {...pageProps} />
+            </AppLayout>
+          </TradingAccessProvider>
         </ThemeColorProvider>
       </ColorModeProvider>
     </ChakraProvider>);
