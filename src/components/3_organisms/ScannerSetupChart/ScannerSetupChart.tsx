@@ -12,7 +12,10 @@ import { Box, Flex, NativeSelect, Text } from "@chakra-ui/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const CHART_HEIGHT = 168;
-const CHART_REFRESH_MS = 5 * 60 * 1000;
+const CHART_REFRESH_MS = 2 * 60 * 1000;
+const ZOOM_FACTOR = 1.2;
+const ZOOM_MIN = 0.3;
+const ZOOM_MAX = 5;
 const PAD_X = 8;
 const PAD_TOP = 10;
 const PAD_BOTTOM = 14;
@@ -35,13 +38,32 @@ function computeChartBounds(
   candles: ScannerChartPayload["candles"],
   spot: number,
 ): [number, number] {
-  const lows = candles.map((c) => c.low);
-  const highs = candles.map((c) => c.high);
-  const rawMin = Math.min(...lows, spot);
-  const rawMax = Math.max(...highs, spot);
-  const span = Math.max(rawMax - rawMin, rawMin * 0.008, 1e-12);
-  const pad = span * 0.1;
+  const closes = candles.map((c) => c.close);
+  const rawMin = Math.min(...closes, spot);
+  const rawMax = Math.max(...closes, spot);
+  const span = Math.max(rawMax - rawMin, rawMin * 0.004, 1e-12);
+  const pad = span * 0.04;
   return [rawMin - pad, rawMax + pad];
+}
+
+function visibleCandlesForZoom(
+  candles: ScannerChartPayload["candles"],
+  zoomScale: number,
+): ScannerChartPayload["candles"] {
+  const xWindow = Math.min(1, zoomScale);
+  const visibleCount = Math.max(2, Math.round(candles.length * xWindow));
+  return candles.slice(candles.length - visibleCount);
+}
+
+function applyZoomBounds(
+  baseMin: number,
+  baseMax: number,
+  zoomScale: number,
+  spot: number,
+): [number, number] {
+  const baseSpan = Math.max(baseMax - baseMin, spot * 0.004, 1e-12);
+  const halfSpan = (baseSpan / 2) * zoomScale;
+  return [spot - halfSpan, spot + halfSpan];
 }
 
 function formatRefreshCountdown(seconds: number): string {
@@ -55,6 +77,7 @@ function ScannerSetupChart({ symbol, price, bands, tokens }: ScannerSetupChartPr
   const nextRefreshAtRef = useRef(0);
   const [containerWidth, setContainerWidth] = useState(0);
   const [timeframe, setTimeframe] = useState<ScannerChartTimeframe>("1h");
+  const [zoomScale, setZoomScale] = useState(1);
   const [refreshCountdownSec, setRefreshCountdownSec] = useState(
     Math.ceil(CHART_REFRESH_MS / 1000),
   );
@@ -159,19 +182,22 @@ function ScannerSetupChart({ symbol, price, bands, tokens }: ScannerSetupChartPr
     if (!chart?.candles?.length || chartWidth <= 0) return null;
 
     const candles = chart.candles;
-    const [minPrice, maxPrice] = computeChartBounds(candles, price);
+    const spotPrice = candles[candles.length - 1]?.close ?? price;
+    const visibleCandles = visibleCandlesForZoom(candles, zoomScale);
+    const [baseMin, baseMax] = computeChartBounds(visibleCandles, spotPrice);
+    const [minPrice, maxPrice] = applyZoomBounds(baseMin, baseMax, zoomScale, spotPrice);
     const innerW = chartWidth - PAD_X * 2;
     const innerH = CHART_HEIGHT - PAD_TOP - PAD_BOTTOM;
     const priceSpan = maxPrice - minPrice;
     const plotBottom = PAD_TOP + innerH;
 
     const xAt = (index: number) =>
-      PAD_X + (index / Math.max(candles.length - 1, 1)) * innerW;
+      PAD_X + (index / Math.max(visibleCandles.length - 1, 1)) * innerW;
 
     const yAt = (level: number) =>
       PAD_TOP + ((maxPrice - level) / priceSpan) * innerH;
 
-    const closePoints = candles
+    const closePoints = visibleCandles
       .map((candle, i) => `${xAt(i).toFixed(1)},${yAt(candle.close).toFixed(1)}`)
       .join(" ");
 
@@ -202,9 +228,9 @@ function ScannerSetupChart({ symbol, price, bands, tokens }: ScannerSetupChartPr
       .sort((a, b) => Math.max(b.low, b.high) - Math.max(a.low, a.high))
       .slice(0, 2);
 
-    const spotY = yAt(price);
-    const lastX = xAt(candles.length - 1);
-    const lastY = yAt(candles[candles.length - 1].close);
+    const spotY = yAt(spotPrice);
+    const lastX = xAt(visibleCandles.length - 1);
+    const lastY = yAt(spotPrice);
 
     return {
       closePoints,
@@ -212,11 +238,12 @@ function ScannerSetupChart({ symbol, price, bands, tokens }: ScannerSetupChartPr
       offscreenAbove,
       offscreenBelow,
       spotY,
+      spotPrice,
       innerW,
       lastX,
       lastY,
     };
-  }, [bands, chart, chartWidth, price]);
+  }, [bands, chart, chartWidth, price, zoomScale]);
 
   return (
     <Box
@@ -247,30 +274,31 @@ function ScannerSetupChart({ symbol, price, bands, tokens }: ScannerSetupChartPr
               {formatRefreshCountdown(refreshCountdownSec)}
             </Text>
             <NativeSelect.Root size="xs" width="2.5rem" minW="2.5rem">
-            <NativeSelect.Field
-              value={timeframe}
-              fontFamily="mono"
-              fontSize="2xs"
-              h="1.35rem"
-              minH="1.35rem"
-              py="0"
-              px="1"
-              bg={tokens.panelBgUser}
-              borderColor={tokens.panelBorder}
-              onChange={(e) => {
-                const next = e.currentTarget.value;
-                if ((SCANNER_CHART_TIMEFRAMES as readonly string[]).includes(next)) {
-                  setTimeframe(next as ScannerChartTimeframe);
-                }
-              }}
-            >
-              {SCANNER_CHART_TIMEFRAMES.map((tf) => (
-                <option key={tf} value={tf}>
-                  {tf}
-                </option>
-              ))}
-            </NativeSelect.Field>
-          </NativeSelect.Root>
+              <NativeSelect.Field
+                value={timeframe}
+                fontFamily="mono"
+                fontSize="2xs"
+                h="1.35rem"
+                minH="1.35rem"
+                py="0"
+                px="1"
+                bg={tokens.panelBgUser}
+                borderColor={tokens.panelBorder}
+                onChange={(e) => {
+                  const next = e.currentTarget.value;
+                  if ((SCANNER_CHART_TIMEFRAMES as readonly string[]).includes(next)) {
+                    setTimeframe(next as ScannerChartTimeframe);
+                    setZoomScale(1);
+                  }
+                }}
+              >
+                {SCANNER_CHART_TIMEFRAMES.map((tf) => (
+                  <option key={tf} value={tf}>
+                    {tf}
+                  </option>
+                ))}
+              </NativeSelect.Field>
+            </NativeSelect.Root>
           </Flex>
         </Flex>
       </Box>
@@ -305,6 +333,63 @@ function ScannerSetupChart({ symbol, price, bands, tokens }: ScannerSetupChartPr
           </Box>
         ) : (
           <>
+            <Flex
+              position="absolute"
+              top="1"
+              left="1"
+              zIndex={4}
+              gap="0.5"
+            >
+              <Box
+                as="button"
+                aria-label="Zoom in"
+                onClick={() =>
+                  setZoomScale((z) => Math.max(ZOOM_MIN, z / ZOOM_FACTOR))
+                }
+                fontFamily="mono"
+                fontSize="2xs"
+                lineHeight="1"
+                w="1.35rem"
+                h="1.35rem"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                bg={tokens.panelBgUser}
+                borderWidth="1px"
+                borderColor={tokens.panelBorder}
+                color={tokens.panelHeading}
+                rounded="sm"
+                cursor="pointer"
+                _hover={{ bg: tokens.panelBg }}
+              >
+                +
+              </Box>
+              <Box
+                as="button"
+                aria-label="Zoom out"
+                onClick={() =>
+                  setZoomScale((z) => Math.min(ZOOM_MAX, z * ZOOM_FACTOR))
+                }
+                fontFamily="mono"
+                fontSize="2xs"
+                lineHeight="1"
+                w="1.35rem"
+                h="1.35rem"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                bg={tokens.panelBgUser}
+                borderWidth="1px"
+                borderColor={tokens.panelBorder}
+                color={tokens.panelHeading}
+                rounded="sm"
+                cursor="pointer"
+                _hover={{ bg: tokens.panelBg }}
+              >
+                −
+              </Box>
+            </Flex>
+
             {plot.bandRects.map((band) => (
               <Box
                 key={band.key}
@@ -395,33 +480,33 @@ function ScannerSetupChart({ symbol, price, bands, tokens }: ScannerSetupChartPr
                 role="img"
                 aria-label={`${timeframe} price chart for ${symbol} with HTF bands`}
               >
-              <line
-                x1={PAD_X}
-                x2={chartWidth - PAD_X}
-                y1={plot.spotY}
-                y2={plot.spotY}
-                stroke="currentColor"
-                strokeWidth="0.75"
-                strokeDasharray="3 4"
-                opacity={0.45}
-              />
+                <line
+                  x1={PAD_X}
+                  x2={chartWidth - PAD_X}
+                  y1={plot.spotY}
+                  y2={plot.spotY}
+                  stroke="currentColor"
+                  strokeWidth="0.75"
+                  strokeDasharray="3 4"
+                  opacity={0.45}
+                />
 
-              <polyline
-                points={plot.closePoints}
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.25"
-                strokeLinejoin="round"
-                strokeLinecap="round"
-                opacity={0.95}
-              />
+                <polyline
+                  points={plot.closePoints}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.25"
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                  opacity={0.95}
+                />
 
-              <circle
-                cx={plot.lastX}
-                cy={plot.lastY}
-                r="2.5"
-                fill="currentColor"
-              />
+                <circle
+                  cx={plot.lastX}
+                  cy={plot.lastY}
+                  r="2.5"
+                  fill="currentColor"
+                />
               </svg>
             </Box>
 
@@ -446,7 +531,7 @@ function ScannerSetupChart({ symbol, price, bands, tokens }: ScannerSetupChartPr
                 color={tokens.panelHeading}
                 lineHeight="1.2"
               >
-                {formatLevelPrice(price)}
+                {formatLevelPrice(plot.spotPrice)}
               </Text>
             </Box>
           </>

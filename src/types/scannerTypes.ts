@@ -119,5 +119,5 @@ export interface ScannerChartPayload {
   candles: ScannerChartCandle[];
 }
 
-export const SCANNER_CHART_TIMEFRAMES = ["1h", "2h", "4h", "1d"] as const;
+export const SCANNER_CHART_TIMEFRAMES = ["30m", "1h", "2h", "4h", "1d"] as const;
 export type ScannerChartTimeframe = (typeof SCANNER_CHART_TIMEFRAMES)[number];
