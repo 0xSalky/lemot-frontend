@@ -9,6 +9,8 @@ import {
     sendScannerChatMessage,
 } from "@/services/scannerChatUtils";
 import { formatUtcIsoLocal } from "@/services/scannerUtils";
+import ChatMarkdown from "@/components/2_molecules/ChatMarkdown/ChatMarkdown";
+import { accent, useThemeColor } from "@/components/ui/theme-color";
 import { Box, Button, Flex, Separator, Stack, Text, Textarea } from "@chakra-ui/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -18,7 +20,13 @@ const MONO = {
     lineHeight: "1.7",
 } as const;
 
-function MessageBubble({ message }: { message: ScannerChatMessageRow }) {
+function MessageBubble({
+    message,
+    palette,
+}: {
+    message: ScannerChatMessageRow;
+    palette: ReturnType<typeof useThemeColor>["palette"];
+}) {
     const isUser = message.role === "user";
 
     return (
@@ -30,24 +38,29 @@ function MessageBubble({ message }: { message: ScannerChatMessageRow }) {
                 px="3"
                 py="2.5"
                 rounded="md"
-                bg={isUser ? "purple.950/50" : "purple.950/30"}
+                bg={isUser ? accent(palette, "950/50") : accent(palette, "950/40")}
                 borderWidth="1px"
-                borderColor={isUser ? "purple.800" : "purple.900"}
+                borderColor={accent(palette, 800)}
             >
-                <Text
-                    {...MONO}
-                    color={isUser ? "purple.100" : "purple.50"}
-                    whiteSpace="pre-wrap"
-                    wordBreak="break-word"
-                >
-                    {message.content}
-                </Text>
+                {isUser ? (
+                    <Text
+                        {...MONO}
+                        color={accent(palette, 100)}
+                        whiteSpace="pre-wrap"
+                        wordBreak="break-word"
+                    >
+                        {message.content}
+                    </Text>
+                ) : (
+                    <ChatMarkdown content={message.content} />
+                )}
             </Box>
         </Box>
     );
 }
 
 const ScannerChat = () => {
+    const { palette } = useThemeColor();
     const [threads, setThreads] = useState<ScannerChatThreadRow[]>([]);
     const [threadId, setThreadId] = useState<number | null>(null);
     const [messages, setMessages] = useState<ScannerChatMessageRow[]>([]);
@@ -77,10 +90,23 @@ const ScannerChat = () => {
     }, []);
 
     useEffect(() => {
-        void refreshThreads()
-            .catch((e) => console.error("[chat threads]", e))
-            .finally(() => setBootLoading(false));
-    }, [refreshThreads]);
+        let cancelled = false;
+
+        void fetchScannerChatThreads()
+            .then((payload) => {
+                if (!cancelled) setThreads(payload.threads);
+            })
+            .catch((e) => {
+                if (!cancelled) console.error("[chat threads]", e);
+            })
+            .finally(() => {
+                if (!cancelled) setBootLoading(false);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     useEffect(() => {
         scrollToBottom();
@@ -148,7 +174,7 @@ const ScannerChat = () => {
                 </Text>
                 <Button
                     size="sm"
-                    colorPalette="purple"
+                    colorPalette={palette}
                     loading={loading}
                     disabled={!canSend}
                     onClick={handleSend}
@@ -190,7 +216,7 @@ const ScannerChat = () => {
                 <Button
                     size="xs"
                     variant={threadId === null && messages.length === 0 ? "solid" : "outline"}
-                    colorPalette="purple"
+                    colorPalette={palette}
                     onClick={startNewChat}
                 >
                     New
@@ -205,7 +231,7 @@ const ScannerChat = () => {
                             key={thread.id}
                             size="xs"
                             variant={threadId === thread.id ? "solid" : "ghost"}
-                            colorPalette="purple"
+                            colorPalette={palette}
                             onClick={() => selectThread(thread.id)}
                         >
                             {thread.title?.trim() || `#${thread.id}`}
@@ -219,10 +245,10 @@ const ScannerChat = () => {
                     <Box flex="1" minH="0" overflowY="auto" px="3" py="3">
                         <Stack gap="4">
                             {messages.map((msg) => (
-                                <MessageBubble key={msg.id} message={msg} />
+                                <MessageBubble key={msg.id} message={msg} palette={palette} />
                             ))}
                             {loading ? (
-                                <Text {...MONO} color="purple.400">
+                                <Text {...MONO} color={accent(palette, 400)}>
                                     Scanning & thinking…
                                 </Text>
                             ) : null}
@@ -238,7 +264,7 @@ const ScannerChat = () => {
                 <>
                     <Box px="3" py="3">
                         <Text {...MONO} color="fg.muted">
-                            Ask with <Text as="span" color="purple.300">$TICKER</Text> — e.g. $SOL $BTC
+                            Ask with <Text as="span" color={accent(palette, 300)}>$TICKER</Text> — e.g. $SOL $BTC
                         </Text>
                     </Box>
                     <Separator />

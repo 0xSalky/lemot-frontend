@@ -1,9 +1,16 @@
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
+import { accent, useThemeColor } from "@/components/ui/theme-color";
 import { DEFAULT_RISK, DEFAULT_STOP_LOSS, DEFAULT_TP_PRESET, NATR_MULTIPLIER, TP_PRESETS } from "@/services/config";
-import { Button, Flex, Input, SegmentGroup, Stack, Text, VStack } from "@chakra-ui/react";
+import { Box, Button, Flex, Input, Stack, Text } from "@chakra-ui/react";
 import type { ReactNode } from "react";
 import { useState } from "react";
+
+const MONO = {
+    fontFamily: "mono",
+    fontSize: "xs",
+    lineHeight: "1.7",
+} as const;
 
 function formatTradeApiError(data: unknown): string {
     if (data && typeof data === "object") {
@@ -25,23 +32,111 @@ interface AssetInterfaceProps {
     pair: string;
 }
 
+type OptionItem = { value: string; label: ReactNode };
+
+function SectionLabel({ children }: { children: ReactNode }) {
+    const { palette } = useThemeColor();
+    return (
+        <Text {...MONO} color={accent(palette, 400)} letterSpacing="0.04em">
+            ── {children}
+        </Text>
+    );
+}
+
+function OptionChip({
+    active,
+    onClick,
+    children,
+}: {
+    active: boolean;
+    onClick: () => void;
+    children: ReactNode;
+}) {
+    const { palette } = useThemeColor();
+    return (
+        <Button
+            size="xs"
+            variant={active ? "solid" : "ghost"}
+            colorPalette={palette}
+            fontFamily="mono"
+            onClick={onClick}
+        >
+            {children}
+        </Button>
+    );
+}
+
+function OptionRow({
+    label,
+    value,
+    onChange,
+    items,
+}: {
+    label: string;
+    value: string;
+    onChange: (next: string) => void;
+    items: OptionItem[];
+}) {
+    return (
+        <Stack gap="2">
+            <SectionLabel>{label}</SectionLabel>
+            <Flex gap="1" flexWrap="wrap">
+                {items.map((item) => (
+                    <OptionChip
+                        key={item.value}
+                        active={value === item.value}
+                        onClick={() => onChange(item.value)}
+                    >
+                        {item.label}
+                    </OptionChip>
+                ))}
+            </Flex>
+        </Stack>
+    );
+}
+
+const STOP_LOSS_ITEMS: OptionItem[] = [
+    { value: "price", label: "price" },
+    { value: "natr_1m", label: "natr_1m" },
+    { value: "natr_5m", label: "natr_5m" },
+    { value: "natr_15m", label: "natr_15m" },
+    { value: "natr_30m", label: "natr_30m" },
+    { value: "0.3", label: "0.3" },
+    { value: "0.5", label: "0.5" },
+    { value: "1", label: "1" },
+];
+
+const RISK_ITEMS: OptionItem[] = ["0.25", "0.5", "1", "1.5", "2"].map((v) => ({
+    value: v,
+    label: v,
+}));
+
 const AssetInterface = ({ pair }: AssetInterfaceProps) => {
+    const { palette } = useThemeColor();
     const [stopLoss, setStopLoss] = useState(DEFAULT_STOP_LOSS);
     const [risk, setRisk] = useState(DEFAULT_RISK);
     const [tpPresets, setTpPresets] = useState(DEFAULT_TP_PRESET);
     const [submitting, setSubmitting] = useState(false);
     const [stopLossPrice, setStopLossPrice] = useState("");
 
+    const slPriceRequired =
+        (stopLoss === "price" && stopLossPrice === "") || stopLossPrice === "0";
+
     const executeTrade = async (side: "long" | "short") => {
         setSubmitting(true);
         try {
             const tp_levels = TP_PRESETS[tpPresets as keyof typeof TP_PRESETS];
-            const stop_loss_text_formatted = stopLoss.startsWith("natr_") ? `${stopLoss}_${NATR_MULTIPLIER}` : stopLoss;
+            const stop_loss_text_formatted = stopLoss.startsWith("natr_")
+                ? `${stopLoss}_${NATR_MULTIPLIER}`
+                : stopLoss;
             const body = {
                 symbol: `${pair}USDT`,
                 direction: side,
                 risk_percent: Number(risk),
-                stop_loss_percent: stopLoss.startsWith("natr_") || stopLoss === "price" ? stop_loss_text_formatted : Number(stopLoss),
+                stop_loss_percent:
+                    stopLoss.startsWith("natr_") || stopLoss === "price"
+                        ? stop_loss_text_formatted
+                        : Number(stopLoss),
                 stop_loss_price: stopLossPrice ? Number(stopLossPrice) : undefined,
                 tp_levels,
             };
@@ -96,106 +191,102 @@ const AssetInterface = ({ pair }: AssetInterfaceProps) => {
     };
 
     return (
-        <Stack border="1px solid" borderColor="gray.200" borderRadius="md" p="1rem">
-            <Stack gap="1rem">
-                <Stack direction="row" gap="1rem" align="flex-start" justify="space-between">
-                    <VStack align="flex-start" w="100%">
-                        <Stack direction="row" alignItems="center" justifyContent="space-between" w="100%">
-                            <Stack direction="row" gap="0.5rem" align="center">
-                                <Text fontSize="xl" fontWeight="bold" color="yellow.500">{pair}</Text>
-                                <Text fontSize="sm">Stop Loss</Text>
-                            </Stack>
-                            <Flex>
-                                <Input
-                                    size="xs"
-                                    value={stopLossPrice}
-                                    onChange={(e) => setStopLossPrice(e.target.value)}
-                                    placeholder="Stop Loss Price"
-                                    type="number"
-                                    variant="flushed"
-                                    disabled={stopLoss !== "price"}
-                                />
-                            </Flex>
-                        </Stack>
-                        <SegmentGroup.Root
-                            defaultValue={stopLoss}
-                            value={stopLoss}
-                            onValueChange={(details) => details.value != null && setStopLoss(details.value)}
-                            size="xs"
-                            css={{
-                                "--segment-indicator-bg": "colors.teal.600",
-                                "--segment-indicator-shadow": "shadows.md",
-                            }}
-                        >
-                            <SegmentGroup.Indicator />
-                            <SegmentGroup.Items items={["price", "natr_1m", "natr_5m", "natr_15m", "natr_30m", "0.3", "0.5", "1"]} />
-                        </SegmentGroup.Root>
-                    </VStack>
-                </Stack>
-                <Stack direction="row" gap="1rem">
-                    <VStack align="flex-start">
-                        <Text fontSize="sm">Risk %</Text>
-                        <SegmentGroup.Root
-                            defaultValue={risk}
-                            value={risk}
-                            onValueChange={(details) => details.value != null && setRisk(details.value)}
-                            size="xs"
-                            css={{
-                                "--segment-indicator-bg": "colors.teal.600",
-                                "--segment-indicator-shadow": "shadows.md",
-                            }}
-                        >
-                            <SegmentGroup.Indicator />
-                            <SegmentGroup.Items items={["0.25", "0.5", "1", "1.5", "2"]} />
-                        </SegmentGroup.Root>
-                    </VStack>
-                    <VStack align="flex-start">
-                        <Text fontSize="sm">TP Presets</Text>
-                        <SegmentGroup.Root
-                            defaultValue={tpPresets}
+        <Box
+            w="100%"
+            borderWidth="1px"
+            borderColor="border.emphasized"
+            rounded="md"
+            overflow="hidden"
+            bg="bg.subtle"
+        >
+            <Flex
+                px="3"
+                py="2"
+                align="center"
+                justify="space-between"
+                gap="3"
+                borderBottomWidth="1px"
+                borderColor="border.emphasized"
+                flexShrink={0}
+            >
+                <Text {...MONO} fontSize="sm" fontWeight="semibold" color={accent(palette, 200)}>
+                    {pair}
+                </Text>
+                <Input
+                    size="xs"
+                    w="8rem"
+                    value={stopLossPrice}
+                    onChange={(e) => setStopLossPrice(e.target.value)}
+                    placeholder="SL price"
+                    type="number"
+                    variant="flushed"
+                    fontFamily="mono"
+                    fontSize="xs"
+                    color={accent(palette, 100)}
+                    borderColor={accent(palette, 700)}
+                    disabled={stopLoss !== "price"}
+                    opacity={stopLoss === "price" ? 1 : 0.45}
+                />
+            </Flex>
+
+            <Stack gap="3" px="3" py="3">
+                <OptionRow
+                    label="stop loss"
+                    value={stopLoss}
+                    onChange={setStopLoss}
+                    items={STOP_LOSS_ITEMS}
+                />
+                <Flex gap="4" direction={{ base: "column", sm: "row" }} align="flex-start">
+                    <Box flex="1">
+                        <OptionRow label="risk %" value={risk} onChange={setRisk} items={RISK_ITEMS} />
+                    </Box>
+                    <Box flex="1">
+                        <OptionRow
+                            label="tp preset"
                             value={tpPresets}
-                            onValueChange={(details) => details.value != null && setTpPresets(details.value)}
-                            size="xs"
-                            css={{
-                                "--segment-indicator-bg": "colors.teal.600",
-                                "--segment-indicator-shadow": "shadows.md",
-                            }}
-                        >
-                            <SegmentGroup.Indicator />
-                            <SegmentGroup.Items items={TP_SEGMENT_ITEMS} />
-                        </SegmentGroup.Root>
-                    </VStack>
-                </Stack>
-            </Stack>
-            <Stack direction="row" mt="0.5rem">
-                <Flex w="50%">
-                    <Button
-                        w="100%"
-                        colorPalette="green"
-                        size="sm"
-                        onClick={() => void executeTrade("long")}
-                        loading={submitting}
-                        disabled={(stopLoss === "price" && stopLossPrice === "") || stopLossPrice === "0"}
-                    >
-                        LONG {pair}
-                    </Button>
-                </Flex>
-                <Flex w="50%">
-                    <Button
-                        w="100%"
-                        colorPalette="red"
-                        size="sm"
-                        onClick={() => void executeTrade("short")}
-                        loading={submitting}
-                        disabled={(stopLoss === "price" && stopLossPrice === "") || stopLossPrice === "0"}
-                    >
-                        SHORT {pair}
-                    </Button>
+                            onChange={setTpPresets}
+                            items={TP_SEGMENT_ITEMS}
+                        />
+                    </Box>
                 </Flex>
             </Stack>
-        </Stack>
+
+            <Flex
+                gap="2"
+                px="3"
+                py="3"
+                borderTopWidth="1px"
+                borderColor="border.emphasized"
+                bg="bg.subtle"
+            >
+                <Button
+                    flex="1"
+                    size="sm"
+                    variant="solid"
+                    colorPalette={palette}
+                    fontFamily="mono"
+                    onClick={() => void executeTrade("long")}
+                    loading={submitting}
+                    disabled={slPriceRequired}
+                >
+                    LONG
+                </Button>
+                <Button
+                    flex="1"
+                    size="sm"
+                    variant="outline"
+                    colorPalette={palette}
+                    fontFamily="mono"
+                    onClick={() => void executeTrade("short")}
+                    loading={submitting}
+                    disabled={slPriceRequired}
+                >
+                    SHORT
+                </Button>
+            </Flex>
+        </Box>
     );
-}
+};
 
 export default AssetInterface;
 
@@ -207,46 +298,13 @@ function segmentLabel(value: string, tip: string): ReactNode {
     );
 }
 
-const TP_SEGMENT_ITEMS = [
-    {
-        value: "2",
-        label: segmentLabel("2", "One take-profit at 2R"),
-    },
-    {
-        value: "3",
-        label: segmentLabel("3", "One take-profit at 3R"),
-    },
-    {
-        value: "4",
-        label: segmentLabel("4", "One take-profit at 4R"),
-    },
-    {
-        value: "6",
-        label: segmentLabel("6", "One take-profit at 6R"),
-    },
-    {
-        value: "8",
-        label: segmentLabel("8", "One take-profit at 8R"),
-    },
-    {
-        value: "A",
-        label: segmentLabel(
-            "A",
-            "1R @ 10%, 2R @ 20%, runner 70% - 0.5R",
-        ),
-    },
-    {
-        value: "B",
-        label: segmentLabel(
-            "B",
-            "1R @ 15%, 3R @ 25%, runner 60% - 0.9R",
-        ),
-    },
-    {
-        value: "C",
-        label: segmentLabel(
-            "C",
-            "1R @ 20%, 4R @ 20%, runner 60% - 1R",
-        ),
-    },
+const TP_SEGMENT_ITEMS: OptionItem[] = [
+    { value: "2", label: segmentLabel("2", "One take-profit at 2R") },
+    { value: "3", label: segmentLabel("3", "One take-profit at 3R") },
+    { value: "4", label: segmentLabel("4", "One take-profit at 4R") },
+    { value: "6", label: segmentLabel("6", "One take-profit at 6R") },
+    { value: "8", label: segmentLabel("8", "One take-profit at 8R") },
+    { value: "A", label: segmentLabel("A", "1R @ 10%, 2R @ 20%, runner 70%") },
+    { value: "B", label: segmentLabel("B", "1R @ 15%, 3R @ 25%, runner 60%") },
+    { value: "C", label: segmentLabel("C", "1R @ 20%, 4R @ 20%, runner 60%") },
 ];

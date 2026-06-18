@@ -1,8 +1,11 @@
+import ThemeTabTrigger from "@/components/2_molecules/ThemeTabTrigger/ThemeTabTrigger";
 import AccountBalance from "@/components/3_organisms/AccountBalance/AccountBalance";
 import AssetInterface from "@/components/3_organisms/AssetInterface/AssetInterface";
 import ScannerChat from "@/components/3_organisms/ScannerChat/ScannerChat";
 import ScannerResults from "@/components/3_organisms/ScannerResults/ScannerResults";
 import ResponsiveCardGrid from "@/components/4_layouts/ResponsiveCardGrid/ResponsiveCardGrid";
+import { ColorModeButton } from "@/components/ui/color-mode";
+import { ThemeColorSelector, accent, useThemeColor } from "@/components/ui/theme-color";
 import { TRADING_PAIRS, CONTENT_MAX_WIDTH } from "@/services/config";
 import type { ScannerLatestBatchFetchResult } from "@/types/scannerTypes";
 import {
@@ -12,9 +15,9 @@ import {
 } from "@/services/scannerUtils";
 import { Button, Box, Stack, Tabs, Text } from "@chakra-ui/react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ColorModeButton } from "@/components/ui/color-mode";
 
 const HomePage = () => {
+    const { palette } = useThemeColor();
     const [latestBatch, setLatestBatch] = useState<ScannerLatestBatchFetchResult | null>(
         null,
     );
@@ -78,14 +81,14 @@ const HomePage = () => {
 
     return (
         <Stack w="100%" maxW={CONTENT_MAX_WIDTH} mx="auto" gap="1rem">
-            <Tabs.Root defaultValue="favorites">
+            <Tabs.Root defaultValue="favorites" colorPalette={palette}>
                 <Box overflowX="auto" pb="1">
-                    <Tabs.List flexWrap="wrap" gap="1">
-                        <Tabs.Trigger value="favorites">Favs</Tabs.Trigger>
-                        <Tabs.Trigger value="scanner-pairs">Scan Pairs</Tabs.Trigger>
-                        <Tabs.Trigger value="scanner-results">Scan Results</Tabs.Trigger>
-                        <Tabs.Trigger value="scanner-chat">Ask AI</Tabs.Trigger>
-                        <Tabs.Trigger value="config">Config</Tabs.Trigger>
+                    <Tabs.List flexWrap="wrap" gap="2">
+                        <ThemeTabTrigger value="favorites">Favs</ThemeTabTrigger>
+                        <ThemeTabTrigger value="scanner-pairs">Scan Pairs</ThemeTabTrigger>
+                        <ThemeTabTrigger value="scanner-results">Scan Results</ThemeTabTrigger>
+                        <ThemeTabTrigger value="scanner-chat">Ask AI</ThemeTabTrigger>
+                        <ThemeTabTrigger value="config">Config</ThemeTabTrigger>
                     </Tabs.List>
                 </Box>
                 <Tabs.Content value="favorites">
@@ -111,15 +114,15 @@ const HomePage = () => {
                     <ScannerChat />
                 </Tabs.Content>
                 <Tabs.Content value="config">
-
-                    <Stack gap="2">
-                        <Stack direction="row" gap="1rem" flexWrap="wrap" align="center">
+                    <Stack gap="3">
+                        <Stack direction="row" gap="1rem" flexWrap="wrap" align="flex-end">
                             <ColorModeButton />
+                            <ThemeColorSelector />
                             <AccountBalance />
                             <Button
                                 size="xs"
                                 variant="outline"
-                                colorPalette="teal"
+                                colorPalette={palette}
                                 loading={loading}
                                 onClick={() => loadScanner()}
                             >
@@ -128,7 +131,7 @@ const HomePage = () => {
                             <Button
                                 size="xs"
                                 variant="outline"
-                                colorPalette="purple"
+                                colorPalette={palette}
                                 loading={running}
                                 onClick={runScannerScan}
                             >
@@ -143,7 +146,7 @@ const HomePage = () => {
                                     </Text>
                                 ) : null}
                                 {runWarning ? (
-                                    <Text fontSize="xs" color="orange.400">
+                                    <Text fontSize="xs" color={accent(palette, 400)}>
                                         {runWarning}
                                     </Text>
                                 ) : null}
