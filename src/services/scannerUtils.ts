@@ -82,9 +82,14 @@ const chartPayloadCache = new Map<string, Promise<ScannerChartPayload | null>>()
 export async function fetchScannerChart(
   symbol: string,
   timeframe: ScannerChartTimeframe = "1h",
+  options?: { bustCache?: boolean },
 ): Promise<ScannerChartPayload | null> {
   const key = `${symbol.trim()}|${timeframe}`;
   if (!symbol.trim()) return null;
+
+  if (options?.bustCache) {
+    chartPayloadCache.delete(key);
+  }
 
   let pending = chartPayloadCache.get(key);
   if (!pending) {

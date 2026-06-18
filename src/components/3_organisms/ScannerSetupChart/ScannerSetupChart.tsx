@@ -12,6 +12,7 @@ import { Box, Flex, NativeSelect, Text } from "@chakra-ui/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const CHART_HEIGHT = 168;
+const CHART_REFRESH_MS = 5 * 60 * 1000;
 const PAD_X = 8;
 const PAD_TOP = 10;
 const PAD_BOTTOM = 14;
@@ -43,10 +44,20 @@ function computeChartBounds(
   return [rawMin - pad, rawMax + pad];
 }
 
+function formatRefreshCountdown(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 function ScannerSetupChart({ symbol, price, bands, tokens }: ScannerSetupChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const nextRefreshAtRef = useRef(0);
   const [containerWidth, setContainerWidth] = useState(0);
   const [timeframe, setTimeframe] = useState<ScannerChartTimeframe>("1h");
+  const [refreshCountdownSec, setRefreshCountdownSec] = useState(
+    Math.ceil(CHART_REFRESH_MS / 1000),
+  );
   const [fetchState, setFetchState] = useState<ChartFetchState>({
     key: "",
     status: "error",
@@ -76,39 +87,69 @@ function ScannerSetupChart({ symbol, price, bands, tokens }: ScannerSetupChartPr
 
   useEffect(() => {
     let cancelled = false;
+    const totalSec = Math.ceil(CHART_REFRESH_MS / 1000);
 
-    fetchScannerChart(symbol, timeframe)
-      .then((payload) => {
-        if (cancelled) return;
-        if (!payload) {
+    const resetRefreshDeadline = () => {
+      nextRefreshAtRef.current = Date.now() + CHART_REFRESH_MS;
+      setRefreshCountdownSec(totalSec);
+    };
+
+    resetRefreshDeadline();
+
+    const loadChart = (background: boolean) => {
+      void fetchScannerChart(symbol, timeframe, { bustCache: background })
+        .then((payload) => {
+          if (cancelled) return;
+          if (!payload) {
+            if (!background) {
+              setFetchState({
+                key: fetchKey,
+                status: "error",
+                chart: null,
+                error: "Chart unavailable",
+              });
+            }
+            return;
+          }
           setFetchState({
             key: fetchKey,
-            status: "error",
-            chart: null,
-            error: "Chart unavailable",
+            status: "ready",
+            chart: payload,
+            error: null,
           });
-          return;
-        }
-        setFetchState({
-          key: fetchKey,
-          status: "ready",
-          chart: payload,
-          error: null,
+          resetRefreshDeadline();
+        })
+        .catch(() => {
+          if (!cancelled && !background) {
+            setFetchState({
+              key: fetchKey,
+              status: "error",
+              chart: null,
+              error: "Chart unavailable",
+            });
+          }
         });
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setFetchState({
-            key: fetchKey,
-            status: "error",
-            chart: null,
-            error: "Chart unavailable",
-          });
-        }
-      });
+    };
+
+    loadChart(false);
+
+    const refreshId = window.setInterval(() => {
+      resetRefreshDeadline();
+      loadChart(true);
+    }, CHART_REFRESH_MS);
+
+    const tickId = window.setInterval(() => {
+      const remaining = Math.max(
+        0,
+        Math.ceil((nextRefreshAtRef.current - Date.now()) / 1000),
+      );
+      setRefreshCountdownSec(remaining);
+    }, 1000);
 
     return () => {
       cancelled = true;
+      window.clearInterval(refreshId);
+      window.clearInterval(tickId);
     };
   }, [fetchKey, symbol, timeframe]);
 
@@ -196,7 +237,16 @@ function ScannerSetupChart({ symbol, price, bands, tokens }: ScannerSetupChartPr
           <Text fontFamily="mono" fontSize="2xs" color={tokens.panelLabel}>
             {timeframe} close · nearby bands
           </Text>
-          <NativeSelect.Root size="xs" width="2.5rem" minW="2.5rem">
+          <Flex align="center" gap="1.5">
+            <Text
+              fontFamily="mono"
+              fontSize="2xs"
+              color={tokens.panelMuted}
+              title="Next chart refresh"
+            >
+              {formatRefreshCountdown(refreshCountdownSec)}
+            </Text>
+            <NativeSelect.Root size="xs" width="2.5rem" minW="2.5rem">
             <NativeSelect.Field
               value={timeframe}
               fontFamily="mono"
@@ -221,6 +271,7 @@ function ScannerSetupChart({ symbol, price, bands, tokens }: ScannerSetupChartPr
               ))}
             </NativeSelect.Field>
           </NativeSelect.Root>
+          </Flex>
         </Flex>
       </Box>
 
