@@ -15,6 +15,7 @@ import {
     setupsFromBatch,
 } from "@/services/scannerUtils";
 import ResponsiveCardGrid from "@/components/4_layouts/ResponsiveCardGrid/ResponsiveCardGrid";
+import ScannerSetupChart from "@/components/3_organisms/ScannerSetupChart/ScannerSetupChart";
 import { useThemeColor, useThemeTokens, type ThemeTokens } from "@/components/ui/theme-color";
 import { Box, Separator, Stack, Text } from "@chakra-ui/react";
 import type { ReactNode } from "react";
@@ -264,6 +265,12 @@ function SetupCard({ setup, tokens }: { setup: ScannerSetupRow; tokens: ThemeTok
             lineHeight="1.7"
             overflow="hidden"
         >
+            <ScannerSetupChart
+                symbol={setup.symbol}
+                price={setup.price}
+                bands={bands}
+                tokens={tokens}
+            />
             <Text whiteSpace="pre-wrap" wordBreak="break-word">
                 {formatSetupHeaderLine1(setup)}
             </Text>

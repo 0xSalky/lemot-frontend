@@ -104,3 +104,20 @@ export interface ScannerLatestBatchPayload {
 export type ScannerLatestBatchFetchResult =
   | ScannerLatestBatchPayload
   | { message: string };
+
+export interface ScannerChartCandle {
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+}
+
+export interface ScannerChartPayload {
+  symbol: string;
+  timeframe: string;
+  candles: ScannerChartCandle[];
+}
+
+export const SCANNER_CHART_TIMEFRAMES = ["1h", "2h", "4h", "1d"] as const;
+export type ScannerChartTimeframe = (typeof SCANNER_CHART_TIMEFRAMES)[number];

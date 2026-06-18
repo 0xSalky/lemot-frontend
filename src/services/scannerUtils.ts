@@ -2,6 +2,8 @@ import { apiFetch } from "@/services/apiFetch";
 import type {
   ScannerBandRow,
   ScannerAiBatchSummary,
+  ScannerChartPayload,
+  ScannerChartTimeframe,
   ScannerLatestBatchFetchResult,
   ScannerLatestBatchPayload,
   ScannerLevelRow,
@@ -73,6 +75,49 @@ export async function fetchLatestScannerBatch(): Promise<ScannerLatestBatchFetch
     batch: payload.batch,
     setups: Array.isArray(payload.setups) ? payload.setups : [],
   };
+}
+
+const chartPayloadCache = new Map<string, Promise<ScannerChartPayload | null>>();
+
+export async function fetchScannerChart(
+  symbol: string,
+  timeframe: ScannerChartTimeframe = "1h",
+): Promise<ScannerChartPayload | null> {
+  const key = `${symbol.trim()}|${timeframe}`;
+  if (!symbol.trim()) return null;
+
+  let pending = chartPayloadCache.get(key);
+  if (!pending) {
+    pending = (async () => {
+      const params = new URLSearchParams({
+        symbol: symbol.trim(),
+        timeframe,
+      });
+      const res = await apiFetch(`/api/scanner/chart?${params.toString()}`, {
+        cache: "no-store",
+      });
+      const raw = await res.text();
+      let data: unknown;
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        return null;
+      }
+      if (!res.ok) return null;
+      const payload = data as Partial<ScannerChartPayload>;
+      if (!Array.isArray(payload.candles) || payload.candles.length === 0) {
+        return null;
+      }
+      return {
+        symbol: payload.symbol ?? symbol.trim(),
+        timeframe: payload.timeframe ?? timeframe,
+        candles: payload.candles,
+      };
+    })();
+    chartPayloadCache.set(key, pending);
+  }
+
+  return pending;
 }
 
 export type ScannerRunResult =
