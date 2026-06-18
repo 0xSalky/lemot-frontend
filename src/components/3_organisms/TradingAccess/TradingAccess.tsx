@@ -1,6 +1,6 @@
 "use client";
 
-import { accent, useThemeColor } from "@/components/ui/theme-color";
+import { useThemeColor, useThemeTokens } from "@/components/ui/theme-color";
 import { DEFAULT_TRADING_API_URL } from "@/services/config";
 import {
   clearStoredTradingCredentials,
@@ -49,6 +49,7 @@ function formatConnectError(data: unknown, status: number): string {
 
 export function TradingAccessProvider({ children }: { children: ReactNode }) {
   const { palette } = useThemeColor();
+  const tokens = useThemeTokens(palette);
   const [phase, setPhase] = useState<Phase>("checking");
   const [serverConfigured, setServerConfigured] = useState(false);
   const [apiUrl, setApiUrl] = useState(defaultTradingApiUrl());
@@ -167,7 +168,7 @@ export function TradingAccessProvider({ children }: { children: ReactNode }) {
         >
           <Stack gap="4">
             <Stack gap="1">
-              <Text fontFamily="mono" fontSize="sm" fontWeight="semibold" color={accent(palette, 200)}>
+              <Text fontFamily="mono" fontSize="sm" fontWeight="semibold" color={tokens.title}>
                 Connect to trading API
               </Text>
               <Text fontFamily="mono" fontSize="xs" color="fg.muted" lineHeight="1.6">
@@ -177,7 +178,7 @@ export function TradingAccessProvider({ children }: { children: ReactNode }) {
             </Stack>
 
             <Stack gap="2">
-              <Text fontFamily="mono" fontSize="2xs" color={accent(palette, 400)}>
+              <Text fontFamily="mono" fontSize="2xs" color={tokens.panelLabel}>
                 API URL
               </Text>
               <Input
@@ -195,7 +196,7 @@ export function TradingAccessProvider({ children }: { children: ReactNode }) {
             </Stack>
 
             <Stack gap="2">
-              <Text fontFamily="mono" fontSize="2xs" color={accent(palette, 400)}>
+              <Text fontFamily="mono" fontSize="2xs" color={tokens.panelLabel}>
                 API key
               </Text>
               <Input

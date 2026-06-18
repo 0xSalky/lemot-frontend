@@ -15,7 +15,7 @@ import {
     setupsFromBatch,
 } from "@/services/scannerUtils";
 import ResponsiveCardGrid from "@/components/4_layouts/ResponsiveCardGrid/ResponsiveCardGrid";
-import { accent, useThemeColor, type ThemeColor } from "@/components/ui/theme-color";
+import { useThemeColor, useThemeTokens, type ThemeTokens } from "@/components/ui/theme-color";
 import { Box, Separator, Stack, Text } from "@chakra-ui/react";
 import type { ReactNode } from "react";
 
@@ -37,18 +37,18 @@ function formatLabel(raw: string): string {
 function AiTag({
     label,
     tone = "neutral",
-    palette,
+    tokens,
 }: {
     label: string;
     tone?: "neutral" | "green" | "red" | "accent" | "blue";
-    palette: ThemeColor;
+    tokens: ThemeTokens;
 }) {
     const tones: Record<string, { bg: string; color: string; border: string }> = {
-        neutral: { bg: "whiteAlpha.100", color: accent(palette, 200), border: accent(palette, 700) },
-        green: { bg: "green.950", color: "green.300", border: "green.800" },
-        red: { bg: "red.950", color: "red.300", border: "red.800" },
-        accent: { bg: accent(palette, 950), color: accent(palette, 300), border: accent(palette, 800) },
-        blue: { bg: "blue.950", color: "blue.300", border: "blue.800" },
+        neutral: tokens.tagNeutral,
+        green: tokens.tagGreen,
+        red: tokens.tagRed,
+        accent: tokens.tagAccent,
+        blue: tokens.tagBlue,
     };
     const toneStyle = tones[tone] ?? tones.neutral;
 
@@ -75,21 +75,21 @@ function AiField({
     label,
     value,
     warn,
-    palette,
+    tokens,
 }: {
     label: string;
     value: string;
     warn?: boolean;
-    palette: ThemeColor;
+    tokens: ThemeTokens;
 }) {
     return (
         <Box display="grid" gridTemplateColumns="7.5rem 1fr" gap="3" alignItems="start">
-            <Text {...AI_TEXT} color={accent(palette, 400)} pt="1px">
+            <Text {...AI_TEXT} color={tokens.panelLabel} pt="1px">
                 {label}
             </Text>
             <Text
                 {...AI_TEXT}
-                color={warn ? "red.300" : accent(palette, 50)}
+                color={warn ? tokens.warn : tokens.panelBody}
                 whiteSpace="pre-wrap"
                 wordBreak="break-word"
             >
@@ -102,15 +102,15 @@ function AiField({
 function AiSection({
     title,
     children,
-    palette,
+    tokens,
 }: {
     title: string;
     children: ReactNode;
-    palette: ThemeColor;
+    tokens: ThemeTokens;
 }) {
     return (
         <Stack gap="1.5">
-            <Text {...AI_TEXT} color={accent(palette, 400)} letterSpacing="0.04em">
+            <Text {...AI_TEXT} color={tokens.panelLabel} letterSpacing="0.04em">
                 {title}
             </Text>
             {children}
@@ -136,7 +136,7 @@ function riskTone(risk: string | undefined): "green" | "accent" | "red" | "neutr
     return "neutral";
 }
 
-function AiBlock({ ai, palette }: { ai: ScannerAiSetupAnalysis; palette: ThemeColor }) {
+function AiBlock({ ai, tokens }: { ai: ScannerAiSetupAnalysis; tokens: ThemeTokens }) {
     const action = ai.ai_action ?? "unknown";
 
     return (
@@ -148,78 +148,78 @@ function AiBlock({ ai, palette }: { ai: ScannerAiSetupAnalysis; palette: ThemeCo
             px="3"
             pb="3"
             borderTopWidth="1px"
-            borderColor={accent(palette, 800)}
-            bg={accent(palette, "950/40")}
+            borderColor={tokens.panelBorder}
+            bg={tokens.panelBg}
             roundedBottom="md"
         >
             <Stack gap="3">
                 <Stack gap="2">
-                    <Text {...AI_TEXT} color={accent(palette, 300)} fontWeight="semibold">
+                    <Text {...AI_TEXT} color={tokens.panelHeading} fontWeight="semibold">
                         AI analysis
                     </Text>
                     <Box display="flex" flexWrap="wrap" gap="1.5">
-                        <AiTag label={formatLabel(action)} tone={actionTone(action)} palette={palette} />
+                        <AiTag label={formatLabel(action)} tone={actionTone(action)} tokens={tokens} />
                         {ai.ai_confidence != null ? (
-                            <AiTag label={`conf ${ai.ai_confidence}/5`} tone="blue" palette={palette} />
+                            <AiTag label={`conf ${ai.ai_confidence}/5`} tone="blue" tokens={tokens} />
                         ) : null}
                         {ai.ai_btc_alignment ? (
-                            <AiTag label={`BTC ${formatLabel(ai.ai_btc_alignment)}`} tone="neutral" palette={palette} />
+                            <AiTag label={`BTC ${formatLabel(ai.ai_btc_alignment)}`} tone="neutral" tokens={tokens} />
                         ) : null}
                         {ai.ai_opportunity_type ? (
-                            <AiTag label={formatLabel(ai.ai_opportunity_type)} tone="accent" palette={palette} />
+                            <AiTag label={formatLabel(ai.ai_opportunity_type)} tone="accent" tokens={tokens} />
                         ) : null}
                         {ai.ai_risk_level ? (
-                            <AiTag label={`risk ${ai.ai_risk_level}`} tone={riskTone(ai.ai_risk_level)} palette={palette} />
+                            <AiTag label={`risk ${ai.ai_risk_level}`} tone={riskTone(ai.ai_risk_level)} tokens={tokens} />
                         ) : null}
                         {ai.ai_rank_in_batch != null ? (
-                            <AiTag label={`#${ai.ai_rank_in_batch}`} tone="neutral" palette={palette} />
+                            <AiTag label={`#${ai.ai_rank_in_batch}`} tone="neutral" tokens={tokens} />
                         ) : null}
                     </Box>
                 </Stack>
 
                 {ai.ai_thesis ? (
-                    <AiSection title="── thesis" palette={palette}>
-                        <Text {...AI_TEXT} color={accent(palette, 50)} whiteSpace="pre-wrap" wordBreak="break-word">
+                    <AiSection title="── thesis" tokens={tokens}>
+                        <Text {...AI_TEXT} color={tokens.panelBody} whiteSpace="pre-wrap" wordBreak="break-word">
                             {ai.ai_thesis}
                         </Text>
                     </AiSection>
                 ) : null}
 
                 {ai.ai_opportunity_notes ? (
-                    <AiSection title="── opportunity" palette={palette}>
-                        <Text {...AI_TEXT} color={accent(palette, 50)} whiteSpace="pre-wrap" wordBreak="break-word">
+                    <AiSection title="── opportunity" tokens={tokens}>
+                        <Text {...AI_TEXT} color={tokens.panelBody} whiteSpace="pre-wrap" wordBreak="break-word">
                             {ai.ai_opportunity_notes}
                         </Text>
                     </AiSection>
                 ) : null}
 
                 {ai.ai_entry_zone || ai.ai_stop || (ai.ai_targets && ai.ai_targets.length > 0) ? (
-                    <AiSection title="── trade plan" palette={palette}>
+                    <AiSection title="── trade plan" tokens={tokens}>
                         <Stack gap="2">
                             {ai.ai_entry_zone ? (
-                                <AiField label="entry" value={ai.ai_entry_zone} palette={palette} />
+                                <AiField label="entry" value={ai.ai_entry_zone} tokens={tokens} />
                             ) : null}
-                            {ai.ai_stop ? <AiField label="stop" value={ai.ai_stop} palette={palette} /> : null}
+                            {ai.ai_stop ? <AiField label="stop" value={ai.ai_stop} tokens={tokens} /> : null}
                             {ai.ai_targets && ai.ai_targets.length > 0 ? (
-                                <AiField label="targets" value={ai.ai_targets.join(" · ")} palette={palette} />
+                                <AiField label="targets" value={ai.ai_targets.join(" · ")} tokens={tokens} />
                             ) : null}
                         </Stack>
                     </AiSection>
                 ) : null}
 
                 {ai.fractal_vwap_notes ? (
-                    <AiSection title="── fractal / vwap" palette={palette}>
-                        <Text {...AI_TEXT} color={accent(palette, 50)} whiteSpace="pre-wrap" wordBreak="break-word">
+                    <AiSection title="── fractal / vwap" tokens={tokens}>
+                        <Text {...AI_TEXT} color={tokens.panelBody} whiteSpace="pre-wrap" wordBreak="break-word">
                             {ai.fractal_vwap_notes}
                         </Text>
                     </AiSection>
                 ) : null}
 
                 {ai.ai_risks && ai.ai_risks.length > 0 ? (
-                    <AiSection title="── risks" palette={palette}>
+                    <AiSection title="── risks" tokens={tokens}>
                         <Stack gap="2">
                             {ai.ai_risks.map((risk, i) => (
-                                <AiField key={i} label={`! ${i + 1}`} value={risk} warn palette={palette} />
+                                <AiField key={i} label={`! ${i + 1}`} value={risk} warn tokens={tokens} />
                             ))}
                         </Stack>
                     </AiSection>
@@ -229,32 +229,33 @@ function AiBlock({ ai, palette }: { ai: ScannerAiSetupAnalysis; palette: ThemeCo
     );
 }
 
-function BtcReadCard({ text, palette }: { text: string; palette: ThemeColor }) {
+function BtcReadCard({ text, tokens }: { text: string; tokens: ThemeTokens }) {
     return (
         <Box
             borderWidth="1px"
-            borderColor={accent(palette, 800)}
-            bg={accent(palette, "950/40")}
+            borderColor={tokens.panelBorder}
+            bg={tokens.panelBg}
             rounded="md"
             p="3"
         >
-            <Text {...AI_TEXT} color={accent(palette, 300)} fontWeight="semibold" mb="2">
+            <Text {...AI_TEXT} color={tokens.panelHeading} fontWeight="semibold" mb="2">
                 BTC read
             </Text>
-            <Text {...AI_TEXT} color={accent(palette, 50)} whiteSpace="pre-wrap" wordBreak="break-word">
+            <Text {...AI_TEXT} color={tokens.panelBody} whiteSpace="pre-wrap" wordBreak="break-word">
                 {text}
             </Text>
         </Box>
     );
 }
 
-function SetupCard({ setup, palette }: { setup: ScannerSetupRow; palette: ThemeColor }) {
+function SetupCard({ setup, tokens }: { setup: ScannerSetupRow; tokens: ThemeTokens }) {
     const bands = orderedBands(Array.isArray(setup.bands) ? setup.bands : []);
 
     return (
         <Box
             borderWidth="1px"
             borderColor="border.emphasized"
+            bg="bg"
             rounded="md"
             p="3"
             w="100%"
@@ -272,7 +273,7 @@ function SetupCard({ setup, palette }: { setup: ScannerSetupRow; palette: ThemeC
                     <BandBlock key={`${setup.id}-${band.side}-${bandIdx}`} band={band} />
                 ))}
             </Stack>
-            {setup.ai ? <AiBlock ai={setup.ai} palette={palette} /> : null}
+            {setup.ai ? <AiBlock ai={setup.ai} tokens={tokens} /> : null}
         </Box>
     );
 }
@@ -312,6 +313,7 @@ function BandBlock({ band }: { band: ScannerBandRow }) {
 
 const ScannerResults = ({ latestBatch, loading = false }: ScannerResultsProps) => {
     const { palette } = useThemeColor();
+    const tokens = useThemeTokens(palette);
     const setups = setupsFromBatch(latestBatch);
 
     if (loading && latestBatch == null) {
@@ -353,13 +355,13 @@ const ScannerResults = ({ latestBatch, loading = false }: ScannerResultsProps) =
                             : ""}
                     </Text>
                     {batchMeta.ai_summary?.btc_read ? (
-                        <BtcReadCard text={batchMeta.ai_summary.btc_read} palette={palette} />
+                        <BtcReadCard text={batchMeta.ai_summary.btc_read} tokens={tokens} />
                     ) : null}
                 </Stack>
             ) : null}
             <ResponsiveCardGrid>
                 {setups.map((setup) => (
-                    <SetupCard key={setup.id} setup={setup} palette={palette} />
+                    <SetupCard key={setup.id} setup={setup} tokens={tokens} />
                 ))}
             </ResponsiveCardGrid>
         </Stack>

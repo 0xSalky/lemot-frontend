@@ -1,6 +1,6 @@
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
-import { accent, useThemeColor } from "@/components/ui/theme-color";
+import { useThemeColor, useThemeTokens } from "@/components/ui/theme-color";
 import { apiFetch } from "@/services/apiFetch";
 import { DEFAULT_RISK, DEFAULT_STOP_LOSS, DEFAULT_TP_PRESET, NATR_MULTIPLIER, TP_PRESETS } from "@/services/config";
 import { Box, Button, Flex, Input, Stack, Text } from "@chakra-ui/react";
@@ -37,8 +37,9 @@ type OptionItem = { value: string; label: ReactNode };
 
 function SectionLabel({ children }: { children: ReactNode }) {
     const { palette } = useThemeColor();
+    const tokens = useThemeTokens(palette);
     return (
-        <Text {...MONO} color={accent(palette, 400)} letterSpacing="0.04em">
+        <Text {...MONO} color={tokens.panelLabel} letterSpacing="0.04em">
             ── {children}
         </Text>
     );
@@ -57,9 +58,11 @@ function OptionChip({
     return (
         <Button
             size="xs"
-            variant={active ? "solid" : "ghost"}
-            colorPalette={palette}
+            variant={active ? "solid" : "outline"}
+            colorPalette={active ? palette : "gray"}
             fontFamily="mono"
+            color={active ? undefined : "fg.muted"}
+            borderColor={active ? undefined : "border.emphasized"}
             onClick={onClick}
         >
             {children}
@@ -114,6 +117,7 @@ const RISK_ITEMS: OptionItem[] = ["0.25", "0.5", "1", "1.5", "2"].map((v) => ({
 
 const AssetInterface = ({ pair }: AssetInterfaceProps) => {
     const { palette } = useThemeColor();
+    const tokens = useThemeTokens(palette);
     const [stopLoss, setStopLoss] = useState(DEFAULT_STOP_LOSS);
     const [risk, setRisk] = useState(DEFAULT_RISK);
     const [tpPresets, setTpPresets] = useState(DEFAULT_TP_PRESET);
@@ -198,7 +202,7 @@ const AssetInterface = ({ pair }: AssetInterfaceProps) => {
             borderColor="border.emphasized"
             rounded="md"
             overflow="hidden"
-            bg="bg.subtle"
+            bg="bg"
         >
             <Flex
                 px="3"
@@ -211,7 +215,7 @@ const AssetInterface = ({ pair }: AssetInterfaceProps) => {
                 borderColor="border.emphasized"
                 flexShrink={0}
             >
-                <Text {...MONO} fontSize="sm" fontWeight="semibold" color={accent(palette, 200)}>
+                <Text {...MONO} fontSize="sm" fontWeight="semibold" color={tokens.title}>
                     {pair}
                 </Text>
                 <Input
@@ -225,8 +229,8 @@ const AssetInterface = ({ pair }: AssetInterfaceProps) => {
                     variant="flushed"
                     fontFamily="mono"
                     fontSize="xs"
-                    color={accent(palette, 100)}
-                    borderColor={accent(palette, 700)}
+                    color="fg"
+                    borderColor={tokens.panelBorder}
                     disabled={stopLoss !== "price"}
                     opacity={stopLoss === "price" ? 1 : 0.45}
                 />

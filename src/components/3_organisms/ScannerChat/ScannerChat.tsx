@@ -10,7 +10,7 @@ import {
 } from "@/services/scannerChatUtils";
 import { formatUtcIsoLocal } from "@/services/scannerUtils";
 import ChatMarkdown from "@/components/2_molecules/ChatMarkdown/ChatMarkdown";
-import { accent, useThemeColor } from "@/components/ui/theme-color";
+import { useThemeColor, useThemeTokens } from "@/components/ui/theme-color";
 import { Box, Button, Flex, Separator, Stack, Text, Textarea } from "@chakra-ui/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -22,10 +22,10 @@ const MONO = {
 
 function MessageBubble({
     message,
-    palette,
+    tokens,
 }: {
     message: ScannerChatMessageRow;
-    palette: ReturnType<typeof useThemeColor>["palette"];
+    tokens: ReturnType<typeof useThemeTokens>;
 }) {
     const isUser = message.role === "user";
 
@@ -38,14 +38,14 @@ function MessageBubble({
                 px="3"
                 py="2.5"
                 rounded="md"
-                bg={isUser ? accent(palette, "950/50") : accent(palette, "950/40")}
+                bg={isUser ? tokens.panelBgUser : tokens.panelBg}
                 borderWidth="1px"
-                borderColor={accent(palette, 800)}
+                borderColor={tokens.panelBorder}
             >
                 {isUser ? (
                     <Text
                         {...MONO}
-                        color={accent(palette, 100)}
+                        color={tokens.panelBody}
                         whiteSpace="pre-wrap"
                         wordBreak="break-word"
                     >
@@ -61,6 +61,7 @@ function MessageBubble({
 
 const ScannerChat = () => {
     const { palette } = useThemeColor();
+    const tokens = useThemeTokens(palette);
     const [threads, setThreads] = useState<ScannerChatThreadRow[]>([]);
     const [threadId, setThreadId] = useState<number | null>(null);
     const [messages, setMessages] = useState<ScannerChatMessageRow[]>([]);
@@ -169,7 +170,7 @@ const ScannerChat = () => {
                 }}
             />
             <Flex align="center" justify="space-between" gap="2">
-                <Text {...MONO} fontSize="2xs" color={canSend ? "green.400" : "fg.muted"}>
+                <Text {...MONO} fontSize="2xs" color={canSend ? "green.600" : "fg.muted"}>
                     {canSend ? "Ready" : "Need $pair"}
                 </Text>
                 <Button
@@ -198,7 +199,7 @@ const ScannerChat = () => {
             borderColor="border.emphasized"
             rounded="md"
             overflow="hidden"
-            bg="bg.subtle"
+            bg="bg"
             minH={hasTranscript ? "calc(100vh - 6.5rem)" : undefined}
             maxH={hasTranscript ? "calc(100vh - 6.5rem)" : undefined}
         >
@@ -245,10 +246,10 @@ const ScannerChat = () => {
                     <Box flex="1" minH="0" overflowY="auto" px="3" py="3">
                         <Stack gap="4">
                             {messages.map((msg) => (
-                                <MessageBubble key={msg.id} message={msg} palette={palette} />
+                                <MessageBubble key={msg.id} message={msg} tokens={tokens} />
                             ))}
                             {loading ? (
-                                <Text {...MONO} color={accent(palette, 400)}>
+                                <Text {...MONO} color={tokens.panelLabel}>
                                     Scanning & thinking…
                                 </Text>
                             ) : null}
@@ -264,7 +265,7 @@ const ScannerChat = () => {
                 <>
                     <Box px="3" py="3">
                         <Text {...MONO} color="fg.muted">
-                            Ask with <Text as="span" color={accent(palette, 300)}>$TICKER</Text> — e.g. $SOL $BTC
+                            Ask with <Text as="span" color={tokens.panelHeading}>$TICKER</Text> — e.g. $SOL $BTC
                         </Text>
                     </Box>
                     <Separator />

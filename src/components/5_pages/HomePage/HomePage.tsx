@@ -6,7 +6,7 @@ import ScannerResults from "@/components/3_organisms/ScannerResults/ScannerResul
 import { useTradingAccess } from "@/components/3_organisms/TradingAccess/TradingAccess";
 import ResponsiveCardGrid from "@/components/4_layouts/ResponsiveCardGrid/ResponsiveCardGrid";
 import { ColorModeButton } from "@/components/ui/color-mode";
-import { ThemeColorSelector, accent, useThemeColor } from "@/components/ui/theme-color";
+import { ThemeColorSelector, useThemeColor, useThemeTokens } from "@/components/ui/theme-color";
 import { TRADING_PAIRS, CONTENT_MAX_WIDTH } from "@/services/config";
 import type { ScannerLatestBatchFetchResult } from "@/types/scannerTypes";
 import {
@@ -19,6 +19,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 const HomePage = () => {
     const { palette } = useThemeColor();
+    const tokens = useThemeTokens(palette);
     const { serverConfigured, signOut } = useTradingAccess();
     const [latestBatch, setLatestBatch] = useState<ScannerLatestBatchFetchResult | null>(
         null,
@@ -158,7 +159,7 @@ const HomePage = () => {
                                     </Text>
                                 ) : null}
                                 {runWarning ? (
-                                    <Text fontSize="xs" color={accent(palette, 400)}>
+                                    <Text fontSize="xs" color={tokens.panelLabel}>
                                         {runWarning}
                                     </Text>
                                 ) : null}

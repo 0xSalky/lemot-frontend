@@ -5,7 +5,7 @@
  * Styled to match ScannerResults AI blocks — no extra dependencies.
  */
 
-import { accent, useThemeColor, type ThemeColor } from "@/components/ui/theme-color";
+import { useThemeColor, useThemeTokens, type ThemeTokens } from "@/components/ui/theme-color";
 import { Box, Separator, Stack, Table, Text } from "@chakra-ui/react";
 import type { ReactNode } from "react";
 
@@ -146,7 +146,7 @@ function parseBlocks(source: string): Block[] {
     return blocks;
 }
 
-function renderInline(text: string, palette: ThemeColor): ReactNode {
+function renderInline(text: string, tokens: ThemeTokens): ReactNode {
     const parts: ReactNode[] = [];
     const re = /(\*\*.+?\*\*|\*.+?\*|`[^`]+`)/g;
     let last = 0;
@@ -160,19 +160,19 @@ function renderInline(text: string, palette: ThemeColor): ReactNode {
         const token = match[0];
         if (token.startsWith("**")) {
             parts.push(
-                <Text as="span" key={key++} fontWeight="semibold" color={accent(palette, 100)}>
+                <Text as="span" key={key++} fontWeight="semibold" color={tokens.inlineStrong}>
                     {token.slice(2, -2)}
                 </Text>,
             );
         } else if (token.startsWith("*")) {
             parts.push(
-                <Text as="span" key={key++} fontStyle="italic" color={accent(palette, 200)}>
+                <Text as="span" key={key++} fontStyle="italic" color={tokens.inlineEm}>
                     {token.slice(1, -1)}
                 </Text>,
             );
         } else if (token.startsWith("`")) {
             parts.push(
-                <Text as="span" key={key++} color={accent(palette, 300)}>
+                <Text as="span" key={key++} color={tokens.inlineCode}>
                     {token.slice(1, -1)}
                 </Text>,
             );
@@ -190,26 +190,26 @@ function renderInline(text: string, palette: ThemeColor): ReactNode {
 function MarkdownTable({
     headers,
     rows,
-    palette,
+    tokens,
 }: {
     headers: string[];
     rows: string[][];
-    palette: ThemeColor;
+    tokens: ThemeTokens;
 }) {
     return (
-        <Box overflowX="auto" borderWidth="1px" borderColor={accent(palette, 800)} rounded="md">
+        <Box overflowX="auto" borderWidth="1px" borderColor={tokens.panelBorder} rounded="md">
             <Table.Root size="sm" variant="outline">
                 <Table.Header>
-                    <Table.Row bg={accent(palette, "950/60")}>
+                    <Table.Row bg={tokens.tableHeaderBg}>
                         {headers.map((h, idx) => (
                             <Table.ColumnHeader
                                 key={idx}
                                 {...AI_TEXT}
-                                color={accent(palette, 300)}
+                                color={tokens.tableHeaderColor}
                                 fontSize="0.7rem"
                                 whiteSpace="nowrap"
                             >
-                                {renderInline(stripMdInline(h), palette)}
+                                {renderInline(stripMdInline(h), tokens)}
                             </Table.ColumnHeader>
                         ))}
                     </Table.Row>
@@ -221,13 +221,13 @@ function MarkdownTable({
                                 <Table.Cell
                                     key={cIdx}
                                     {...AI_TEXT}
-                                    color={accent(palette, 50)}
+                                    color={tokens.tableCellColor}
                                     fontSize="0.7rem"
                                     lineHeight="1.6"
                                     verticalAlign="top"
                                     py="1.5"
                                 >
-                                    {renderInline(cell, palette)}
+                                    {renderInline(cell, tokens)}
                                 </Table.Cell>
                             ))}
                         </Table.Row>
@@ -238,38 +238,38 @@ function MarkdownTable({
     );
 }
 
-function MarkdownBlock({ block, palette }: { block: Block; palette: ThemeColor }) {
+function MarkdownBlock({ block, tokens }: { block: Block; tokens: ThemeTokens }) {
     switch (block.kind) {
         case "h2":
             return (
-                <Text {...AI_TEXT} color={accent(palette, 200)} fontWeight="semibold" fontSize="sm" pt="1">
-                    {renderInline(block.text, palette)}
+                <Text {...AI_TEXT} color={tokens.panelHeading} fontWeight="semibold" fontSize="sm" pt="1">
+                    {renderInline(block.text, tokens)}
                 </Text>
             );
         case "h3":
             return (
-                <Text {...AI_TEXT} color={accent(palette, 400)} letterSpacing="0.04em" pt="1">
-                    ── {renderInline(block.text, palette)}
+                <Text {...AI_TEXT} color={tokens.panelLabel} letterSpacing="0.04em" pt="1">
+                    ── {renderInline(block.text, tokens)}
                 </Text>
             );
         case "hr":
-            return <Separator borderColor={accent(palette, 800)} />;
+            return <Separator borderColor={tokens.panelBorder} />;
         case "table":
-            return <MarkdownTable headers={block.headers} rows={block.rows} palette={palette} />;
+            return <MarkdownTable headers={block.headers} rows={block.rows} tokens={tokens} />;
         case "blockquote":
             return (
                 <Box
                     borderLeftWidth="2px"
-                    borderColor={accent(palette, 500)}
+                    borderColor={tokens.panelMuted}
                     pl="3"
                     py="1"
-                    bg={accent(palette, "950/30")}
+                    bg={tokens.blockquoteBg}
                     rounded="sm"
                 >
                     <Stack gap="1">
                         {block.lines.map((line, i) => (
-                            <Text key={i} {...AI_TEXT} color={accent(palette, 100)}>
-                                {renderInline(line, palette)}
+                            <Text key={i} {...AI_TEXT} color={tokens.panelBody}>
+                                {renderInline(line, tokens)}
                             </Text>
                         ))}
                     </Stack>
@@ -279,11 +279,11 @@ function MarkdownBlock({ block, palette }: { block: Block; palette: ThemeColor }
             return (
                 <Stack gap="1.5" pl="1">
                     {block.items.map((item, i) => (
-                        <Text key={i} {...AI_TEXT} color={accent(palette, 50)}>
-                            <Text as="span" color={accent(palette, 400)}>
+                        <Text key={i} {...AI_TEXT} color={tokens.panelBody}>
+                            <Text as="span" color={tokens.listBullet}>
                                 ·{" "}
                             </Text>
-                            {renderInline(item, palette)}
+                            {renderInline(item, tokens)}
                         </Text>
                     ))}
                 </Stack>
@@ -292,19 +292,19 @@ function MarkdownBlock({ block, palette }: { block: Block; palette: ThemeColor }
             return (
                 <Stack gap="1.5" pl="1">
                     {block.items.map((item, i) => (
-                        <Text key={i} {...AI_TEXT} color={accent(palette, 50)}>
-                            <Text as="span" color={accent(palette, 400)}>
+                        <Text key={i} {...AI_TEXT} color={tokens.panelBody}>
+                            <Text as="span" color={tokens.listBullet}>
                                 {i + 1}.{" "}
                             </Text>
-                            {renderInline(item, palette)}
+                            {renderInline(item, tokens)}
                         </Text>
                     ))}
                 </Stack>
             );
         case "p":
             return (
-                <Text {...AI_TEXT} color={accent(palette, 50)} whiteSpace="pre-wrap" wordBreak="break-word">
-                    {renderInline(block.text, palette)}
+                <Text {...AI_TEXT} color={tokens.panelBody} whiteSpace="pre-wrap" wordBreak="break-word">
+                    {renderInline(block.text, tokens)}
                 </Text>
             );
         default:
@@ -318,12 +318,13 @@ type ChatMarkdownProps = {
 
 const ChatMarkdown = ({ content }: ChatMarkdownProps) => {
     const { palette } = useThemeColor();
+    const tokens = useThemeTokens(palette);
     const blocks = parseBlocks(content);
 
     return (
         <Stack gap="3">
             {blocks.map((block, i) => (
-                <MarkdownBlock key={i} block={block} palette={palette} />
+                <MarkdownBlock key={i} block={block} tokens={tokens} />
             ))}
         </Stack>
     );

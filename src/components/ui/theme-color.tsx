@@ -3,6 +3,7 @@
 import { NativeSelect, Stack, Text } from "@chakra-ui/react";
 import * as React from "react";
 import { useCallback, useSyncExternalStore } from "react";
+import { useColorModeValue } from "./color-mode";
 
 export const THEME_COLOR_OPTIONS = [
     { value: "orange", label: "Orange" },
@@ -46,6 +47,107 @@ function persistThemeColor(next: ThemeColor) {
 
 export function accent(palette: ThemeColor, shade: string | number): string {
     return `${palette}.${shade}`;
+}
+
+export type TagToneStyle = { bg: string; color: string; border: string };
+
+/** Semantic colors that read well in both light and dark mode. */
+export type ThemeTokens = {
+    title: string;
+    panelHeading: string;
+    panelBody: string;
+    panelLabel: string;
+    panelMuted: string;
+    panelBg: string;
+    panelBgUser: string;
+    panelBorder: string;
+    inlineStrong: string;
+    inlineEm: string;
+    inlineCode: string;
+    tableHeaderBg: string;
+    tableHeaderColor: string;
+    tableCellColor: string;
+    blockquoteBg: string;
+    listBullet: string;
+    warn: string;
+    tagNeutral: TagToneStyle;
+    tagGreen: TagToneStyle;
+    tagRed: TagToneStyle;
+    tagAccent: TagToneStyle;
+    tagBlue: TagToneStyle;
+};
+
+export function useThemeTokens(palette: ThemeColor): ThemeTokens {
+    const p = palette;
+
+    const panelHeading = useColorModeValue(`${p}.700`, `${p}.300`);
+    const panelBody = useColorModeValue("fg", `${p}.50`);
+    const panelLabel = useColorModeValue(`${p}.600`, `${p}.400`);
+    const panelMuted = useColorModeValue(`${p}.500`, `${p}.200`);
+    const title = useColorModeValue(`${p}.800`, `${p}.200`);
+    const panelBg = useColorModeValue(`${p}.50`, `${p}.950/40`);
+    const panelBgUser = useColorModeValue(`${p}.100`, `${p}.950/50`);
+    const panelBorder = useColorModeValue(`${p}.200`, `${p}.800`);
+    const inlineStrong = useColorModeValue(`${p}.900`, `${p}.100`);
+    const inlineEm = useColorModeValue(`${p}.700`, `${p}.200`);
+    const inlineCode = useColorModeValue(`${p}.700`, `${p}.300`);
+    const tableHeaderBg = useColorModeValue(`${p}.100`, `${p}.950/60`);
+    const tableHeaderColor = useColorModeValue(`${p}.800`, `${p}.300`);
+    const tableCellColor = useColorModeValue("fg", `${p}.50`);
+    const blockquoteBg = useColorModeValue(`${p}.50`, `${p}.950/30`);
+    const listBullet = useColorModeValue(`${p}.500`, `${p}.400`);
+    const warn = useColorModeValue("red.600", "red.300");
+
+    const tagNeutral: TagToneStyle = {
+        bg: useColorModeValue(`${p}.100`, "whiteAlpha.100"),
+        color: useColorModeValue(`${p}.800`, `${p}.200`),
+        border: useColorModeValue(`${p}.300`, `${p}.700`),
+    };
+    const tagGreen: TagToneStyle = {
+        bg: useColorModeValue("green.50", "green.950"),
+        color: useColorModeValue("green.800", "green.300"),
+        border: useColorModeValue("green.200", "green.800"),
+    };
+    const tagRed: TagToneStyle = {
+        bg: useColorModeValue("red.50", "red.950"),
+        color: useColorModeValue("red.700", "red.300"),
+        border: useColorModeValue("red.200", "red.800"),
+    };
+    const tagAccent: TagToneStyle = {
+        bg: useColorModeValue(`${p}.100`, `${p}.950`),
+        color: useColorModeValue(`${p}.800`, `${p}.300`),
+        border: useColorModeValue(`${p}.300`, `${p}.800`),
+    };
+    const tagBlue: TagToneStyle = {
+        bg: useColorModeValue("blue.50", "blue.950"),
+        color: useColorModeValue("blue.800", "blue.300"),
+        border: useColorModeValue("blue.200", "blue.800"),
+    };
+
+    return {
+        title,
+        panelHeading,
+        panelBody,
+        panelLabel,
+        panelMuted,
+        panelBg,
+        panelBgUser,
+        panelBorder,
+        inlineStrong,
+        inlineEm,
+        inlineCode,
+        tableHeaderBg,
+        tableHeaderColor,
+        tableCellColor,
+        blockquoteBg,
+        listBullet,
+        warn,
+        tagNeutral,
+        tagGreen,
+        tagRed,
+        tagAccent,
+        tagBlue,
+    };
 }
 
 type ThemeColorContextValue = {
