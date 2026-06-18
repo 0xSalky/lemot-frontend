@@ -1,0 +1,60 @@
+/* Shared layout — uses --app-* variables from active skin CSS */
+
+body {
+  background-color: var(--app-bg) !important;
+  color: var(--app-text) !important;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+.app-wallpaper {
+  background-color: var(--app-bg);
+  background-image: var(--app-bg-glow), var(--app-pattern), var(--app-pattern-grid);
+  background-size:
+    100% 100%,
+    var(--app-pattern-size, 56px 56px),
+    var(--app-pattern-grid-size, var(--app-pattern-size, 56px 56px));
+  background-position: center, 0 0, 0 0;
+}
+
+.app-content {
+  position: relative;
+  z-index: 1;
+}
+
+.app-content [data-scope="tabs"][data-part="list"] {
+  background: color-mix(in srgb, var(--app-surface) 96%, var(--app-bg));
+  border: 1px solid var(--app-border);
+  border-radius: 0.5rem;
+  padding: 0.3rem 0.4rem;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.app-content [data-scope="tabs"][data-part="trigger"] {
+  background: color-mix(in srgb, var(--app-input-bg) 90%, var(--app-bg));
+  border: 1px solid transparent;
+  color: var(--app-muted);
+}
+
+.app-content [data-scope="tabs"][data-part="trigger"][data-selected] {
+  background: color-mix(in srgb, var(--app-surface) 98%, var(--app-bg));
+  border-color: var(--app-border-strong);
+  color: var(--app-text);
+  box-shadow: 0 0 12px var(--app-glow);
+  font-weight: 600;
+}
+
+.app-content input,
+.app-content textarea,
+.app-content select {
+  background: var(--app-input-bg) !important;
+  border-color: var(--app-input-border) !important;
+  color: var(--app-text) !important;
+}
+
+.app-content input:focus,
+.app-content textarea:focus,
+.app-content select:focus {
+  border-color: var(--app-b) !important;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--app-b) 40%, transparent);
+}

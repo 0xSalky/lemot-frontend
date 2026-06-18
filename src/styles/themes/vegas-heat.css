@@ -1,0 +1,50 @@
+/* Fear & Loathing in Las Vegas — herringbone + marquee wallpaper */
+
+html[data-skin="vegas"].light {
+  color-scheme: light;
+  --app-a: #e11d74;
+  --app-b: #d97706;
+  --app-c: #ea580c;
+  --app-bg: #fff6ed;
+  --app-surface: rgba(255, 250, 244, 0.93);
+  --app-text: #2a1008;
+  --app-muted: #9a6b52;
+  --app-border: rgba(225, 29, 116, 0.22);
+  --app-border-strong: rgba(217, 119, 6, 0.38);
+  --app-glow: rgba(245, 196, 81, 0.18);
+  --app-input-bg: rgba(255, 252, 247, 0.96);
+  --app-input-border: rgba(217, 119, 6, 0.24);
+  --app-pattern-size: 48px 48px;
+  --app-bg-glow:
+    radial-gradient(ellipse 80% 50% at 50% -5%, rgba(245, 196, 81, 0.14), transparent 60%),
+    radial-gradient(ellipse 55% 45% at 8% 85%, rgba(225, 29, 116, 0.07), transparent 55%),
+    radial-gradient(ellipse 50% 40% at 92% 70%, rgba(234, 88, 12, 0.06), transparent 50%);
+  --app-pattern: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Cg fill='none' stroke-width='1.3'%3E%3Cpath d='M0 0 L12 12 L0 24' stroke='%23d97706' stroke-opacity='0.1'/%3E%3Cpath d='M12 0 L24 12 L12 24' stroke='%23e11d74' stroke-opacity='0.08'/%3E%3Cpath d='M24 0 L36 12 L24 24' stroke='%23d97706' stroke-opacity='0.1'/%3E%3Cpath d='M36 0 L48 12 L36 24' stroke='%23e11d74' stroke-opacity='0.08'/%3E%3Cpath d='M0 24 L12 36 L0 48' stroke='%23e11d74' stroke-opacity='0.08'/%3E%3Cpath d='M12 24 L24 36 L12 48' stroke='%23d97706' stroke-opacity='0.1'/%3E%3Cpath d='M24 24 L36 36 L24 48' stroke='%23e11d74' stroke-opacity='0.08'/%3E%3Cpath d='M36 24 L48 36 L36 48' stroke='%23d97706' stroke-opacity='0.1'/%3E%3C/g%3E%3C/svg%3E");
+  --app-pattern-grid: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Cg fill='none'%3E%3Cpath d='M0 20 H64 M0 44 H64' stroke='%23d97706' stroke-opacity='0.06' stroke-width='0.55'/%3E%3Ccircle cx='8' cy='20' r='2' fill='%23e11d74' fill-opacity='0.12'/%3E%3Ccircle cx='24' cy='20' r='2' fill='%23f5c451' fill-opacity='0.14'/%3E%3Ccircle cx='40' cy='20' r='2' fill='%23e11d74' fill-opacity='0.12'/%3E%3Ccircle cx='56' cy='20' r='2' fill='%23f5c451' fill-opacity='0.14'/%3E%3Ccircle cx='16' cy='44' r='2' fill='%23f5c451' fill-opacity='0.12'/%3E%3Ccircle cx='32' cy='44' r='2' fill='%23e11d74' fill-opacity='0.12'/%3E%3Ccircle cx='48' cy='44' r='2' fill='%23f5c451' fill-opacity='0.12'/%3E%3C/g%3E%3C/svg%3E");
+  --app-pattern-grid-size: 64px 64px;
+}
+
+html[data-skin="vegas"].dark {
+  color-scheme: dark;
+  --app-a: #ff4da6;
+  --app-b: #f5c451;
+  --app-c: #ff8c42;
+  --app-bg: #14060c;
+  --app-surface: rgba(28, 10, 18, 0.94);
+  --app-text: #ffe8d4;
+  --app-muted: #c49a7a;
+  --app-border: rgba(255, 77, 166, 0.32);
+  --app-border-strong: rgba(245, 196, 81, 0.4);
+  --app-glow: rgba(255, 77, 166, 0.16);
+  --app-input-bg: rgba(20, 6, 12, 0.96);
+  --app-input-border: rgba(245, 196, 81, 0.28);
+  --app-pattern-size: 48px 48px;
+  --app-bg-glow:
+    radial-gradient(ellipse 90% 45% at 50% 0%, rgba(245, 196, 81, 0.12), transparent 62%),
+    radial-gradient(ellipse 60% 50% at 5% 75%, rgba(255, 77, 166, 0.1), transparent 55%),
+    radial-gradient(ellipse 55% 45% at 95% 60%, rgba(255, 140, 66, 0.08), transparent 52%),
+    radial-gradient(ellipse 40% 35% at 50% 100%, rgba(180, 40, 80, 0.12), transparent 60%);
+  --app-pattern: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Cg fill='none' stroke-width='1.3'%3E%3Cpath d='M0 0 L12 12 L0 24' stroke='%23f5c451' stroke-opacity='0.11'/%3E%3Cpath d='M12 0 L24 12 L12 24' stroke='%23ff4da6' stroke-opacity='0.09'/%3E%3Cpath d='M24 0 L36 12 L24 24' stroke='%23f5c451' stroke-opacity='0.11'/%3E%3Cpath d='M36 0 L48 12 L36 24' stroke='%23ff4da6' stroke-opacity='0.09'/%3E%3Cpath d='M0 24 L12 36 L0 48' stroke='%23ff4da6' stroke-opacity='0.09'/%3E%3Cpath d='M12 24 L24 36 L12 48' stroke='%23f5c451' stroke-opacity='0.11'/%3E%3Cpath d='M24 24 L36 36 L24 48' stroke='%23ff4da6' stroke-opacity='0.09'/%3E%3Cpath d='M36 24 L48 36 L36 48' stroke='%23f5c451' stroke-opacity='0.11'/%3E%3C/g%3E%3C/svg%3E");
+  --app-pattern-grid: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Cg fill='none'%3E%3Cpath d='M0 20 H64 M0 44 H64' stroke='%23f5c451' stroke-opacity='0.07' stroke-width='0.55'/%3E%3Ccircle cx='8' cy='20' r='2.2' fill='%23ff4da6' fill-opacity='0.18'/%3E%3Ccircle cx='24' cy='20' r='2.2' fill='%23f5c451' fill-opacity='0.2'/%3E%3Ccircle cx='40' cy='20' r='2.2' fill='%23ff4da6' fill-opacity='0.18'/%3E%3Ccircle cx='56' cy='20' r='2.2' fill='%23f5c451' fill-opacity='0.2'/%3E%3Ccircle cx='16' cy='44' r='2.2' fill='%23f5c451' fill-opacity='0.16'/%3E%3Ccircle cx='32' cy='44' r='2.2' fill='%23ff4da6' fill-opacity='0.18'/%3E%3Ccircle cx='48' cy='44' r='2.2' fill='%23f5c451' fill-opacity='0.16'/%3E%3C/g%3E%3C/svg%3E");
+  --app-pattern-grid-size: 64px 64px;
+}

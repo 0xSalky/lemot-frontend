@@ -1,6 +1,7 @@
-import { Flex, Theme } from "@chakra-ui/react";
+import AppWallpaper from "@/components/3_organisms/AppWallpaper/AppWallpaper";
 import { useColorMode } from "@/components/ui/color-mode";
 import { Toaster } from "@/components/ui/toaster";
+import { Flex, Theme } from "@chakra-ui/react";
 import Head from "next/head";
 
 interface AppLayoutProps {
@@ -16,8 +17,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         <title>LEMOT</title>
       </Head>
       <Toaster />
+      <AppWallpaper />
       <Theme appearance={colorMode} suppressHydrationWarning>
         <Flex
+          className="app-content"
           flexDirection="column"
           alignItems="stretch"
           minHeight="100vh"

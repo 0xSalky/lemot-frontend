@@ -21,10 +21,8 @@ const ThemeTabTrigger = ({ value, children }: ThemeTabTriggerProps) => {
             py="1.5"
             rounded="md"
             colorPalette={palette}
-            _selected={{
-                bg: "colorPalette.solid",
-                color: "colorPalette.contrast",
-            }}
+            borderWidth="1px"
+            borderStyle="solid"
         >
             {children}
         </Tabs.Trigger>

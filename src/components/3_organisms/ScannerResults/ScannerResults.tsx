@@ -256,7 +256,7 @@ function SetupCard({ setup, tokens }: { setup: ScannerSetupRow; tokens: ThemeTok
         <Box
             borderWidth="1px"
             borderColor="border.emphasized"
-            bg="bg"
+            bg="bg.subtle"
             rounded="md"
             p="3"
             w="100%"
@@ -264,6 +264,7 @@ function SetupCard({ setup, tokens }: { setup: ScannerSetupRow; tokens: ThemeTok
             fontSize="xs"
             lineHeight="1.7"
             overflow="hidden"
+            boxShadow="0 0 22px rgba(255, 78, 205, 0.07)"
         >
             <ScannerSetupChart
                 symbol={setup.symbol}

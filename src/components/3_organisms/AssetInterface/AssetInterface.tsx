@@ -202,7 +202,8 @@ const AssetInterface = ({ pair }: AssetInterfaceProps) => {
             borderColor="border.emphasized"
             rounded="md"
             overflow="hidden"
-            bg="bg"
+            bg="bg.subtle"
+            boxShadow="0 0 22px rgba(255, 78, 205, 0.07)"
         >
             <Flex
                 px="3"

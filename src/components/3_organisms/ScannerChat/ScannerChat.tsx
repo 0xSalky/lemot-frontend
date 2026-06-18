@@ -199,7 +199,8 @@ const ScannerChat = () => {
             borderColor="border.emphasized"
             rounded="md"
             overflow="hidden"
-            bg="bg"
+            bg="bg.subtle"
+            boxShadow="0 0 22px rgba(255, 78, 205, 0.07)"
             minH={hasTranscript ? "calc(100vh - 6.5rem)" : undefined}
             maxH={hasTranscript ? "calc(100vh - 6.5rem)" : undefined}
         >
