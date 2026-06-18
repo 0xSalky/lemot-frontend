@@ -16,6 +16,8 @@ const CHART_REFRESH_MS = 2 * 60 * 1000;
 const ZOOM_FACTOR = 1.2;
 const ZOOM_MIN = 0.3;
 const ZOOM_MAX = 5;
+const ZOOM_STEP_MIN = Math.ceil(Math.log(ZOOM_MIN) / Math.log(ZOOM_FACTOR));
+const ZOOM_STEP_MAX = Math.floor(Math.log(ZOOM_MAX) / Math.log(ZOOM_FACTOR));
 const PAD_X = 8;
 const PAD_TOP = 10;
 const PAD_BOTTOM = 14;
@@ -66,6 +68,15 @@ function applyZoomBounds(
   return [spot - halfSpan, spot + halfSpan];
 }
 
+function zoomScaleFromStep(step: number): number {
+  return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, ZOOM_FACTOR ** step));
+}
+
+function formatZoomLabel(step: number): string {
+  if (step === 0) return "1x";
+  return `${zoomScaleFromStep(step).toFixed(1)}x`;
+}
+
 function formatRefreshCountdown(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
@@ -77,7 +88,7 @@ function ScannerSetupChart({ symbol, price, bands, tokens }: ScannerSetupChartPr
   const nextRefreshAtRef = useRef(0);
   const [containerWidth, setContainerWidth] = useState(0);
   const [timeframe, setTimeframe] = useState<ScannerChartTimeframe>("1h");
-  const [zoomScale, setZoomScale] = useState(1);
+  const [zoomStep, setZoomStep] = useState(0);
   const [refreshCountdownSec, setRefreshCountdownSec] = useState(
     Math.ceil(CHART_REFRESH_MS / 1000),
   );
@@ -181,6 +192,7 @@ function ScannerSetupChart({ symbol, price, bands, tokens }: ScannerSetupChartPr
   const plot = useMemo(() => {
     if (!chart?.candles?.length || chartWidth <= 0) return null;
 
+    const zoomScale = zoomScaleFromStep(zoomStep);
     const candles = chart.candles;
     const spotPrice = candles[candles.length - 1]?.close ?? price;
     const visibleCandles = visibleCandlesForZoom(candles, zoomScale);
@@ -243,7 +255,7 @@ function ScannerSetupChart({ symbol, price, bands, tokens }: ScannerSetupChartPr
       lastX,
       lastY,
     };
-  }, [bands, chart, chartWidth, price, zoomScale]);
+  }, [bands, chart, chartWidth, price, zoomStep]);
 
   return (
     <Box
@@ -273,13 +285,18 @@ function ScannerSetupChart({ symbol, price, bands, tokens }: ScannerSetupChartPr
             >
               {formatRefreshCountdown(refreshCountdownSec)}
             </Text>
-            <NativeSelect.Root size="xs" width="2.5rem" minW="2.5rem">
+            <NativeSelect.Root
+              size="xs"
+              width={{ base: "2.1rem", md: "2.5rem" }}
+              minW={{ base: "2.1rem", md: "2.5rem" }}
+            >
               <NativeSelect.Field
+                className="chart-tf-select"
                 value={timeframe}
                 fontFamily="mono"
-                fontSize="2xs"
-                h="1.35rem"
-                minH="1.35rem"
+                fontSize={{ base: "10px", md: "2xs" }}
+                h={{ base: "1.2rem", md: "1.35rem" }}
+                minH={{ base: "1.2rem", md: "1.35rem" }}
                 py="0"
                 px="1"
                 bg={tokens.panelBgUser}
@@ -288,7 +305,7 @@ function ScannerSetupChart({ symbol, price, bands, tokens }: ScannerSetupChartPr
                   const next = e.currentTarget.value;
                   if ((SCANNER_CHART_TIMEFRAMES as readonly string[]).includes(next)) {
                     setTimeframe(next as ScannerChartTimeframe);
-                    setZoomScale(1);
+                    setZoomStep(0);
                   }
                 }}
               >
@@ -343,9 +360,7 @@ function ScannerSetupChart({ symbol, price, bands, tokens }: ScannerSetupChartPr
               <Box
                 as="button"
                 aria-label="Zoom in"
-                onClick={() =>
-                  setZoomScale((z) => Math.max(ZOOM_MIN, z / ZOOM_FACTOR))
-                }
+                onClick={() => setZoomStep((s) => Math.max(ZOOM_STEP_MIN, s - 1))}
                 fontFamily="mono"
                 fontSize="2xs"
                 lineHeight="1"
@@ -367,9 +382,7 @@ function ScannerSetupChart({ symbol, price, bands, tokens }: ScannerSetupChartPr
               <Box
                 as="button"
                 aria-label="Zoom out"
-                onClick={() =>
-                  setZoomScale((z) => Math.min(ZOOM_MAX, z * ZOOM_FACTOR))
-                }
+                onClick={() => setZoomStep((s) => Math.min(ZOOM_STEP_MAX, s + 1))}
                 fontFamily="mono"
                 fontSize="2xs"
                 lineHeight="1"
@@ -388,6 +401,18 @@ function ScannerSetupChart({ symbol, price, bands, tokens }: ScannerSetupChartPr
               >
                 −
               </Box>
+              <Text
+                fontFamily="mono"
+                fontSize="9px"
+                lineHeight="1"
+                color={tokens.panelMuted}
+                alignSelf="center"
+                minW="1.4rem"
+                textAlign="center"
+                title="Zoom level"
+              >
+                {formatZoomLabel(zoomStep)}
+              </Text>
             </Flex>
 
             {plot.bandRects.map((band) => (
