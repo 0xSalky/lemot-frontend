@@ -328,17 +328,22 @@ export function levelsHighToLow(
   return [...levels].sort((a, b) => b.level - a.level);
 }
 
+function formatCompactPct(value: number): string {
+  return value.toFixed(2).replace(/\.?0+$/, "");
+}
+
 export function formatBandSpanPct(spanPct: number): string {
-  return `⬆⬇${spanPct.toFixed(2)}%`;
+  return `sp=${formatCompactPct(spanPct)}%`;
 }
 
 export function formatBandDistancePct(
   side: ScannerBandRow["side"],
   dist: number,
 ): string {
-  if (side === "RES") return `⬆${dist.toFixed(2)}%`;
-  if (side === "SUP") return `⬇${dist.toFixed(2)}%`;
-  return "at price";
+  const n = formatCompactPct(dist);
+  if (side === "RES") return `+${n}%`;
+  if (side === "SUP") return `-${n}%`;
+  return "0%";
 }
 
 export function bandLineSections(band: ScannerBandRow): BandLineSection[] {

@@ -323,7 +323,7 @@ function BandBlock({ band }: { band: ScannerBandRow }) {
                             color={section.emphasis ? undefined : "fg.muted"}
                             fontWeight={section.emphasis ? "medium" : undefined}
                             title={
-                                section.text.startsWith("⬆⬇")
+                                section.text.startsWith("sp=")
                                     ? `${band.span_pct?.toFixed(2)}% span`
                                     : undefined
                             }
