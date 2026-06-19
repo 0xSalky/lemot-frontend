@@ -73,46 +73,30 @@ function AiTag({
     );
 }
 
-function AiField({
-    label,
-    value,
-    warn,
-    tokens,
-}: {
-    label: string;
-    value: string;
-    warn?: boolean;
-    tokens: ThemeTokens;
-}) {
-    return (
-        <Box display="grid" gridTemplateColumns="7.5rem 1fr" gap="3" alignItems="start">
-            <Text {...AI_TEXT} color={tokens.panelLabel} pt="1px">
-                {label}
-            </Text>
-            <Text
-                {...AI_TEXT}
-                color={warn ? tokens.warn : tokens.panelBody}
-                whiteSpace="pre-wrap"
-                wordBreak="break-word"
-            >
-                {value}
-            </Text>
-        </Box>
-    );
-}
-
 function AiSection({
     title,
     children,
     tokens,
+    emphasize,
 }: {
     title: string;
     children: ReactNode;
     tokens: ThemeTokens;
+    emphasize?: boolean;
 }) {
     return (
-        <Stack gap="1.5">
-            <Text {...AI_TEXT} color={tokens.panelLabel} letterSpacing="0.04em">
+        <Stack
+            gap="1.5"
+            pl={emphasize ? "2.5" : undefined}
+            borderLeftWidth={emphasize ? "2px" : undefined}
+            borderLeftColor={emphasize ? tokens.tagAccent.border : undefined}
+        >
+            <Text
+                {...AI_TEXT}
+                color={emphasize ? tokens.tagAccent.color : tokens.panelLabel}
+                letterSpacing="0.04em"
+                fontWeight={emphasize ? "semibold" : "normal"}
+            >
                 {title}
             </Text>
             {children}
@@ -188,42 +172,18 @@ function AiBlock({ ai, tokens }: { ai: ScannerAiSetupAnalysis; tokens: ThemeToke
                 ) : null}
 
                 {ai.ai_opportunity_notes ? (
-                    <AiSection title="── opportunity" tokens={tokens}>
+                    <AiSection title="── opportunity  (funding · OI)" tokens={tokens} emphasize>
                         <Text {...AI_TEXT} color={tokens.panelBody} whiteSpace="pre-wrap" wordBreak="break-word">
                             {ai.ai_opportunity_notes}
                         </Text>
                     </AiSection>
                 ) : null}
 
-                {ai.ai_entry_zone || ai.ai_stop || (ai.ai_targets && ai.ai_targets.length > 0) ? (
-                    <AiSection title="── trade plan" tokens={tokens}>
-                        <Stack gap="2">
-                            {ai.ai_entry_zone ? (
-                                <AiField label="entry" value={ai.ai_entry_zone} tokens={tokens} />
-                            ) : null}
-                            {ai.ai_stop ? <AiField label="stop" value={ai.ai_stop} tokens={tokens} /> : null}
-                            {ai.ai_targets && ai.ai_targets.length > 0 ? (
-                                <AiField label="targets" value={ai.ai_targets.join(" · ")} tokens={tokens} />
-                            ) : null}
-                        </Stack>
-                    </AiSection>
-                ) : null}
-
-                {ai.fractal_vwap_notes ? (
-                    <AiSection title="── fractal / vwap" tokens={tokens}>
+                {ai.ai_map_read ? (
+                    <AiSection title="── map read" tokens={tokens}>
                         <Text {...AI_TEXT} color={tokens.panelBody} whiteSpace="pre-wrap" wordBreak="break-word">
-                            {ai.fractal_vwap_notes}
+                            {ai.ai_map_read}
                         </Text>
-                    </AiSection>
-                ) : null}
-
-                {ai.ai_risks && ai.ai_risks.length > 0 ? (
-                    <AiSection title="── risks" tokens={tokens}>
-                        <Stack gap="2">
-                            {ai.ai_risks.map((risk, i) => (
-                                <AiField key={i} label={`! ${i + 1}`} value={risk} warn tokens={tokens} />
-                            ))}
-                        </Stack>
                     </AiSection>
                 ) : null}
             </Stack>

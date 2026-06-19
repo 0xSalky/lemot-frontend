@@ -60,13 +60,9 @@ export interface ScannerAiSetupAnalysis {
     price_low?: number;
     total_weight?: number;
   };
-  ai_entry_zone?: string;
-  ai_stop?: string;
-  ai_targets?: string[];
   ai_thesis?: string;
   ai_opportunity_notes?: string;
-  ai_risks?: string[];
-  fractal_vwap_notes?: string;
+  ai_map_read?: string;
 }
 
 export interface ScannerAiBatchSummary {
