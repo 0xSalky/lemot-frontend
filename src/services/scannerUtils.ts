@@ -222,17 +222,10 @@ export function formatLevelPrice(price: number): string {
   const v = Number(price);
   if (!Number.isFinite(v)) return "—";
   if (v >= 1000) {
-    return v.toLocaleString("en-US", {
-      maximumFractionDigits: 2,
-      useGrouping: false,
-    });
+    return v.toFixed(2);
   }
   if (v >= 1) {
-    return v.toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 4,
-      useGrouping: false,
-    });
+    return v.toFixed(4);
   }
   const s = v.toPrecision(4);
   return s.includes(".") ? s.replace(/\.?0+$/, "") : s;
@@ -311,37 +304,62 @@ export function bandLineMarker(side: ScannerBandRow["side"]): string {
   return "  ";
 }
 
+const ANCHOR_LEVEL_TYPES = new Set([
+  "htf_level",
+  "htf_fractal_up",
+  "htf_fractal_down",
+  "vwap",
+  "anchor_vwap_up",
+  "anchor_vwap_down",
+  "sma_50",
+  "sma_100",
+  "sma_200",
+]);
+
+export function isLevelAnchor(level: ScannerLevelRow): boolean {
+  if (level.is_anchor === true) return true;
+  if (level.is_anchor === false) return false;
+  return ANCHOR_LEVEL_TYPES.has(level.level_type);
+}
+
 export function levelsHighToLow(
   levels: ScannerLevelRow[],
 ): ScannerLevelRow[] {
   return [...levels].sort((a, b) => b.level - a.level);
 }
 
+export function formatBandSpanPct(spanPct: number): string {
+  return `⬆⬇${spanPct.toFixed(2)}%`;
+}
+
+export function formatBandDistancePct(
+  side: ScannerBandRow["side"],
+  dist: number,
+): string {
+  if (side === "RES") return `⬆${dist.toFixed(2)}%`;
+  if (side === "SUP") return `⬇${dist.toFixed(2)}%`;
+  return "at price";
+}
+
 export function bandLineSections(band: ScannerBandRow): BandLineSection[] {
   const dist = band.distance_pct ?? 0;
-  let distText = "at price";
-  if (band.side === "RES") {
-    distText = `${dist.toFixed(2)}% above`;
-  } else if (band.side === "SUP") {
-    distText = `${dist.toFixed(2)}% below`;
-  }
 
   const high = Math.max(band.low, band.high);
   const low = Math.min(band.low, band.high);
 
   const sections: BandLineSection[] = [
     {
-      text: `${formatLevelPrice(high)} – ${formatLevelPrice(low)}`,
+      text: `${formatLevelPrice(high)}–${formatLevelPrice(low)}`,
       emphasis: true,
     },
     { text: `w=${band.total_weight}` },
   ];
 
   if (band.span_pct != null && Number.isFinite(band.span_pct)) {
-    sections.push({ text: `${band.span_pct.toFixed(2)}% span` });
+    sections.push({ text: formatBandSpanPct(band.span_pct) });
   }
 
-  sections.push({ text: distText });
+  sections.push({ text: formatBandDistancePct(band.side, dist) });
   return sections;
 }
 
@@ -368,13 +386,13 @@ const LEVEL_DATE_MONTHS = [
   "dec",
 ] as const;
 
-/** Backend sends MM-DD-YY; display as DD-mon-YY (e.g. ``05-jun-26``). */
+/** Backend sends DD-MM-YY (European); display as DD-mon-YY (e.g. ``05-jun-26``). */
 export function formatLevelDateDisplay(levelDate?: string | null): string {
   if (!levelDate) return "";
   const match = /^(\d{2})-(\d{2})-(\d{2})$/.exec(levelDate.trim());
   if (!match) return levelDate;
-  const month = Number(match[1]);
-  const day = match[2];
+  const day = match[1];
+  const month = Number(match[2]);
   const year = match[3];
   const monthLabel = LEVEL_DATE_MONTHS[month - 1];
   if (!monthLabel) return levelDate;

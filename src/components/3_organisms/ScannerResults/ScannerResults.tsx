@@ -10,6 +10,7 @@ import {
     formatCompactLevel,
     formatSetupHeaderLine1,
     formatUtcIsoLocal,
+    isLevelAnchor,
     levelsHighToLow,
     orderedBands,
     setupsFromBatch,
@@ -288,13 +289,30 @@ function SetupCard({ setup, tokens }: { setup: ScannerSetupRow; tokens: ThemeTok
 
 function BandBlock({ band }: { band: ScannerBandRow }) {
     const sections = bandLineSections(band);
+    const dist = band.distance_pct ?? 0;
+    const distanceTitle =
+        band.side === "RES"
+            ? `${dist.toFixed(2)}% above`
+            : band.side === "SUP"
+              ? `${dist.toFixed(2)}% below`
+              : "at price";
 
     return (
         <Stack gap="0">
-            <Box display="flex" flexWrap="wrap" alignItems="baseline" columnGap="1" rowGap="0.5">
-                <Text as="span">{bandLineMarker(band.side)}</Text>
+            <Box
+                display="flex"
+                flexWrap="nowrap"
+                alignItems="baseline"
+                columnGap="1"
+                overflowX="auto"
+                fontFamily="mono"
+                fontSize="xs"
+                title={distanceTitle}
+                css={{ WebkitOverflowScrolling: "touch" }}
+            >
+                <Text as="span" flexShrink={0}>{bandLineMarker(band.side)}</Text>
                 {sections.map((section, i) => (
-                    <Box key={`${section.text}-${i}`} display="flex" alignItems="baseline" gap="1">
+                    <Box key={`${section.text}-${i}`} display="flex" alignItems="baseline" gap="1" flexShrink={0}>
                         {i > 0 ? (
                             <Text as="span" color="fg.subtle" userSelect="none">
                                 ·
@@ -304,6 +322,11 @@ function BandBlock({ band }: { band: ScannerBandRow }) {
                             as="span"
                             color={section.emphasis ? undefined : "fg.muted"}
                             fontWeight={section.emphasis ? "medium" : undefined}
+                            title={
+                                section.text.startsWith("⬆⬇")
+                                    ? `${band.span_pct?.toFixed(2)}% span`
+                                    : undefined
+                            }
                         >
                             {section.text}
                         </Text>
@@ -311,9 +334,29 @@ function BandBlock({ band }: { band: ScannerBandRow }) {
                 ))}
             </Box>
             {levelsHighToLow(band.levels).map((level, i) => (
-                <Text key={`${level.timeframe}-${level.level_type}-${i}`} pl="4" color="fg.muted">
-                    {formatCompactLevel(level)}
-                </Text>
+                <Box
+                    key={`${level.timeframe}-${level.level_type}-${i}`}
+                    display="grid"
+                    gridTemplateColumns="1.5ch 1fr"
+                    columnGap="1"
+                    alignItems="baseline"
+                    pl="4"
+                    fontFamily="mono"
+                    fontSize="xs"
+                >
+                    <Text
+                        as="span"
+                        color={isLevelAnchor(level) ? "fg.muted" : "transparent"}
+                        textAlign="center"
+                        userSelect="none"
+                        aria-hidden={!isLevelAnchor(level)}
+                    >
+                        ⚓
+                    </Text>
+                    <Text as="span" color="fg.muted">
+                        {formatCompactLevel(level)}
+                    </Text>
+                </Box>
             ))}
         </Stack>
     );

@@ -7,7 +7,9 @@ export interface ScannerLevelRow {
   level_type: string;
   level: number;
   weight?: number;
-  /** Session open date from API (MM-DD-YY); use formatLevelDateDisplay in UI. */
+  /** True when this level seeded or defines the band (not a satellite). */
+  is_anchor?: boolean;
+  /** Session open date from API (DD-MM-YY, European); use formatLevelDateDisplay in UI. */
   level_date?: string;
 }
 
@@ -20,6 +22,9 @@ export interface ScannerBandRow {
   /** Percent from lowest to highest level in the band. */
   span_pct?: number | null;
   level_count?: number;
+  anchor_count?: number;
+  anchor_types?: string[];
+  band_kind?: string;
   levels: ScannerLevelRow[];
 }
 
