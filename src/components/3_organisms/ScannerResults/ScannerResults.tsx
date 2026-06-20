@@ -13,6 +13,7 @@ import {
     isLevelAnchor,
     levelsHighToLow,
     orderedBands,
+    SCANNER_PROFILE,
     setupsFromBatch,
 } from "@/services/scannerUtils";
 import ResponsiveCardGrid from "@/components/4_layouts/ResponsiveCardGrid/ResponsiveCardGrid";
@@ -330,7 +331,7 @@ const ScannerResults = ({ latestBatch, loading = false }: ScannerResultsProps) =
     if (loading && latestBatch == null) {
         return (
             <Text fontSize="sm" color="fg.muted" mt="1rem" fontFamily="mono">
-                Loading scanner results…
+                Loading {SCANNER_PROFILE} scanner results…
             </Text>
         );
     }
@@ -346,7 +347,7 @@ const ScannerResults = ({ latestBatch, loading = false }: ScannerResultsProps) =
     if (setups.length === 0) {
         return (
             <Text fontSize="sm" color="fg.muted" mt="1rem" fontFamily="mono">
-                No scanner setups yet. Run a scan to populate results.
+                No {SCANNER_PROFILE} setups yet. Run a {SCANNER_PROFILE} scan to populate results.
             </Text>
         );
     }

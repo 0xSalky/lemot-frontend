@@ -50,8 +50,17 @@ function apiErrorMessage(data: unknown, status: number): string {
   return `HTTP ${status}`;
 }
 
-export async function fetchLatestScannerBatch(): Promise<ScannerLatestBatchFetchResult> {
-  const res = await apiFetch("/api/scanner/latest-batch", {
+/** Active scanner profile until day trading UI is added. */
+export const SCANNER_PROFILE = "swing" as const;
+
+export const SCANNER_PROFILE_LABEL =
+  SCANNER_PROFILE.charAt(0).toUpperCase() + SCANNER_PROFILE.slice(1);
+
+export async function fetchLatestScannerBatch(
+  profile: string = SCANNER_PROFILE,
+): Promise<ScannerLatestBatchFetchResult> {
+  const params = new URLSearchParams({ profile });
+  const res = await apiFetch(`/api/scanner/latest-batch?${params.toString()}`, {
     cache: "no-store",
   });
   const raw = await res.text();
@@ -146,8 +155,11 @@ export type ScannerAnalyzeResult =
     }
   | { success: false; message: string };
 
-export async function runScanner(): Promise<ScannerRunResult> {
-  const res = await apiFetch("/api/scanner/run", { method: "POST" });
+export async function runScanner(
+  profile: string = SCANNER_PROFILE,
+): Promise<ScannerRunResult> {
+  const params = new URLSearchParams({ profile });
+  const res = await apiFetch(`/api/scanner/run?${params.toString()}`, { method: "POST" });
   const raw = await res.text();
   let data: unknown;
   try {
@@ -183,10 +195,13 @@ export async function runScanner(): Promise<ScannerRunResult> {
 
 export async function runScannerAnalyze(
   batchId?: number,
+  profile: string = SCANNER_PROFILE,
 ): Promise<ScannerAnalyzeResult> {
-  const qs =
-    batchId != null ? `?batch_id=${encodeURIComponent(String(batchId))}` : "";
-  const res = await apiFetch(`/api/scanner/analyze${qs}`, { method: "POST" });
+  const params = new URLSearchParams({ profile });
+  if (batchId != null) {
+    params.set("batch_id", String(batchId));
+  }
+  const res = await apiFetch(`/api/scanner/analyze?${params.toString()}`, { method: "POST" });
   const raw = await res.text();
   let data: unknown;
   try {

@@ -1,8 +1,4 @@
-import {
-  credentialsRequiredResponse,
-  forwardUpstreamResponse,
-  resolveTradingCredentials,
-} from "@/lib/tradingApiProxy";
+import { proxyTradingPost } from "@/lib/tradingApiProxy";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export default async function handler(
@@ -18,22 +14,5 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const creds = resolveTradingCredentials(req);
-  if (!creds) {
-    credentialsRequiredResponse(res);
-    return;
-  }
-
-  const batchId = req.query.batch_id;
-  const qs =
-    batchId != null && String(batchId).trim() !== ""
-      ? `?batch_id=${encodeURIComponent(String(batchId))}`
-      : "";
-
-  const upstream = await fetch(`${creds.baseUrl}/scanner/analyze${qs}`, {
-    method: "POST",
-    headers: { "X-API-Key": creds.apiKey },
-  });
-
-  await forwardUpstreamResponse(res, upstream);
+  await proxyTradingPost(req, res, "/scanner/analyze");
 }

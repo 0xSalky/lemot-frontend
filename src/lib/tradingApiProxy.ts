@@ -107,6 +107,22 @@ export async function forwardUpstreamResponse(
   res.status(upstream.status).send(text);
 }
 
+function upstreamQuery(req: NextApiRequest): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(req.query)) {
+    if (value === undefined) continue;
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        if (item != null) params.append(key, item);
+      }
+    } else {
+      params.append(key, value);
+    }
+  }
+  const qs = params.toString();
+  return qs ? `?${qs}` : "";
+}
+
 export async function proxyTradingGet(
   req: NextApiRequest,
   res: NextApiResponse,
@@ -118,7 +134,7 @@ export async function proxyTradingGet(
     return;
   }
 
-  const upstream = await fetch(`${creds.baseUrl}${path}`, {
+  const upstream = await fetch(`${creds.baseUrl}${path}${upstreamQuery(req)}`, {
     method: "GET",
     headers: { "X-API-Key": creds.apiKey },
   });
@@ -138,7 +154,7 @@ export async function proxyTradingPost(
     return;
   }
 
-  const upstream = await fetch(`${creds.baseUrl}${path}`, {
+  const upstream = await fetch(`${creds.baseUrl}${path}${upstreamQuery(req)}`, {
     method: "POST",
     headers: {
       "X-API-Key": creds.apiKey,

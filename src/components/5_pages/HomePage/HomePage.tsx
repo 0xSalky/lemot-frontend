@@ -14,10 +14,12 @@ import {
     fetchLatestScannerBatch,
     runScanner,
     scannerSymbolToBase,
+    SCANNER_PROFILE,
+    SCANNER_PROFILE_LABEL,
 } from "@/services/scannerUtils";
 import { Button, Box, Separator, Stack, Tabs, Text } from "@chakra-ui/react";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 function ConfigSection({ title, children }: { title: string; children: ReactNode }) {
     const tokens = useThemeTokens();
@@ -56,7 +58,7 @@ const HomePage = () => {
         const loadId = ++loadIdRef.current;
         queueMicrotask(() => setLoading(true));
 
-        void fetchLatestScannerBatch()
+        void fetchLatestScannerBatch(SCANNER_PROFILE)
             .then((batch) => {
                 if (loadId !== loadIdRef.current) return;
 
@@ -79,7 +81,7 @@ const HomePage = () => {
         setRunError(null);
         setRunWarning(null);
         setRunning(true);
-        void runScanner()
+        void runScanner(SCANNER_PROFILE)
             .then((result) => {
                 if (!result.success) {
                     setRunError(result.message);
@@ -103,28 +105,26 @@ const HomePage = () => {
         loadScanner();
     }, [loadScanner]);
 
+    const tradingPairs = useMemo(() => {
+        const combined = [...new Set([...TRADING_PAIRS, ...scannerPairs])];
+        const rest = combined.filter((p) => p !== "BTC").sort((a, b) => a.localeCompare(b));
+        return combined.includes("BTC") ? ["BTC", ...rest] : rest;
+    }, [scannerPairs]);
+
     return (
         <Stack w="100%" maxW={CONTENT_MAX_WIDTH} mx="auto" gap="1rem">
-            <Tabs.Root defaultValue="favorites" colorPalette={palette}>
+            <Tabs.Root defaultValue="pairs" colorPalette={palette}>
                 <Box overflowX="auto" pb="1">
                     <Tabs.List flexWrap="wrap" gap="2">
-                        <ThemeTabTrigger value="favorites">Favs</ThemeTabTrigger>
-                        <ThemeTabTrigger value="scanner-pairs">Scan Pairs</ThemeTabTrigger>
-                        <ThemeTabTrigger value="scanner-results">Scan Results</ThemeTabTrigger>
-                        <ThemeTabTrigger value="scanner-chat">Ask AI</ThemeTabTrigger>
+                        <ThemeTabTrigger value="pairs">Pairs</ThemeTabTrigger>
+                        <ThemeTabTrigger value="scanner-results">{SCANNER_PROFILE_LABEL} scan</ThemeTabTrigger>
+                        <ThemeTabTrigger value="scanner-chat">AI Chat</ThemeTabTrigger>
                         <ThemeTabTrigger value="config">Config</ThemeTabTrigger>
                     </Tabs.List>
                 </Box>
-                <Tabs.Content value="favorites">
+                <Tabs.Content value="pairs">
                     <ResponsiveCardGrid>
-                        {TRADING_PAIRS.map((pair: string) => (
-                            <AssetInterface key={pair} pair={pair} />
-                        ))}
-                    </ResponsiveCardGrid>
-                </Tabs.Content>
-                <Tabs.Content value="scanner-pairs">
-                    <ResponsiveCardGrid>
-                        {scannerPairs.map((pair: string) => (
+                        {tradingPairs.map((pair: string) => (
                             <AssetInterface key={pair} pair={pair} />
                         ))}
                     </ResponsiveCardGrid>
@@ -182,8 +182,11 @@ const HomePage = () => {
 
                             <Separator borderColor={tokens.panelBorder} />
 
-                            <ConfigSection title="Scanner">
+                            <ConfigSection title={`${SCANNER_PROFILE_LABEL} scanner`}>
                                 <Stack gap="3">
+                                    <Text fontSize="xs" fontFamily="mono" color={tokens.panelMuted}>
+                                        Profile: {SCANNER_PROFILE}
+                                    </Text>
                                     <Stack direction="row" gap="2" flexWrap="wrap">
                                         <Button
                                             size="xs"
@@ -193,7 +196,7 @@ const HomePage = () => {
                                             loading={loading}
                                             onClick={() => loadScanner()}
                                         >
-                                            Refresh results
+                                            Refresh {SCANNER_PROFILE} results
                                         </Button>
                                         <Button
                                             size="xs"
@@ -203,7 +206,7 @@ const HomePage = () => {
                                             loading={running}
                                             onClick={runScannerScan}
                                         >
-                                            Run scanner
+                                            Run {SCANNER_PROFILE} scan
                                         </Button>
                                     </Stack>
                                     {runError || runWarning ? (
