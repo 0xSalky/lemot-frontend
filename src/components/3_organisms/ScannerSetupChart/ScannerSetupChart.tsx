@@ -34,6 +34,7 @@ type ScannerSetupChartProps = {
   price: number;
   bands: ScannerBandRow[];
   tokens: ThemeTokens;
+  defaultTimeframe?: ScannerChartTimeframe;
 };
 
 function computeChartBounds(
@@ -83,11 +84,17 @@ function formatRefreshCountdown(seconds: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-function ScannerSetupChart({ symbol, price, bands, tokens }: ScannerSetupChartProps) {
+function ScannerSetupChart({
+  symbol,
+  price,
+  bands,
+  tokens,
+  defaultTimeframe = "1h",
+}: ScannerSetupChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const nextRefreshAtRef = useRef(0);
   const [containerWidth, setContainerWidth] = useState(0);
-  const [timeframe, setTimeframe] = useState<ScannerChartTimeframe>("1h");
+  const [timeframe, setTimeframe] = useState<ScannerChartTimeframe>(defaultTimeframe);
   const [zoomStep, setZoomStep] = useState(0);
   const [refreshCountdownSec, setRefreshCountdownSec] = useState(
     Math.ceil(CHART_REFRESH_MS / 1000),
@@ -103,6 +110,10 @@ function ScannerSetupChart({ symbol, price, bands, tokens }: ScannerSetupChartPr
   const loading = fetchState.key !== fetchKey;
   const chart = fetchState.key === fetchKey ? fetchState.chart : null;
   const error = fetchState.key === fetchKey ? fetchState.error : null;
+
+  useEffect(() => {
+    setTimeframe(defaultTimeframe);
+  }, [defaultTimeframe]);
 
   useEffect(() => {
     const el = containerRef.current;

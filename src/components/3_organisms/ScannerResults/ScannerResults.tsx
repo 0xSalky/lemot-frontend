@@ -1,6 +1,7 @@
 import type {
     ScannerAiSetupAnalysis,
     ScannerBandRow,
+    ScannerChartTimeframe,
     ScannerLatestBatchFetchResult,
     ScannerSetupRow,
 } from "@/types/scannerTypes";
@@ -13,8 +14,10 @@ import {
     isLevelAnchor,
     levelsHighToLow,
     orderedBands,
-    SCANNER_PROFILE,
+    scannerProfileLabel,
+    SCANNER_PROFILE_CHART_TIMEFRAME,
     setupsFromBatch,
+    type ScannerProfile,
 } from "@/services/scannerUtils";
 import ResponsiveCardGrid from "@/components/4_layouts/ResponsiveCardGrid/ResponsiveCardGrid";
 import ScannerSetupChart from "@/components/3_organisms/ScannerSetupChart/ScannerSetupChart";
@@ -23,6 +26,7 @@ import { Box, Separator, Stack, Text } from "@chakra-ui/react";
 import type { ReactNode } from "react";
 
 type ScannerResultsProps = {
+    profile: ScannerProfile;
     latestBatch: ScannerLatestBatchFetchResult | null;
     loading?: boolean;
 };
@@ -211,7 +215,15 @@ function BtcReadCard({ text, tokens }: { text: string; tokens: ThemeTokens }) {
     );
 }
 
-function SetupCard({ setup, tokens }: { setup: ScannerSetupRow; tokens: ThemeTokens }) {
+function SetupCard({
+    setup,
+    tokens,
+    defaultChartTimeframe,
+}: {
+    setup: ScannerSetupRow;
+    tokens: ThemeTokens;
+    defaultChartTimeframe?: ScannerChartTimeframe;
+}) {
     const bands = orderedBands(Array.isArray(setup.bands) ? setup.bands : []);
 
     return (
@@ -233,6 +245,7 @@ function SetupCard({ setup, tokens }: { setup: ScannerSetupRow; tokens: ThemeTok
                 price={setup.price}
                 bands={bands}
                 tokens={tokens}
+                defaultTimeframe={defaultChartTimeframe}
             />
             <Text whiteSpace="pre-wrap" wordBreak="break-word">
                 {formatSetupHeaderLine1(setup)}
@@ -323,15 +336,17 @@ function BandBlock({ band }: { band: ScannerBandRow }) {
     );
 }
 
-const ScannerResults = ({ latestBatch, loading = false }: ScannerResultsProps) => {
+const ScannerResults = ({ profile, latestBatch, loading = false }: ScannerResultsProps) => {
     const { palette } = useThemeColor();
     const tokens = useThemeTokens(palette);
     const setups = setupsFromBatch(latestBatch);
+    const profileLabel = scannerProfileLabel(profile);
+    const defaultChartTimeframe = SCANNER_PROFILE_CHART_TIMEFRAME[profile];
 
     if (loading && latestBatch == null) {
         return (
             <Text fontSize="sm" color="fg.muted" mt="1rem" fontFamily="mono">
-                Loading {SCANNER_PROFILE} scanner results…
+                Loading {profileLabel} scanner results…
             </Text>
         );
     }
@@ -347,7 +362,7 @@ const ScannerResults = ({ latestBatch, loading = false }: ScannerResultsProps) =
     if (setups.length === 0) {
         return (
             <Text fontSize="sm" color="fg.muted" mt="1rem" fontFamily="mono">
-                No {SCANNER_PROFILE} setups yet. Run a {SCANNER_PROFILE} scan to populate results.
+                No {profileLabel} setups yet. Run a {profileLabel} scan to populate results.
             </Text>
         );
     }
@@ -373,7 +388,12 @@ const ScannerResults = ({ latestBatch, loading = false }: ScannerResultsProps) =
             ) : null}
             <ResponsiveCardGrid>
                 {setups.map((setup) => (
-                    <SetupCard key={setup.id} setup={setup} tokens={tokens} />
+                    <SetupCard
+                        key={setup.id}
+                        setup={setup}
+                        tokens={tokens}
+                        defaultChartTimeframe={defaultChartTimeframe}
+                    />
                 ))}
             </ResponsiveCardGrid>
         </Stack>

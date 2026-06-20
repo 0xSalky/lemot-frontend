@@ -50,14 +50,32 @@ function apiErrorMessage(data: unknown, status: number): string {
   return `HTTP ${status}`;
 }
 
-/** Active scanner profile until day trading UI is added. */
-export const SCANNER_PROFILE = "swing" as const;
+/** Scanner profiles supported by the backend. */
+export const SCANNER_PROFILES = ["swing", "day"] as const;
+export type ScannerProfile = (typeof SCANNER_PROFILES)[number];
 
-export const SCANNER_PROFILE_LABEL =
-  SCANNER_PROFILE.charAt(0).toUpperCase() + SCANNER_PROFILE.slice(1);
+export const DEFAULT_SCANNER_PROFILE: ScannerProfile = "swing";
+
+/** @deprecated use DEFAULT_SCANNER_PROFILE or pass profile explicitly */
+export const SCANNER_PROFILE = DEFAULT_SCANNER_PROFILE;
+
+export function scannerProfileLabel(profile: ScannerProfile): string {
+  return profile === "day" ? "Day" : "Swing";
+}
+
+/** @deprecated use scannerProfileLabel(profile) */
+export const SCANNER_PROFILE_LABEL = scannerProfileLabel(DEFAULT_SCANNER_PROFILE);
+
+export const SCANNER_PROFILE_CHART_TIMEFRAME: Record<
+  ScannerProfile,
+  ScannerChartTimeframe
+> = {
+  swing: "4h",
+  day: "30m",
+};
 
 export async function fetchLatestScannerBatch(
-  profile: string = SCANNER_PROFILE,
+  profile: ScannerProfile = DEFAULT_SCANNER_PROFILE,
 ): Promise<ScannerLatestBatchFetchResult> {
   const params = new URLSearchParams({ profile });
   const res = await apiFetch(`/api/scanner/latest-batch?${params.toString()}`, {
@@ -156,7 +174,7 @@ export type ScannerAnalyzeResult =
   | { success: false; message: string };
 
 export async function runScanner(
-  profile: string = SCANNER_PROFILE,
+  profile: ScannerProfile = DEFAULT_SCANNER_PROFILE,
 ): Promise<ScannerRunResult> {
   const params = new URLSearchParams({ profile });
   const res = await apiFetch(`/api/scanner/run?${params.toString()}`, { method: "POST" });
@@ -195,7 +213,7 @@ export async function runScanner(
 
 export async function runScannerAnalyze(
   batchId?: number,
-  profile: string = SCANNER_PROFILE,
+  profile: ScannerProfile = DEFAULT_SCANNER_PROFILE,
 ): Promise<ScannerAnalyzeResult> {
   const params = new URLSearchParams({ profile });
   if (batchId != null) {

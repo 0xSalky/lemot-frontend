@@ -13,9 +13,10 @@ import type { ScannerLatestBatchFetchResult } from "@/types/scannerTypes";
 import {
     fetchLatestScannerBatch,
     runScanner,
+    scannerProfileLabel,
     scannerSymbolToBase,
-    SCANNER_PROFILE,
-    SCANNER_PROFILE_LABEL,
+    SCANNER_PROFILES,
+    type ScannerProfile,
 } from "@/services/scannerUtils";
 import { Button, Box, Separator, Stack, Tabs, Text } from "@chakra-ui/react";
 import type { ReactNode } from "react";
@@ -40,70 +41,190 @@ function ConfigSection({ title, children }: { title: string; children: ReactNode
     );
 }
 
+type ProfileRunState = {
+    running: boolean;
+    runError: string | null;
+    runWarning: string | null;
+};
+
+const INITIAL_RUN_STATE: ProfileRunState = {
+    running: false,
+    runError: null,
+    runWarning: null,
+};
+
+function ScannerConfigPanel({
+    profile,
+    loading,
+    runState,
+    onRefresh,
+    onRun,
+}: {
+    profile: ScannerProfile;
+    loading: boolean;
+    runState: ProfileRunState;
+    onRefresh: () => void;
+    onRun: () => void;
+}) {
+    const { palette } = useThemeColor();
+    const tokens = useThemeTokens(palette);
+    const label = scannerProfileLabel(profile);
+
+    return (
+        <Stack gap="3">
+            <Text fontSize="xs" fontFamily="mono" color={tokens.panelMuted}>
+                Profile: {profile}
+                {profile === "day" ? " · watchlist scan" : " · high-volume scan"}
+            </Text>
+            <Stack direction="row" gap="2" flexWrap="wrap">
+                <Button
+                    size="xs"
+                    variant="outline"
+                    colorPalette={palette}
+                    borderColor={tokens.panelBorder}
+                    loading={loading}
+                    onClick={onRefresh}
+                >
+                    Refresh {label} results
+                </Button>
+                <Button
+                    size="xs"
+                    variant="outline"
+                    colorPalette={palette}
+                    borderColor={tokens.panelBorder}
+                    loading={runState.running}
+                    onClick={onRun}
+                >
+                    Run {label} scan
+                </Button>
+            </Stack>
+            {runState.runError || runState.runWarning ? (
+                <Box
+                    p="3"
+                    rounded="md"
+                    borderWidth="1px"
+                    borderColor={tokens.panelBorder}
+                    bg={tokens.panelBgUser}
+                >
+                    <Stack gap="1">
+                        {runState.runError ? (
+                            <Text fontSize="xs" fontFamily="mono" color="red.400">
+                                {runState.runError}
+                            </Text>
+                        ) : null}
+                        {runState.runWarning ? (
+                            <Text fontSize="xs" fontFamily="mono" color={tokens.panelLabel}>
+                                {runState.runWarning}
+                            </Text>
+                        ) : null}
+                    </Stack>
+                </Box>
+            ) : null}
+        </Stack>
+    );
+}
+
 const HomePage = () => {
     const { palette } = useThemeColor();
     const tokens = useThemeTokens(palette);
     const { serverConfigured, signOut } = useTradingAccess();
-    const [latestBatch, setLatestBatch] = useState<ScannerLatestBatchFetchResult | null>(
-        null,
-    );
-    const [scannerPairs, setScannerPairs] = useState<string[]>([]);
-    const [loading, setLoading] = useState<boolean>(false);
-    const [running, setRunning] = useState<boolean>(false);
-    const [runError, setRunError] = useState<string | null>(null);
-    const [runWarning, setRunWarning] = useState<string | null>(null);
-    const loadIdRef = useRef(0);
+    const [batches, setBatches] = useState<Record<ScannerProfile, ScannerLatestBatchFetchResult | null>>({
+        swing: null,
+        day: null,
+    });
+    const [loading, setLoading] = useState<Record<ScannerProfile, boolean>>({
+        swing: false,
+        day: false,
+    });
+    const [runState, setRunState] = useState<Record<ScannerProfile, ProfileRunState>>({
+        swing: { ...INITIAL_RUN_STATE },
+        day: { ...INITIAL_RUN_STATE },
+    });
+    const loadIdRef = useRef<Record<ScannerProfile, number>>({ swing: 0, day: 0 });
 
-    const loadScanner = useCallback(() => {
-        const loadId = ++loadIdRef.current;
-        queueMicrotask(() => setLoading(true));
+    const loadScanner = useCallback((profile: ScannerProfile) => {
+        const loadId = ++loadIdRef.current[profile];
+        setLoading((prev) => ({ ...prev, [profile]: true }));
 
-        void fetchLatestScannerBatch(SCANNER_PROFILE)
+        void fetchLatestScannerBatch(profile)
             .then((batch) => {
-                if (loadId !== loadIdRef.current) return;
-
-                setLatestBatch(batch);
-                if ("message" in batch) {
-                    setScannerPairs([]);
-                } else {
-                    const bases = batch.setups.map((s) => scannerSymbolToBase(s.symbol));
-                    setScannerPairs([...new Set(bases)]);
-                }
+                if (loadId !== loadIdRef.current[profile]) return;
+                setBatches((prev) => ({ ...prev, [profile]: batch }));
             })
-            .catch((e) => console.error("[scanner refresh]", e))
+            .catch((e) => console.error(`[scanner refresh ${profile}]`, e))
             .finally(() => {
-                if (loadId !== loadIdRef.current) return;
-                setLoading(false);
+                if (loadId !== loadIdRef.current[profile]) return;
+                setLoading((prev) => ({ ...prev, [profile]: false }));
             });
     }, []);
 
-    const runScannerScan = useCallback(() => {
-        setRunError(null);
-        setRunWarning(null);
-        setRunning(true);
-        void runScanner(SCANNER_PROFILE)
-            .then((result) => {
-                if (!result.success) {
-                    setRunError(result.message);
-                    return;
-                }
-                if (result.ai_error) {
-                    setRunWarning(`Scan saved, but AI failed: ${result.ai_error}`);
-                } else if (result.ai_skip_reason) {
-                    setRunWarning(`Scan saved; AI skipped: ${result.ai_skip_reason}`);
-                }
-                return loadScanner();
-            })
-            .catch((e) => {
-                console.error("[scanner run]", e);
-                setRunError("Scanner run failed");
-            })
-            .finally(() => setRunning(false));
-    }, [loadScanner]);
+    const runScannerScan = useCallback(
+        (profile: ScannerProfile) => {
+            setRunState((prev) => ({
+                ...prev,
+                [profile]: { ...INITIAL_RUN_STATE, running: true },
+            }));
+
+            void runScanner(profile)
+                .then((result) => {
+                    if (!result.success) {
+                        setRunState((prev) => ({
+                            ...prev,
+                            [profile]: {
+                                running: false,
+                                runError: result.message,
+                                runWarning: null,
+                            },
+                        }));
+                        return;
+                    }
+                    const runWarning = result.ai_error
+                        ? `Scan saved, but AI failed: ${result.ai_error}`
+                        : result.ai_skip_reason
+                          ? `Scan saved; AI skipped: ${result.ai_skip_reason}`
+                          : null;
+                    setRunState((prev) => ({
+                        ...prev,
+                        [profile]: {
+                            running: false,
+                            runError: null,
+                            runWarning,
+                        },
+                    }));
+                    loadScanner(profile);
+                })
+                .catch((e) => {
+                    console.error(`[scanner run ${profile}]`, e);
+                    setRunState((prev) => ({
+                        ...prev,
+                        [profile]: {
+                            running: false,
+                            runError: "Scanner run failed",
+                            runWarning: null,
+                        },
+                    }));
+                });
+        },
+        [loadScanner],
+    );
 
     useEffect(() => {
-        loadScanner();
+        for (const profile of SCANNER_PROFILES) {
+            loadScanner(profile);
+        }
     }, [loadScanner]);
+
+    const scannerPairs = useMemo(() => {
+        const bases: string[] = [];
+        for (const profile of SCANNER_PROFILES) {
+            const batch = batches[profile];
+            if (batch == null || "message" in batch) continue;
+            for (const setup of batch.setups) {
+                bases.push(scannerSymbolToBase(setup.symbol));
+            }
+        }
+        return [...new Set(bases)];
+    }, [batches]);
 
     const tradingPairs = useMemo(() => {
         const combined = [...new Set([...TRADING_PAIRS, ...scannerPairs])];
@@ -117,7 +238,8 @@ const HomePage = () => {
                 <Box overflowX="auto" pb="1">
                     <Tabs.List flexWrap="wrap" gap="2">
                         <ThemeTabTrigger value="pairs">Pairs</ThemeTabTrigger>
-                        <ThemeTabTrigger value="scanner-results">{SCANNER_PROFILE_LABEL} scan</ThemeTabTrigger>
+                        <ThemeTabTrigger value="scanner-swing">Swing scan</ThemeTabTrigger>
+                        <ThemeTabTrigger value="scanner-day">Day scan</ThemeTabTrigger>
                         <ThemeTabTrigger value="scanner-chat">AI Chat</ThemeTabTrigger>
                         <ThemeTabTrigger value="config">Config</ThemeTabTrigger>
                     </Tabs.List>
@@ -129,9 +251,22 @@ const HomePage = () => {
                         ))}
                     </ResponsiveCardGrid>
                 </Tabs.Content>
-                <Tabs.Content value="scanner-results">
+                <Tabs.Content value="scanner-swing">
                     <Box>
-                        <ScannerResults latestBatch={latestBatch} loading={loading} />
+                        <ScannerResults
+                            profile="swing"
+                            latestBatch={batches.swing}
+                            loading={loading.swing}
+                        />
+                    </Box>
+                </Tabs.Content>
+                <Tabs.Content value="scanner-day">
+                    <Box>
+                        <ScannerResults
+                            profile="day"
+                            latestBatch={batches.day}
+                            loading={loading.day}
+                        />
                     </Box>
                 </Tabs.Content>
                 <Tabs.Content value="scanner-chat">
@@ -182,60 +317,26 @@ const HomePage = () => {
 
                             <Separator borderColor={tokens.panelBorder} />
 
-                            <ConfigSection title={`${SCANNER_PROFILE_LABEL} scanner`}>
-                                <Stack gap="3">
-                                    <Text fontSize="xs" fontFamily="mono" color={tokens.panelMuted}>
-                                        Profile: {SCANNER_PROFILE}
-                                    </Text>
-                                    <Stack direction="row" gap="2" flexWrap="wrap">
-                                        <Button
-                                            size="xs"
-                                            variant="outline"
-                                            colorPalette={palette}
-                                            borderColor={tokens.panelBorder}
-                                            loading={loading}
-                                            onClick={() => loadScanner()}
-                                        >
-                                            Refresh {SCANNER_PROFILE} results
-                                        </Button>
-                                        <Button
-                                            size="xs"
-                                            variant="outline"
-                                            colorPalette={palette}
-                                            borderColor={tokens.panelBorder}
-                                            loading={running}
-                                            onClick={runScannerScan}
-                                        >
-                                            Run {SCANNER_PROFILE} scan
-                                        </Button>
-                                    </Stack>
-                                    {runError || runWarning ? (
-                                        <Box
-                                            p="3"
-                                            rounded="md"
-                                            borderWidth="1px"
-                                            borderColor={tokens.panelBorder}
-                                            bg={tokens.panelBgUser}
-                                        >
-                                            <Stack gap="1">
-                                                {runError ? (
-                                                    <Text fontSize="xs" fontFamily="mono" color="red.400">
-                                                        {runError}
-                                                    </Text>
-                                                ) : null}
-                                                {runWarning ? (
-                                                    <Text
-                                                        fontSize="xs"
-                                                        fontFamily="mono"
-                                                        color={tokens.panelLabel}
-                                                    >
-                                                        {runWarning}
-                                                    </Text>
-                                                ) : null}
-                                            </Stack>
-                                        </Box>
-                                    ) : null}
-                                </Stack>
+                            <ConfigSection title="Swing scanner">
+                                <ScannerConfigPanel
+                                    profile="swing"
+                                    loading={loading.swing}
+                                    runState={runState.swing}
+                                    onRefresh={() => loadScanner("swing")}
+                                    onRun={() => runScannerScan("swing")}
+                                />
+                            </ConfigSection>
+
+                            <Separator borderColor={tokens.panelBorder} />
+
+                            <ConfigSection title="Day scanner">
+                                <ScannerConfigPanel
+                                    profile="day"
+                                    loading={loading.day}
+                                    runState={runState.day}
+                                    onRefresh={() => loadScanner("day")}
+                                    onRun={() => runScannerScan("day")}
+                                />
                             </ConfigSection>
 
                             <Separator borderColor={tokens.panelBorder} />

@@ -227,7 +227,8 @@ const AssetInterface = ({ pair }: AssetInterfaceProps) => {
                     onChange={(e) => setStopLossPrice(e.target.value)}
                     placeholder="SL price"
                     type="number"
-                    variant="flushed"
+                    variant="outline"
+                    px="2.5"
                     fontFamily="mono"
                     fontSize="xs"
                     color="fg"

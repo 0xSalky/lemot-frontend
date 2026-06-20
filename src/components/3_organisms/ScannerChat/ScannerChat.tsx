@@ -1,18 +1,24 @@
 import type {
     ScannerChatMessageRow,
+    ScannerChatStructuredBlock,
     ScannerChatThreadRow,
 } from "@/types/scannerChatTypes";
 import {
+    draftValidationError,
     fetchScannerChatThread,
     fetchScannerChatThreads,
     messageHasDollarTicker,
-    sendScannerChatMessage,
+    progressLabel,
+    sendScannerChatMessageStream,
 } from "@/services/scannerChatUtils";
-import { formatUtcIsoLocal } from "@/services/scannerUtils";
+import { formatUtcIsoLocal, scannerProfileLabel, type ScannerProfile } from "@/services/scannerUtils";
 import ChatMarkdown from "@/components/2_molecules/ChatMarkdown/ChatMarkdown";
+import ChatMessageText from "@/components/2_molecules/ChatMessageText/ChatMessageText";
+import ChatScanSummary from "@/components/2_molecules/ChatScanSummary/ChatScanSummary";
+import ChatStructuredBlock from "@/components/2_molecules/ChatStructuredBlock/ChatStructuredBlock";
 import { useThemeColor, useThemeTokens } from "@/components/ui/theme-color";
 import { Box, Button, Flex, Separator, Stack, Text, Textarea } from "@chakra-ui/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const MONO = {
     fontFamily: "mono",
@@ -23,16 +29,26 @@ const MONO = {
 function MessageBubble({
     message,
     tokens,
+    streamingText,
 }: {
     message: ScannerChatMessageRow;
     tokens: ReturnType<typeof useThemeTokens>;
+    streamingText?: string;
 }) {
     const isUser = message.role === "user";
+    const scanSummaries = Array.isArray(message.context?.scan_summaries)
+        ? message.context.scan_summaries
+        : [];
+    const structured = message.context?.structured as ScannerChatStructuredBlock | null | undefined;
+    const body = streamingText ?? message.content;
 
     return (
         <Box alignSelf={isUser ? "flex-end" : "stretch"} maxW={isUser ? "88%" : "100%"}>
             <Text {...MONO} color="fg.muted" fontSize="2xs" mb="1" textAlign={isUser ? "right" : "left"}>
-                {isUser ? "You" : "AI"} · {formatUtcIsoLocal(message.created_at)}
+                {isUser ? "You" : "AI"}
+                {message.profile ? ` · ${scannerProfileLabel(message.profile)}` : ""}
+                {" · "}
+                {formatUtcIsoLocal(message.created_at)}
             </Text>
             <Box
                 px="3"
@@ -43,16 +59,13 @@ function MessageBubble({
                 borderColor={tokens.panelBorder}
             >
                 {isUser ? (
-                    <Text
-                        {...MONO}
-                        color={tokens.panelBody}
-                        whiteSpace="pre-wrap"
-                        wordBreak="break-word"
-                    >
-                        {message.content}
-                    </Text>
+                    <ChatMessageText content={message.content} tokens={tokens} />
                 ) : (
-                    <ChatMarkdown content={message.content} />
+                    <>
+                        <ChatScanSummary summaries={scanSummaries} tokens={tokens} />
+                        <ChatStructuredBlock structured={structured} tokens={tokens} />
+                        <ChatMarkdown content={body} />
+                    </>
                 )}
             </Box>
         </Box>
@@ -64,14 +77,21 @@ const ScannerChat = () => {
     const tokens = useThemeTokens(palette);
     const [threads, setThreads] = useState<ScannerChatThreadRow[]>([]);
     const [threadId, setThreadId] = useState<number | null>(null);
+    const [lockedProfile, setLockedProfile] = useState<ScannerProfile | null>(null);
     const [messages, setMessages] = useState<ScannerChatMessageRow[]>([]);
     const [draft, setDraft] = useState("");
     const [loading, setLoading] = useState(false);
     const [bootLoading, setBootLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [progressText, setProgressText] = useState<string | null>(null);
+    const [streamReply, setStreamReply] = useState("");
     const bottomRef = useRef<HTMLDivElement | null>(null);
 
-    const canSend = messageHasDollarTicker(draft) && !loading;
+    const draftError = useMemo(
+        () => draftValidationError(draft, lockedProfile),
+        [draft, lockedProfile],
+    );
+    const canSend = messageHasDollarTicker(draft) && !loading && !draftError;
     const hasTranscript = messages.length > 0 || loading;
 
     const scrollToBottom = useCallback(() => {
@@ -82,6 +102,8 @@ const ScannerChat = () => {
         const payload = await fetchScannerChatThread(id);
         setThreadId(id);
         setMessages(payload.messages);
+        const profile = payload.thread.profile;
+        setLockedProfile(profile === "day" || profile === "swing" ? profile : null);
     }, []);
 
     const refreshThreads = useCallback(async () => {
@@ -111,17 +133,21 @@ const ScannerChat = () => {
 
     useEffect(() => {
         scrollToBottom();
-    }, [messages, loading, scrollToBottom]);
+    }, [messages, loading, streamReply, progressText, scrollToBottom]);
 
     const startNewChat = () => {
         setThreadId(null);
+        setLockedProfile(null);
         setMessages([]);
         setDraft("");
         setError(null);
+        setProgressText(null);
+        setStreamReply("");
     };
 
     const selectThread = (id: number) => {
         setError(null);
+        setStreamReply("");
         void loadThread(id).catch((e) => {
             console.error("[chat thread]", e);
             setError(e instanceof Error ? e.message : "Failed to load thread");
@@ -130,23 +156,49 @@ const ScannerChat = () => {
 
     const handleSend = () => {
         const text = draft.trim();
-        if (!text || !messageHasDollarTicker(text) || loading) return;
+        if (!text || !canSend) return;
 
         setError(null);
         setLoading(true);
+        setProgressText("Starting…");
+        setStreamReply("");
 
-        void sendScannerChatMessage(text, threadId)
+        const optimisticUser: ScannerChatMessageRow = {
+            id: -Date.now(),
+            thread_id: threadId ?? 0,
+            role: "user",
+            content: text,
+            created_at: new Date().toISOString(),
+        };
+        setMessages((prev) => [...prev, optimisticUser]);
+        setDraft("");
+
+        void sendScannerChatMessageStream(text, threadId, {
+            onProgress: (stage, data) => {
+                setProgressText(progressLabel(stage, data));
+            },
+            onDelta: (chunk) => {
+                setProgressText(null);
+                setStreamReply((prev) => prev + chunk);
+            },
+        })
             .then((result) => {
                 setThreadId(result.thread_id);
                 setMessages(result.messages);
-                setDraft("");
+                const profile = result.profile ?? result.thread.profile;
+                setLockedProfile(profile === "day" || profile === "swing" ? profile : null);
+                setStreamReply("");
                 return refreshThreads();
             })
             .catch((e) => {
                 console.error("[chat send]", e);
                 setError(e instanceof Error ? e.message : "Chat failed");
+                setMessages((prev) => prev.filter((m) => m.id !== optimisticUser.id));
             })
-            .finally(() => setLoading(false));
+            .finally(() => {
+                setLoading(false);
+                setProgressText(null);
+            });
     };
 
     const inputSection = (
@@ -154,9 +206,11 @@ const ScannerChat = () => {
             <Textarea
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
-                placeholder="$BTC $HYPE — is this a good short?"
+                placeholder="#day $BTC — good scalp into support?"
                 rows={2}
                 resize="none"
+                px="3"
+                py="2.5"
                 fontFamily="mono"
                 fontSize="xs"
                 bg="transparent"
@@ -169,9 +223,20 @@ const ScannerChat = () => {
                     }
                 }}
             />
-            <Flex align="center" justify="space-between" gap="2">
-                <Text {...MONO} fontSize="2xs" color={canSend ? "green.600" : "fg.muted"}>
-                    {canSend ? "Ready" : "Need $pair"}
+            <Flex align="center" justify="space-between" gap="2" flexWrap="wrap">
+                <Stack direction="row" gap="2" align="center" flexWrap="wrap">
+                    <Text {...MONO} fontSize="2xs" color="fg.muted">
+                        {lockedProfile
+                            ? `Thread locked to #${lockedProfile}`
+                            : "Tag #swing or #day · default #swing"}
+                    </Text>
+                </Stack>
+                <Text
+                    {...MONO}
+                    fontSize="2xs"
+                    color={canSend ? "green.600" : draftError ? "red.400" : "fg.muted"}
+                >
+                    {draftError ?? (canSend ? "Ready" : "Need $pair")}
                 </Text>
                 <Button
                     size="sm"
@@ -204,7 +269,6 @@ const ScannerChat = () => {
             minH={hasTranscript ? "calc(100vh - 6.5rem)" : undefined}
             maxH={hasTranscript ? "calc(100vh - 6.5rem)" : undefined}
         >
-            {/* threads */}
             <Flex
                 px="3"
                 py="2"
@@ -250,27 +314,57 @@ const ScannerChat = () => {
                                 <MessageBubble key={msg.id} message={msg} tokens={tokens} />
                             ))}
                             {loading ? (
-                                <Text {...MONO} color={tokens.panelLabel}>
-                                    Scanning & thinking…
-                                </Text>
+                                <Box alignSelf="stretch">
+                                    {progressText ? (
+                                        <Text {...MONO} color={tokens.panelLabel} mb="2">
+                                            {progressText}
+                                        </Text>
+                                    ) : null}
+                                    {streamReply ? (
+                                        <MessageBubble
+                                            message={{
+                                                id: -1,
+                                                thread_id: threadId ?? 0,
+                                                role: "assistant",
+                                                content: "",
+                                                created_at: new Date().toISOString(),
+                                            }}
+                                            tokens={tokens}
+                                            streamingText={streamReply}
+                                        />
+                                    ) : null}
+                                </Box>
                             ) : null}
                             <Box ref={bottomRef} />
                         </Stack>
                     </Box>
 
-                    <Box flexShrink={0} borderTopWidth="1px" borderColor="border.emphasized" bg="bg.subtle" px="3" py="3">
+                    <Box
+                        flexShrink={0}
+                        borderTopWidth="1px"
+                        borderColor="border.emphasized"
+                        bg="bg.subtle"
+                        px="3"
+                        py="3"
+                    >
                         {inputSection}
                     </Box>
                 </>
             ) : (
                 <>
                     <Box px="3" py="3">
-                        <Text {...MONO} color="fg.muted">
-                            Ask with <Text as="span" color={tokens.panelHeading}>$TICKER</Text> — e.g. $SOL $BTC
-                        </Text>
+                        <Stack gap="2">
+                            <Text {...MONO} color="fg.muted">
+                                Use <Text as="span" color={tokens.panelHeading}>#swing</Text> or{" "}
+                                <Text as="span" color={tokens.panelHeading}>#day</Text> plus{" "}
+                                <Text as="span" color={tokens.inlineCode}>$TICKER</Text>.
+                            </Text>
+                        </Stack>
                     </Box>
                     <Separator />
-                    <Box px="3" py="3">{inputSection}</Box>
+                    <Box px="3" py="3">
+                        {inputSection}
+                    </Box>
                 </>
             )}
         </Flex>
