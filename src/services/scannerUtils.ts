@@ -70,8 +70,8 @@ export const SCANNER_PROFILE_CHART_TIMEFRAME: Record<
   ScannerProfile,
   ScannerChartTimeframe
 > = {
-  swing: "4h",
-  day: "30m",
+  swing: "1h",
+  day: "5m",
 };
 
 export async function fetchLatestScannerBatch(
