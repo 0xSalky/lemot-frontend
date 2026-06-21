@@ -63,7 +63,15 @@ function MessageBubble({
                 ) : (
                     <>
                         <ChatScanSummary summaries={scanSummaries} tokens={tokens} />
-                        <ChatStructuredBlock structured={structured} tokens={tokens} />
+                        <ChatStructuredBlock
+                            structured={structured}
+                            tokens={tokens}
+                            profile={
+                                message.profile === "day" || message.profile === "swing"
+                                    ? message.profile
+                                    : null
+                            }
+                        />
                         <ChatMarkdown content={body} />
                     </>
                 )}

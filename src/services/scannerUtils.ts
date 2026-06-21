@@ -10,6 +10,9 @@ import type {
   ScannerSetupRow,
 } from "@/types/scannerTypes";
 
+/** Auto-refresh interval for scanner/footprint charts in day scan (2 minutes). */
+export const SCANNER_CHART_REFRESH_MS = 2 * 60 * 1000;
+
 /** CCXT-style unified symbol, e.g. `BTC/USDT:USDT` → base `BTC`. */
 export function scannerSymbolToBase(symbol: string): string {
   const i = symbol.indexOf("/");
@@ -71,7 +74,7 @@ export const SCANNER_PROFILE_CHART_TIMEFRAME: Record<
   ScannerChartTimeframe
 > = {
   swing: "1h",
-  day: "5m",
+  day: "30m",
 };
 
 export async function fetchLatestScannerBatch(

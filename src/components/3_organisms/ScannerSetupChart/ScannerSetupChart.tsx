@@ -6,13 +6,13 @@ import {
   type ScannerChartPayload,
   type ScannerChartTimeframe,
 } from "@/types/scannerTypes";
-import { fetchScannerChart, formatLevelPrice } from "@/services/scannerUtils";
+import { fetchScannerChart, formatLevelPrice, SCANNER_CHART_REFRESH_MS } from "@/services/scannerUtils";
 import type { ThemeTokens } from "@/components/ui/theme-color";
 import { Box, Flex, NativeSelect, Text } from "@chakra-ui/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const CHART_HEIGHT = 168;
-const CHART_REFRESH_MS = 2 * 60 * 1000;
+const CHART_REFRESH_MS = SCANNER_CHART_REFRESH_MS;
 const ZOOM_FACTOR = 1.2;
 const ZOOM_MIN = 0.3;
 const ZOOM_MAX = 5;
@@ -35,6 +35,8 @@ type ScannerSetupChartProps = {
   bands: ScannerBandRow[];
   tokens: ThemeTokens;
   defaultTimeframe?: ScannerChartTimeframe;
+  /** When true, outer bleed margins are omitted (parent card handles layout). */
+  embedded?: boolean;
 };
 
 function computeChartBounds(
@@ -90,6 +92,7 @@ function ScannerSetupChart({
   bands,
   tokens,
   defaultTimeframe = "1h",
+  embedded = false,
 }: ScannerSetupChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const nextRefreshAtRef = useRef(0);
@@ -270,19 +273,14 @@ function ScannerSetupChart({
 
   return (
     <Box
-      mb="3"
-      mx="-3"
-      mt="-3"
+      mb={embedded ? 0 : "3"}
+      mx={embedded ? 0 : "-3"}
+      mt={embedded ? 0 : "-3"}
       borderBottomWidth="1px"
       borderColor={tokens.panelBorder}
       overflow="hidden"
     >
-      <Box
-        px="3"
-        py="1.5"
-        borderBottomWidth="1px"
-        borderColor={tokens.panelBorder}
-      >
+      <Box px="3" py="2" borderBottomWidth="1px" borderColor={tokens.panelBorder}>
         <Flex align="center" justify="space-between" gap="2">
           <Text fontFamily="mono" fontSize="2xs" color={tokens.panelLabel}>
             {timeframe} close · nearby bands
@@ -363,10 +361,10 @@ function ScannerSetupChart({
           <>
             <Flex
               position="absolute"
-              top="1"
-              left="1"
+              top="2"
+              left="2"
               zIndex={4}
-              gap="0.5"
+              gap="1"
             >
               <Box
                 as="button"
@@ -375,8 +373,9 @@ function ScannerSetupChart({
                 fontFamily="mono"
                 fontSize="2xs"
                 lineHeight="1"
-                w="1.35rem"
-                h="1.35rem"
+                w="1.5rem"
+                h="1.5rem"
+                minW="1.5rem"
                 display="flex"
                 alignItems="center"
                 justifyContent="center"
@@ -397,8 +396,9 @@ function ScannerSetupChart({
                 fontFamily="mono"
                 fontSize="2xs"
                 lineHeight="1"
-                w="1.35rem"
-                h="1.35rem"
+                w="1.5rem"
+                h="1.5rem"
+                minW="1.5rem"
                 display="flex"
                 alignItems="center"
                 justifyContent="center"
@@ -415,10 +415,9 @@ function ScannerSetupChart({
               <Text
                 fontFamily="mono"
                 fontSize="9px"
-                lineHeight="1"
+                lineHeight="1.5rem"
                 color={tokens.panelMuted}
-                alignSelf="center"
-                minW="1.4rem"
+                minW="1.75rem"
                 textAlign="center"
                 title="Zoom level"
               >

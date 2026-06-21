@@ -14,11 +14,14 @@ const MONO = {
 type ChatStructuredBlockProps = {
   structured: ScannerChatStructuredBlock | null | undefined;
   tokens: ThemeTokens;
+  profile?: "day" | "swing" | null;
 };
 
-const ChatStructuredBlock = ({ structured, tokens }: ChatStructuredBlockProps) => {
+const ChatStructuredBlock = ({ structured, tokens, profile }: ChatStructuredBlockProps) => {
   const setups = structured?.setups;
   if (!Array.isArray(setups) || setups.length === 0) return null;
+
+  const edgeLabel = profile === "day" ? "Orderflow read" : "Funding edge";
 
   return (
     <Stack gap="2" mb="3">
@@ -51,7 +54,7 @@ const ChatStructuredBlock = ({ structured, tokens }: ChatStructuredBlockProps) =
             ) : null}
             {setup.ai_opportunity_notes ? (
               <Text {...MONO} color={tokens.panelBody} mb="1">
-                Funding edge: {setup.ai_opportunity_notes}
+                {edgeLabel}: {setup.ai_opportunity_notes}
               </Text>
             ) : null}
             {setup.ai_invalidation ? (

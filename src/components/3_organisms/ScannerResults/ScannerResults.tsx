@@ -16,14 +16,20 @@ import {
     orderedBands,
     scannerProfileLabel,
     SCANNER_PROFILE_CHART_TIMEFRAME,
+    scannerSymbolToBase,
     setupsFromBatch,
+    SCANNER_CHART_REFRESH_MS,
     type ScannerProfile,
 } from "@/services/scannerUtils";
 import ResponsiveCardGrid from "@/components/4_layouts/ResponsiveCardGrid/ResponsiveCardGrid";
+import DaySetupChart from "@/components/3_organisms/DaySetupChart/DaySetupChart";
 import ScannerSetupChart from "@/components/3_organisms/ScannerSetupChart/ScannerSetupChart";
 import { useThemeColor, useThemeTokens, type ThemeTokens } from "@/components/ui/theme-color";
-import { Box, Separator, Stack, Text } from "@chakra-ui/react";
+import { fetchFootprintView } from "@/services/footprintUtils";
+import { Box, Badge, Flex, Separator, Stack, Text } from "@chakra-ui/react";
 import type { ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { FootprintPairView, FootprintViewPayload } from "@/types/footprintTypes";
 
 type ScannerResultsProps = {
     profile: ScannerProfile;
@@ -127,8 +133,18 @@ function riskTone(risk: string | undefined): "green" | "accent" | "red" | "neutr
     return "neutral";
 }
 
-function AiBlock({ ai, tokens }: { ai: ScannerAiSetupAnalysis; tokens: ThemeTokens }) {
+function AiBlock({
+    ai,
+    tokens,
+    profile,
+}: {
+    ai: ScannerAiSetupAnalysis;
+    tokens: ThemeTokens;
+    profile: ScannerProfile;
+}) {
     const action = ai.ai_action ?? "unknown";
+    const opportunityTitle =
+        profile === "day" ? "── orderflow read" : "── opportunity  (funding · OI)";
 
     return (
         <Box
@@ -177,7 +193,7 @@ function AiBlock({ ai, tokens }: { ai: ScannerAiSetupAnalysis; tokens: ThemeToke
                 ) : null}
 
                 {ai.ai_opportunity_notes ? (
-                    <AiSection title="── opportunity  (funding · OI)" tokens={tokens} emphasize>
+                    <AiSection title={opportunityTitle} tokens={tokens} emphasize>
                         <Text {...AI_TEXT} color={tokens.panelBody} whiteSpace="pre-wrap" wordBreak="break-word">
                             {ai.ai_opportunity_notes}
                         </Text>
@@ -219,10 +235,16 @@ function SetupCard({
     setup,
     tokens,
     defaultChartTimeframe,
+    profile,
+    footprintPair,
+    footprintLoading,
 }: {
     setup: ScannerSetupRow;
     tokens: ThemeTokens;
     defaultChartTimeframe?: ScannerChartTimeframe;
+    profile: ScannerProfile;
+    footprintPair?: FootprintPairView | null;
+    footprintLoading?: boolean;
 }) {
     const bands = orderedBands(Array.isArray(setup.bands) ? setup.bands : []);
 
@@ -240,13 +262,25 @@ function SetupCard({
             overflow="hidden"
             boxShadow="0 0 22px rgba(255, 78, 205, 0.07)"
         >
-            <ScannerSetupChart
-                symbol={setup.symbol}
-                price={setup.price}
-                bands={bands}
-                tokens={tokens}
-                defaultTimeframe={defaultChartTimeframe}
-            />
+            {profile === "day" ? (
+                <DaySetupChart
+                    symbol={setup.symbol}
+                    price={setup.price}
+                    bands={bands}
+                    tokens={tokens}
+                    footprintPair={footprintPair}
+                    footprintLoading={footprintLoading}
+                    defaultChartTimeframe={defaultChartTimeframe}
+                />
+            ) : (
+                <ScannerSetupChart
+                    symbol={setup.symbol}
+                    price={setup.price}
+                    bands={bands}
+                    tokens={tokens}
+                    defaultTimeframe={defaultChartTimeframe}
+                />
+            )}
             <Text whiteSpace="pre-wrap" wordBreak="break-word">
                 {formatSetupHeaderLine1(setup)}
             </Text>
@@ -256,7 +290,7 @@ function SetupCard({
                     <BandBlock key={`${setup.id}-${band.side}-${bandIdx}`} band={band} />
                 ))}
             </Stack>
-            {setup.ai ? <AiBlock ai={setup.ai} tokens={tokens} /> : null}
+            {setup.ai ? <AiBlock ai={setup.ai} tokens={tokens} profile={profile} /> : null}
         </Box>
     );
 }
@@ -342,6 +376,55 @@ const ScannerResults = ({ profile, latestBatch, loading = false }: ScannerResult
     const setups = setupsFromBatch(latestBatch);
     const profileLabel = scannerProfileLabel(profile);
     const defaultChartTimeframe = SCANNER_PROFILE_CHART_TIMEFRAME[profile];
+    const [footprintPayload, setFootprintPayload] = useState<FootprintViewPayload | null>(null);
+    const [footprintLoading, setFootprintLoading] = useState(false);
+
+    const batchMeta =
+        latestBatch != null && !("message" in latestBatch) ? latestBatch.batch : null;
+
+    const footprintSymbolsKey = useMemo(() => {
+        if (latestBatch == null || "message" in latestBatch) return "";
+        return [...new Set(latestBatch.setups.map((setup) => scannerSymbolToBase(setup.symbol)))]
+            .sort()
+            .join(",");
+    }, [latestBatch]);
+
+    useEffect(() => {
+        if (profile !== "day" || !footprintSymbolsKey) {
+            setFootprintPayload(null);
+            setFootprintLoading(false);
+            return;
+        }
+
+        const symbols = footprintSymbolsKey.split(",");
+        let cancelled = false;
+        setFootprintLoading(true);
+
+        const loadFootprint = (initial: boolean) => {
+            void fetchFootprintView(symbols, { profile: "day", timeframe: "30m" })
+                .then((data) => {
+                    if (!cancelled) setFootprintPayload(data);
+                })
+                .catch(() => {
+                    if (!cancelled) setFootprintPayload(null);
+                })
+                .finally(() => {
+                    if (!cancelled && initial) setFootprintLoading(false);
+                });
+        };
+
+        loadFootprint(true);
+        const refreshId = window.setInterval(() => loadFootprint(false), SCANNER_CHART_REFRESH_MS);
+
+        return () => {
+            cancelled = true;
+            window.clearInterval(refreshId);
+        };
+    }, [profile, footprintSymbolsKey]);
+
+    const wsConnected =
+        footprintPayload?.health &&
+        Number((footprintPayload.health as { ws_connected?: number }).ws_connected) === 1;
 
     if (loading && latestBatch == null) {
         return (
@@ -367,22 +450,44 @@ const ScannerResults = ({ profile, latestBatch, loading = false }: ScannerResult
         );
     }
 
-    const batchMeta =
-        latestBatch != null && !("message" in latestBatch) ? latestBatch.batch : null;
+    const batchMetaLine = batchMeta;
 
     return (
         <Stack gap="3" align="stretch">
-            {batchMeta ? (
+            {batchMetaLine ? (
                 <Stack gap="2">
-                    <Text fontSize="xs" color="fg.muted" fontFamily="mono">
-                        batch #{batchMeta.id} · {batchMeta.mode} · {batchMeta.match_count} setups ·{" "}
-                        {formatUtcIsoLocal(batchMeta.created_at)}
-                        {batchMeta.ai_generated_at
-                            ? ` · ai ${formatUtcIsoLocal(batchMeta.ai_generated_at)}`
-                            : ""}
-                    </Text>
-                    {batchMeta.ai_summary?.btc_read ? (
-                        <BtcReadCard text={batchMeta.ai_summary.btc_read} tokens={tokens} />
+                    <Flex gap="2" flexWrap="wrap" align="center">
+                        <Text fontSize="xs" color="fg.muted" fontFamily="mono">
+                            batch #{batchMetaLine.id} · {batchMetaLine.mode} · {batchMetaLine.match_count}{" "}
+                            setups · {formatUtcIsoLocal(batchMetaLine.created_at)}
+                            {batchMetaLine.ai_generated_at
+                                ? ` · ai ${formatUtcIsoLocal(batchMetaLine.ai_generated_at)}`
+                                : ""}
+                        </Text>
+                        {profile === "day" ? (
+                            footprintLoading ? (
+                                <Badge
+                                    colorPalette="blue"
+                                    variant="subtle"
+                                    fontFamily="mono"
+                                    fontSize="2xs"
+                                >
+                                    loading footprint charts…
+                                </Badge>
+                            ) : (
+                                <Badge
+                                    colorPalette={wsConnected ? "green" : "gray"}
+                                    variant="subtle"
+                                    fontFamily="mono"
+                                    fontSize="2xs"
+                                >
+                                    footprint collector {wsConnected ? "online" : "offline"}
+                                </Badge>
+                            )
+                        ) : null}
+                    </Flex>
+                    {batchMetaLine.ai_summary?.btc_read ? (
+                        <BtcReadCard text={batchMetaLine.ai_summary.btc_read} tokens={tokens} />
                     ) : null}
                 </Stack>
             ) : null}
@@ -392,7 +497,14 @@ const ScannerResults = ({ profile, latestBatch, loading = false }: ScannerResult
                         key={setup.id}
                         setup={setup}
                         tokens={tokens}
+                        profile={profile}
                         defaultChartTimeframe={defaultChartTimeframe}
+                        footprintPair={
+                            profile === "day"
+                                ? footprintPayload?.pairs[scannerSymbolToBase(setup.symbol)] ?? null
+                                : null
+                        }
+                        footprintLoading={profile === "day" ? footprintLoading : false}
                     />
                 ))}
             </ResponsiveCardGrid>

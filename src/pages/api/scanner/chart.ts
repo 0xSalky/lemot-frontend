@@ -22,5 +22,5 @@ export default async function handler(
     params.set("timeframe", timeframe);
   }
 
-  await proxyTradingGet(req, res, `/scanner/chart?${params.toString()}`);
+  await proxyTradingGet(req, res, "/scanner/chart");
 }
