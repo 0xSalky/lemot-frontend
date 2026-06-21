@@ -84,6 +84,16 @@ function applyZoomBounds(
   return [spot - halfSpan, spot + halfSpan];
 }
 
+function paddedValueRange(values: number[]): [number, number] {
+  if (values.length === 0) return [0, 1];
+  const rawMin = Math.min(...values);
+  const rawMax = Math.max(...values);
+  const mid = (rawMin + rawMax) / 2;
+  const span = Math.max(rawMax - rawMin, Math.abs(mid) * 0.002, 1e-12);
+  const pad = span * 0.08;
+  return [mid - span / 2 - pad, mid + span / 2 + pad];
+}
+
 export default function FootprintPairChart({
   bars,
   timeframe,
@@ -130,7 +140,7 @@ export default function FootprintPairChart({
     const [minPrice, maxPrice] = applyZoomBounds(baseMin, baseMax, zoomScale, spotPrice);
     const priceSpan = Math.max(maxPrice - minPrice, 1e-12);
 
-    const chartWidth = Math.max(width, 280);
+    const chartWidth = width;
     const innerW = chartWidth - PAD_X * 2;
     const priceInnerH = PRICE_HEIGHT - PAD_TOP - PAD_BOTTOM;
     const plotBottom = PAD_TOP + priceInnerH;
@@ -141,22 +151,13 @@ export default function FootprintPairChart({
     const maxAbsDelta = Math.max(...deltas.map(Math.abs), 1e-12);
 
     const cvdValues = visible.map((b) => b.cvd_window_usd ?? b.cvd_window ?? 0);
-    const minCvd = Math.min(...cvdValues);
-    const maxCvd = Math.max(...cvdValues);
+    const [minCvd, maxCvd] = paddedValueRange(cvdValues);
     const cvdSpan = Math.max(maxCvd - minCvd, 1e-12);
 
     const oiCloses = visible
       .map((b) => b.oi_close_usd ?? b.oi_close)
-      .filter((v): v is number => v != null);
-    const oiMid = oiCloses.length
-      ? oiCloses.reduce((sum, value) => sum + value, 0) / oiCloses.length
-      : 0;
-    const rawMinOi = oiCloses.length ? Math.min(...oiCloses) : 0;
-    const rawMaxOi = oiCloses.length ? Math.max(...oiCloses) : 1;
-    const minHalfSpan = Math.max(oiMid * 0.005, 1e-12);
-    const halfSpan = Math.max((rawMaxOi - rawMinOi) / 2, minHalfSpan);
-    const minOi = oiMid - halfSpan;
-    const maxOi = oiMid + halfSpan;
+      .filter((v): v is number => v != null && Number.isFinite(v));
+    const [minOi, maxOi] = paddedValueRange(oiCloses);
     const oiSpan = Math.max(maxOi - minOi, 1e-12);
 
     const oiPcts = visible.map((b) => b.oi_change_pct ?? 0);
@@ -192,7 +193,10 @@ export default function FootprintPairChart({
       .join(" ");
 
     const cvdPoints = visible
-      .map((bar, i) => `${xAt(i).toFixed(1)},${yCvd(bar.cvd_window ?? 0).toFixed(1)}`)
+      .map((bar, i) => {
+        const cvd = bar.cvd_window_usd ?? bar.cvd_window ?? 0;
+        return `${xAt(i).toFixed(1)},${yCvd(cvd).toFixed(1)}`;
+      })
       .join(" ");
 
     const oiPoints = visible
@@ -440,8 +444,10 @@ export default function FootprintPairChart({
             ) : null}
 
             <svg
-              width={plot.chartWidth}
+              width="100%"
               height={TOTAL_HEIGHT}
+              viewBox={`0 0 ${plot.chartWidth} ${TOTAL_HEIGHT}`}
+              preserveAspectRatio="none"
               aria-label={`${timeframe} footprint chart${symbol ? ` for ${symbol}` : ""}`}
               onMouseLeave={() => setHoverIndex(null)}
             >
@@ -704,17 +710,6 @@ export default function FootprintPairChart({
             ) : null}
           </>
         )}
-      </Box>
-
-      <Box px="3" py="1.5" borderTopWidth="1px" borderColor={tokens.panelBorder} overflowX="auto">
-        <Text fontFamily="mono" fontSize="9px" color={tokens.panelMuted} whiteSpace="nowrap">
-          {plot?.visible.slice(-12).map((bar) => (
-            <Text as="span" key={bar.time} mr="3">
-              {formatBarTime(bar.time)} Δ {formatFootprintDelta(bar.delta_usd ?? bar.delta)}
-              {bar.oi_change_pct != null ? ` · OI ${formatOiChange(bar.oi_change_pct)}` : ""}
-            </Text>
-          ))}
-        </Text>
       </Box>
     </Box>
   );
