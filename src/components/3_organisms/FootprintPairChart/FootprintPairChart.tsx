@@ -110,10 +110,16 @@ export default function FootprintPairChart({
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [zoomStep, setZoomStep] = useState(0);
 
-  useEffect(() => {
+  const viewKey = useMemo(
+    () => `${timeframe}:${bars.length}:${bars.at(-1)?.time ?? 0}`,
+    [timeframe, bars],
+  );
+  const [prevViewKey, setPrevViewKey] = useState(viewKey);
+  if (viewKey !== prevViewKey) {
+    setPrevViewKey(viewKey);
     setZoomStep(0);
     setHoverIndex(null);
-  }, [timeframe, bars]);
+  }
 
   useEffect(() => {
     const el = containerRef.current;
