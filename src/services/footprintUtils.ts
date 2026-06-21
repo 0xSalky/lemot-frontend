@@ -40,9 +40,12 @@ export async function fetchFootprintView(
 }
 
 export function hasFootprintData(pair?: FootprintPairView | null): boolean {
-  if (!pair) return false;
-  if (pair.orderflow?.bars?.length) return true;
-  return pair.merged?.some((bar) => bar.close > 0) ?? false;
+  return Boolean(pair?.orderflow?.bars?.length);
+}
+
+/** True when WS orderflow bars exist — gates footprint chart + orderflow tags in day scan UI. */
+export function hasOrderflowData(pair?: FootprintPairView | null): boolean {
+  return hasFootprintData(pair);
 }
 
 /** Symbols tracked by the footprint collector (day scan shows loading, not REST chart, while fetching). */

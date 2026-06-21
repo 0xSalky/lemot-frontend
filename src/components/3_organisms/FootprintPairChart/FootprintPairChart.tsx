@@ -299,7 +299,7 @@ export default function FootprintPairChart({
       <Box px="3" py="2" borderBottomWidth="1px" borderColor={tokens.panelBorder}>
         <Flex align="center" justify="space-between" gap="2" flexWrap="wrap">
           <Text fontFamily="mono" fontSize="2xs" color={tokens.panelLabel}>
-            {timeframe} · price · delta + CVD · OI
+            {timeframe} · price · delta + CVD · OI · orderflow live
           </Text>
           {onTimeframeChange ? (
             <NativeSelect.Root size="xs" width={{ base: "2.5rem", md: "3rem" }}>

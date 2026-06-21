@@ -4,22 +4,15 @@ import FootprintPairChart from "@/components/3_organisms/FootprintPairChart/Foot
 import ScannerSetupChart from "@/components/3_organisms/ScannerSetupChart/ScannerSetupChart";
 import type { ThemeTokens } from "@/components/ui/theme-color";
 import {
-  biasPalette,
-  displaySignals,
   expectsFootprintSymbol,
   fetchFootprintView,
-  formatFlowBiasLabel,
-  formatStructureBiasLabel,
-  hasFootprintData,
-  signalSeverityPalette,
-  structureBiasPalette,
+  hasOrderflowData,
 } from "@/services/footprintUtils";
 import { scannerSymbolToBase } from "@/services/scannerUtils";
 import type { FootprintPairView, FootprintTimeframe } from "@/types/footprintTypes";
-import { FOOTPRINT_SIGNAL_SEVERITY_ORDER } from "@/types/footprintTypes";
 import type { ScannerBandRow, ScannerChartTimeframe } from "@/types/scannerTypes";
-import { Badge, Box, Flex, Skeleton, Spinner, Stack, Text } from "@chakra-ui/react";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { Box, Flex, Skeleton, Spinner, Stack, Text } from "@chakra-ui/react";
+import { useCallback, useState, type ReactNode } from "react";
 
 type DaySetupChartProps = {
   symbol: string;
@@ -29,51 +22,58 @@ type DaySetupChartProps = {
   footprintPair?: FootprintPairView | null;
   footprintLoading?: boolean;
   defaultChartTimeframe?: ScannerChartTimeframe;
+  /** Day scan only — swing always uses the simple REST chart layout. */
+  footprintEnabled?: boolean;
 };
 
 const FOOTPRINT_LOADING_HEIGHTS = [120, 64, 56] as const;
+const FOOTPRINT_CHART_HEIGHT = FOOTPRINT_LOADING_HEIGHTS.reduce((sum, h) => sum + h, 0);
+const SIMPLE_CHART_HEIGHT = 168;
 
 function DayChartBleed({
   children,
-  footer,
   tokens,
+  minHeight,
 }: {
   children: ReactNode;
-  footer: string;
   tokens: ThemeTokens;
+  minHeight?: number;
 }) {
   return (
     <Box
       mb="3"
       mx="-3"
-      mt="-3"
       borderBottomWidth="1px"
       borderColor={tokens.panelBorder}
       overflow="hidden"
+      minH={minHeight != null ? `${minHeight}px` : undefined}
     >
       {children}
-      <Text px="3" py="2" fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
-        {footer}
-      </Text>
     </Box>
   );
 }
 
 function FootprintChartLoading({ base, tokens }: { base: string; tokens: ThemeTokens }) {
   return (
-    <DayChartBleed tokens={tokens} footer="30m footprint · loading orderflow…">
+    <DayChartBleed tokens={tokens} minHeight={FOOTPRINT_CHART_HEIGHT + 48}>
       <Flex
         align="center"
+        justify="space-between"
         gap="2"
         px="3"
         py="2"
         borderBottomWidth="1px"
         borderColor={tokens.panelBorder}
       >
-        <Spinner size="sm" color={tokens.panelHeading} />
-        <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
-          Loading {base} footprint chart…
+        <Text fontFamily="mono" fontSize="2xs" color={tokens.panelLabel}>
+          30m · price · delta + CVD · OI · loading…
         </Text>
+        <Flex align="center" gap="2">
+          <Spinner size="sm" color={tokens.panelHeading} />
+          <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
+            {base}
+          </Text>
+        </Flex>
       </Flex>
       <Stack gap="0">
         {FOOTPRINT_LOADING_HEIGHTS.map((height, index) => (
@@ -97,29 +97,28 @@ export default function DaySetupChart({
   footprintPair,
   footprintLoading = false,
   defaultChartTimeframe = "30m",
+  footprintEnabled = true,
 }: DaySetupChartProps) {
   const base = scannerSymbolToBase(symbol);
-  const expectsFootprint = expectsFootprintSymbol(base);
+  const expectsFootprint = footprintEnabled && expectsFootprintSymbol(base);
   const [fpTimeframe, setFpTimeframe] = useState<FootprintTimeframe>("30m");
-  const [fpPair, setFpPair] = useState<FootprintPairView | null | undefined>(footprintPair);
+  const [altTimeframePair, setAltTimeframePair] = useState<FootprintPairView | null>(null);
   const [fpLoading, setFpLoading] = useState(false);
-
-  useEffect(() => {
-    if (fpTimeframe === "30m") {
-      setFpPair(footprintPair);
-    }
-  }, [footprintPair, fpTimeframe]);
 
   const handleFootprintTimeframeChange = useCallback(
     (next: FootprintTimeframe) => {
       setFpTimeframe(next);
+      if (next === "30m") {
+        setAltTimeframePair(null);
+        return;
+      }
       setFpLoading(true);
       void fetchFootprintView([base], { profile: "day", timeframe: next })
         .then((data) => {
-          setFpPair(data.pairs[base] ?? null);
+          setAltTimeframePair(data.pairs[base] ?? null);
         })
         .catch(() => {
-          setFpPair(null);
+          setAltTimeframePair(null);
         })
         .finally(() => {
           setFpLoading(false);
@@ -128,55 +127,19 @@ export default function DaySetupChart({
     [base],
   );
 
-  const pairForDisplay = footprintPair ?? fpPair;
+  const pairForDisplay = fpTimeframe === "30m" ? footprintPair : altTimeframePair;
+  const showOrderflow = hasOrderflowData(pairForDisplay);
+  const showFootprintLoading = expectsFootprint && footprintLoading && !showOrderflow;
 
-  if (expectsFootprint && footprintLoading && !hasFootprintData(pairForDisplay)) {
+  if (showFootprintLoading) {
     return <FootprintChartLoading base={base} tokens={tokens} />;
   }
 
-  if (hasFootprintData(fpPair)) {
-    const summary = fpPair!.summary;
-    const signals = [...displaySignals(summary)]
-      .sort(
-        (a, b) =>
-          FOOTPRINT_SIGNAL_SEVERITY_ORDER[a.severity] -
-          FOOTPRINT_SIGNAL_SEVERITY_ORDER[b.severity],
-      )
-      .slice(0, 3);
-
+  if (showOrderflow && pairForDisplay) {
     return (
-      <DayChartBleed tokens={tokens} footer={`${fpTimeframe} footprint · orderflow live`}>
-        <Flex gap="2" flexWrap="wrap" px="3" py="2">
-          <Badge
-            colorPalette={structureBiasPalette(summary.structure_bias)}
-            variant="solid"
-            fontFamily="mono"
-            fontSize="2xs"
-          >
-            {formatStructureBiasLabel(summary.structure_bias, summary.structure_timeframe)}
-          </Badge>
-          <Badge
-            colorPalette={biasPalette(summary.flow_bias ?? summary.bias)}
-            variant="outline"
-            fontFamily="mono"
-            fontSize="2xs"
-          >
-            {formatFlowBiasLabel(summary.flow_bias ?? summary.bias)}
-          </Badge>
-          {signals.map((signal) => (
-            <Badge
-              key={signal.id}
-              colorPalette={signalSeverityPalette(signal.severity)}
-              variant="subtle"
-              fontFamily="mono"
-              fontSize="2xs"
-            >
-              {signal.label}
-            </Badge>
-          ))}
-        </Flex>
+      <DayChartBleed tokens={tokens} minHeight={FOOTPRINT_CHART_HEIGHT}>
         <FootprintPairChart
-          bars={fpPair!.merged}
+          bars={pairForDisplay.merged}
           timeframe={fpTimeframe}
           onTimeframeChange={handleFootprintTimeframeChange}
           loading={fpLoading}
@@ -190,10 +153,7 @@ export default function DaySetupChart({
   }
 
   return (
-    <DayChartBleed
-      tokens={tokens}
-      footer={`${defaultChartTimeframe} chart · no footprint data`}
-    >
+    <DayChartBleed tokens={tokens} minHeight={SIMPLE_CHART_HEIGHT}>
       <ScannerSetupChart
         symbol={symbol}
         price={price}

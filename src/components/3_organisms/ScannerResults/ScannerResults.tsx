@@ -9,7 +9,6 @@ import {
     bandLineMarker,
     bandLineSections,
     formatCompactLevel,
-    formatSetupHeaderLine1,
     formatUtcIsoLocal,
     isLevelAnchor,
     levelsHighToLow,
@@ -22,11 +21,12 @@ import {
     type ScannerProfile,
 } from "@/services/scannerUtils";
 import ResponsiveCardGrid from "@/components/4_layouts/ResponsiveCardGrid/ResponsiveCardGrid";
+import FootprintOrderflowTags from "@/components/2_molecules/FootprintOrderflowTags/FootprintOrderflowTags";
+import SetupHeaderTags from "@/components/2_molecules/SetupHeaderTags/SetupHeaderTags";
 import DaySetupChart from "@/components/3_organisms/DaySetupChart/DaySetupChart";
-import ScannerSetupChart from "@/components/3_organisms/ScannerSetupChart/ScannerSetupChart";
 import { useThemeColor, useThemeTokens, type ThemeTokens } from "@/components/ui/theme-color";
-import { fetchFootprintView } from "@/services/footprintUtils";
-import { Box, Badge, Flex, Separator, Stack, Text } from "@chakra-ui/react";
+import { fetchFootprintView, hasOrderflowData } from "@/services/footprintUtils";
+import { Box, Badge, Flex, Stack, Text } from "@chakra-ui/react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import type { FootprintPairView, FootprintViewPayload } from "@/types/footprintTypes";
@@ -262,30 +262,21 @@ function SetupCard({
             overflow="hidden"
             boxShadow="0 0 22px rgba(255, 78, 205, 0.07)"
         >
-            {profile === "day" ? (
-                <DaySetupChart
-                    symbol={setup.symbol}
-                    price={setup.price}
-                    bands={bands}
-                    tokens={tokens}
-                    footprintPair={footprintPair}
-                    footprintLoading={footprintLoading}
-                    defaultChartTimeframe={defaultChartTimeframe}
-                />
-            ) : (
-                <ScannerSetupChart
-                    symbol={setup.symbol}
-                    price={setup.price}
-                    bands={bands}
-                    tokens={tokens}
-                    defaultTimeframe={defaultChartTimeframe}
-                />
-            )}
-            <Text whiteSpace="pre-wrap" wordBreak="break-word">
-                {formatSetupHeaderLine1(setup)}
-            </Text>
-            <Separator my="2" />
-            <Stack gap="3">
+            <SetupHeaderTags setup={setup} tokens={tokens} />
+            {profile === "day" && hasOrderflowData(footprintPair) && footprintPair ? (
+                <FootprintOrderflowTags summary={footprintPair.summary} tokens={tokens} />
+            ) : null}
+            <DaySetupChart
+                symbol={setup.symbol}
+                price={setup.price}
+                bands={bands}
+                tokens={tokens}
+                footprintPair={profile === "day" ? footprintPair : null}
+                footprintLoading={profile === "day" ? footprintLoading : false}
+                footprintEnabled={profile === "day"}
+                defaultChartTimeframe={defaultChartTimeframe}
+            />
+            <Stack gap="3" mt="2">
                 {bands.map((band, bandIdx) => (
                     <BandBlock key={`${setup.id}-${band.side}-${bandIdx}`} band={band} />
                 ))}
@@ -389,16 +380,24 @@ const ScannerResults = ({ profile, latestBatch, loading = false }: ScannerResult
             .join(",");
     }, [latestBatch]);
 
-    useEffect(() => {
-        if (profile !== "day" || !footprintSymbolsKey) {
+    const activeFootprintKey = profile === "day" ? footprintSymbolsKey : "";
+    const [prevFootprintKey, setPrevFootprintKey] = useState<string | null>(null);
+
+    if (activeFootprintKey !== prevFootprintKey) {
+        setPrevFootprintKey(activeFootprintKey);
+        if (!activeFootprintKey) {
             setFootprintPayload(null);
             setFootprintLoading(false);
-            return;
+        } else {
+            setFootprintLoading(true);
         }
+    }
 
-        const symbols = footprintSymbolsKey.split(",");
+    useEffect(() => {
+        if (!activeFootprintKey) return;
+
+        const symbols = activeFootprintKey.split(",");
         let cancelled = false;
-        setFootprintLoading(true);
 
         const loadFootprint = (initial: boolean) => {
             void fetchFootprintView(symbols, { profile: "day", timeframe: "30m" })
@@ -420,7 +419,7 @@ const ScannerResults = ({ profile, latestBatch, loading = false }: ScannerResult
             cancelled = true;
             window.clearInterval(refreshId);
         };
-    }, [profile, footprintSymbolsKey]);
+    }, [activeFootprintKey]);
 
     const wsConnected =
         footprintPayload?.health &&

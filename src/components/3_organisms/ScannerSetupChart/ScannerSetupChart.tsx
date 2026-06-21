@@ -276,7 +276,7 @@ function ScannerSetupChart({
       mb={embedded ? 0 : "3"}
       mx={embedded ? 0 : "-3"}
       mt={embedded ? 0 : "-3"}
-      borderBottomWidth="1px"
+      borderBottomWidth={embedded ? 0 : "1px"}
       borderColor={tokens.panelBorder}
       overflow="hidden"
     >
