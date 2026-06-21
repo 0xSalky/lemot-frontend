@@ -1,7 +1,6 @@
 import { apiFetch } from "@/services/apiFetch";
 import type { ScannerProfile } from "@/services/scannerUtils";
 import type {
-  ScannerChatSendResponse,
   ScannerChatSendResult,
   ScannerChatStreamHandlers,
   ScannerChatThreadPayload,
@@ -52,7 +51,9 @@ export function draftValidationError(
   message: string,
   lockedProfile?: ScannerProfile | null,
 ): string | null {
-  return profileTagConflict(message) ?? threadProfileConflict(message, lockedProfile);
+  return (
+    profileTagConflict(message) ?? threadProfileConflict(message, lockedProfile)
+  );
 }
 
 function apiErrorMessage(data: unknown, status: number): string {
@@ -66,7 +67,9 @@ function apiErrorMessage(data: unknown, status: number): string {
 }
 
 export async function fetchScannerChatThreads(): Promise<ScannerChatThreadsPayload> {
-  const res = await apiFetch("/api/scanner/chat/threads", { cache: "no-store" });
+  const res = await apiFetch("/api/scanner/chat/threads", {
+    cache: "no-store",
+  });
   const data: unknown = await res.json();
   if (!res.ok) {
     throw new Error(apiErrorMessage(data, res.status));
@@ -125,6 +128,14 @@ function parseSseChunk(
   return doneResult;
 }
 
+export function scannerChatDisplayTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
+  }
+}
+
 export async function sendScannerChatMessageStream(
   message: string,
   threadId?: number | null,
@@ -136,6 +147,7 @@ export async function sendScannerChatMessageStream(
     body: JSON.stringify({
       message,
       thread_id: threadId ?? undefined,
+      display_timezone: scannerChatDisplayTimezone(),
     }),
   });
 
@@ -190,7 +202,10 @@ export async function sendScannerChatMessage(
   return sendScannerChatMessageStream(message, threadId);
 }
 
-export function progressLabel(stage: string, data: Record<string, unknown>): string {
+export function progressLabel(
+  stage: string,
+  data: Record<string, unknown>,
+): string {
   if (stage === "validating") return "Validating pairs…";
   if (stage === "scanning") {
     const base = data.base ?? data.symbol;
