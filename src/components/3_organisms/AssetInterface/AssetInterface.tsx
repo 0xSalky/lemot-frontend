@@ -131,6 +131,13 @@ const AssetInterface = ({ pair }: AssetInterfaceProps) => {
         setSubmitting(true);
         try {
             const tp_levels = TP_PRESETS[tpPresets as keyof typeof TP_PRESETS];
+            if (!tp_levels?.length) {
+                toaster.error({
+                    title: "Trade failed",
+                    description: `Unknown TP preset "${tpPresets}". Pick another tp preset.`,
+                });
+                return;
+            }
             const stop_loss_text_formatted = stopLoss.startsWith("natr_")
                 ? `${stopLoss}_${NATR_MULTIPLIER}`
                 : stopLoss;

@@ -20,7 +20,7 @@ import {
 } from "@/services/scannerUtils";
 import { Button, Box, Separator, Stack, Tabs, Text } from "@chakra-ui/react";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 
 function ConfigSection({ title, children }: { title: string; children: ReactNode }) {
     const tokens = useThemeTokens();
@@ -52,6 +52,31 @@ const INITIAL_RUN_STATE: ProfileRunState = {
     runError: null,
     runWarning: null,
 };
+
+const INITIAL_SCANNER_LOADING: Record<ScannerProfile, boolean> = {
+    swing: true,
+    day: true,
+};
+
+function runScannerBatchFetch(
+    profile: ScannerProfile,
+    loadIdRef: MutableRefObject<Record<ScannerProfile, number>>,
+    setBatches: Dispatch<SetStateAction<Record<ScannerProfile, ScannerLatestBatchFetchResult | null>>>,
+    setLoading: Dispatch<SetStateAction<Record<ScannerProfile, boolean>>>,
+) {
+    const loadId = ++loadIdRef.current[profile];
+
+    return fetchLatestScannerBatch(profile)
+        .then((batch) => {
+            if (loadId !== loadIdRef.current[profile]) return;
+            setBatches((prev) => ({ ...prev, [profile]: batch }));
+        })
+        .catch((e) => console.error(`[scanner refresh ${profile}]`, e))
+        .finally(() => {
+            if (loadId !== loadIdRef.current[profile]) return;
+            setLoading((prev) => ({ ...prev, [profile]: false }));
+        });
+}
 
 function ScannerConfigPanel({
     profile,
@@ -132,10 +157,7 @@ const HomePage = () => {
         swing: null,
         day: null,
     });
-    const [loading, setLoading] = useState<Record<ScannerProfile, boolean>>({
-        swing: false,
-        day: false,
-    });
+    const [loading, setLoading] = useState<Record<ScannerProfile, boolean>>(INITIAL_SCANNER_LOADING);
     const [runState, setRunState] = useState<Record<ScannerProfile, ProfileRunState>>({
         swing: { ...INITIAL_RUN_STATE },
         day: { ...INITIAL_RUN_STATE },
@@ -143,19 +165,14 @@ const HomePage = () => {
     const loadIdRef = useRef<Record<ScannerProfile, number>>({ swing: 0, day: 0 });
 
     const loadScanner = useCallback((profile: ScannerProfile) => {
-        const loadId = ++loadIdRef.current[profile];
         setLoading((prev) => ({ ...prev, [profile]: true }));
+        void runScannerBatchFetch(profile, loadIdRef, setBatches, setLoading);
+    }, []);
 
-        void fetchLatestScannerBatch(profile)
-            .then((batch) => {
-                if (loadId !== loadIdRef.current[profile]) return;
-                setBatches((prev) => ({ ...prev, [profile]: batch }));
-            })
-            .catch((e) => console.error(`[scanner refresh ${profile}]`, e))
-            .finally(() => {
-                if (loadId !== loadIdRef.current[profile]) return;
-                setLoading((prev) => ({ ...prev, [profile]: false }));
-            });
+    useEffect(() => {
+        for (const profile of SCANNER_PROFILES) {
+            void runScannerBatchFetch(profile, loadIdRef, setBatches, setLoading);
+        }
     }, []);
 
     const runScannerScan = useCallback(
@@ -181,8 +198,8 @@ const HomePage = () => {
                     const runWarning = result.ai_error
                         ? `Scan saved, but AI failed: ${result.ai_error}`
                         : result.ai_skip_reason
-                          ? `Scan saved; AI skipped: ${result.ai_skip_reason}`
-                          : null;
+                            ? `Scan saved; AI skipped: ${result.ai_skip_reason}`
+                            : null;
                     setRunState((prev) => ({
                         ...prev,
                         [profile]: {
@@ -208,12 +225,6 @@ const HomePage = () => {
         [loadScanner],
     );
 
-    useEffect(() => {
-        for (const profile of SCANNER_PROFILES) {
-            loadScanner(profile);
-        }
-    }, [loadScanner]);
-
     const scannerPairs = useMemo(() => {
         const bases: string[] = [];
         for (const profile of SCANNER_PROFILES) {
@@ -238,8 +249,8 @@ const HomePage = () => {
                 <Box overflowX="auto" pb="1">
                     <Tabs.List flexWrap="wrap" gap="2">
                         <ThemeTabTrigger value="pairs">Pairs</ThemeTabTrigger>
-                        <ThemeTabTrigger value="scanner-swing">Swing scan</ThemeTabTrigger>
                         <ThemeTabTrigger value="scanner-day">Day scan</ThemeTabTrigger>
+                        <ThemeTabTrigger value="scanner-swing">Swing scan</ThemeTabTrigger>
                         <ThemeTabTrigger value="scanner-chat">AI Chat</ThemeTabTrigger>
                         <ThemeTabTrigger value="config">Config</ThemeTabTrigger>
                     </Tabs.List>
@@ -317,18 +328,6 @@ const HomePage = () => {
 
                             <Separator borderColor={tokens.panelBorder} />
 
-                            <ConfigSection title="Swing scanner">
-                                <ScannerConfigPanel
-                                    profile="swing"
-                                    loading={loading.swing}
-                                    runState={runState.swing}
-                                    onRefresh={() => loadScanner("swing")}
-                                    onRun={() => runScannerScan("swing")}
-                                />
-                            </ConfigSection>
-
-                            <Separator borderColor={tokens.panelBorder} />
-
                             <ConfigSection title="Day scanner">
                                 <ScannerConfigPanel
                                     profile="day"
@@ -336,6 +335,18 @@ const HomePage = () => {
                                     runState={runState.day}
                                     onRefresh={() => loadScanner("day")}
                                     onRun={() => runScannerScan("day")}
+                                />
+                            </ConfigSection>
+
+                            <Separator borderColor={tokens.panelBorder} />
+
+                            <ConfigSection title="Swing scanner">
+                                <ScannerConfigPanel
+                                    profile="swing"
+                                    loading={loading.swing}
+                                    runState={runState.swing}
+                                    onRefresh={() => loadScanner("swing")}
+                                    onRun={() => runScannerScan("swing")}
                                 />
                             </ConfigSection>
 
