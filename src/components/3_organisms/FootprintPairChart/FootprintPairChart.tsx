@@ -19,10 +19,11 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 const PRICE_HEIGHT = 120;
 const DELTA_HEIGHT = 64;
 const OI_HEIGHT = 56;
+const LIQ_HEIGHT = 48;
 const PAD_X = 8;
 const PAD_TOP = 8;
 const PAD_BOTTOM = 8;
-const TOTAL_HEIGHT = PRICE_HEIGHT + DELTA_HEIGHT + OI_HEIGHT;
+const TOTAL_HEIGHT = PRICE_HEIGHT + DELTA_HEIGHT + OI_HEIGHT + LIQ_HEIGHT;
 const ZOOM_FACTOR = 1.2;
 const ZOOM_MIN = 0.3;
 const ZOOM_MAX = 5;
@@ -171,6 +172,13 @@ export default function FootprintPairChart({
     const oiPcts = visible.map((b) => b.oi_change_pct ?? 0);
     const maxAbsOiPct = Math.max(...oiPcts.map(Math.abs), 0.01);
 
+    const liqLongs = visible.map((b) => b.liq_long_notional ?? 0);
+    const liqShorts = visible.map((b) => b.liq_short_notional ?? 0);
+    const maxAbsLiq = Math.max(
+      ...liqLongs.map((v, i) => Math.max(v, liqShorts[i] ?? 0)),
+      1e-12,
+    );
+
     const xAt = (index: number) =>
       PAD_X + (index / Math.max(visible.length - 1, 1)) * innerW;
 
@@ -195,6 +203,14 @@ export default function FootprintPairChart({
 
     const yOiPctTop = (pct: number) =>
       oiMidY - (pct / maxAbsOiPct) * (oiInnerH / 2 - 2);
+
+    const liqTop = PRICE_HEIGHT + DELTA_HEIGHT + OI_HEIGHT;
+    const liqInnerH = LIQ_HEIGHT - PAD_TOP - PAD_BOTTOM;
+    const liqMidY = liqTop + PAD_TOP + liqInnerH / 2;
+    const yLiqLong = (notional: number) =>
+      liqMidY + (notional / maxAbsLiq) * (liqInnerH / 2 - 2);
+    const yLiqShort = (notional: number) =>
+      liqMidY - (notional / maxAbsLiq) * (liqInnerH / 2 - 2);
 
     const closePoints = visible
       .map((bar, i) => `${xAt(i).toFixed(1)},${clampYPrice(bar.close).toFixed(1)}`)
@@ -264,6 +280,11 @@ export default function FootprintPairChart({
       oiMidY,
       oiTop,
       deltaTop,
+      liqTop,
+      liqMidY,
+      yLiqLong,
+      yLiqShort,
+      maxAbsLiq,
       barWidth,
       spotPrice,
       spotY: clampYPrice(spotPrice),
@@ -272,6 +293,7 @@ export default function FootprintPairChart({
         price: `${clipUid}-price`,
         delta: `${clipUid}-delta`,
         oi: `${clipUid}-oi`,
+        liq: `${clipUid}-liq`,
       },
     };
   }, [bands, bars, clipUid, width, zoomStep]);
@@ -301,7 +323,7 @@ export default function FootprintPairChart({
       <Box px="3" py="2" borderBottomWidth="1px" borderColor={tokens.panelBorder}>
         <Flex align="center" justify="space-between" gap="2" flexWrap="wrap">
           <Text fontFamily="mono" fontSize="2xs" color={tokens.panelLabel}>
-            {timeframe} · price · delta + CVD · OI · orderflow live
+            {timeframe} · price · delta + CVD · OI · liquidations · orderflow live
           </Text>
           {onTimeframeChange ? (
             <Flex align="center" gap="1.5">
@@ -486,6 +508,14 @@ export default function FootprintPairChart({
                     height={OI_HEIGHT}
                   />
                 </clipPath>
+                <clipPath id={plot.clipIds.liq}>
+                  <rect
+                    x={0}
+                    y={PRICE_HEIGHT + DELTA_HEIGHT + OI_HEIGHT}
+                    width={plot.chartWidth}
+                    height={LIQ_HEIGHT}
+                  />
+                </clipPath>
               </defs>
 
               <line
@@ -522,6 +552,23 @@ export default function FootprintPairChart({
                 strokeWidth={1}
                 strokeDasharray="3 3"
               />
+              <line
+                x1={PAD_X}
+                x2={plot.chartWidth - PAD_X}
+                y1={plot.liqTop}
+                y2={plot.liqTop}
+                stroke={tokens.panelBorder}
+                strokeWidth={1}
+              />
+              <line
+                x1={PAD_X}
+                x2={plot.chartWidth - PAD_X}
+                y1={plot.liqMidY}
+                y2={plot.liqMidY}
+                stroke={tokens.panelBorder}
+                strokeWidth={1}
+                strokeDasharray="3 3"
+              />
 
               <g clipPath={`url(#${plot.clipIds.price})`}>
                 {plot.bandRects.map((rect) => (
@@ -546,23 +593,6 @@ export default function FootprintPairChart({
                   strokeWidth={1.5}
                   points={plot.closePoints}
                 />
-
-                {plot.visible.map((bar, i) => {
-                  if ((bar.liq_count ?? 0) <= 0) return null;
-                  const shortDominant =
-                    (bar.liq_short_notional ?? 0) > (bar.liq_long_notional ?? 0);
-                  const tone = shortDominant ? "buy" : "sell";
-                  return (
-                    <circle
-                      key={`liq-${bar.time}`}
-                      cx={plot.xAt(i)}
-                      cy={plot.yPrice(bar.close)}
-                      r={2.5}
-                      fill={toneColor(tone, tokens)}
-                      opacity={0.95}
-                    />
-                  );
-                })}
               </g>
 
               <g clipPath={`url(#${plot.clipIds.delta})`}>
@@ -628,6 +658,48 @@ export default function FootprintPairChart({
                     opacity={0.95}
                   />
                 ) : null}
+              </g>
+
+              <g clipPath={`url(#${plot.clipIds.liq})`}>
+                {plot.visible.flatMap((bar, i) => {
+                  const longLiq = bar.liq_long_notional ?? 0;
+                  const shortLiq = bar.liq_short_notional ?? 0;
+                  if (longLiq <= 0 && shortLiq <= 0) return [];
+                  const x = plot.xAt(i) - plot.barWidth / 2;
+                  const halfW = plot.barWidth / 2 - 0.5;
+                  const nodes = [];
+                  if (longLiq > 0) {
+                    const y0 = plot.liqMidY;
+                    const y1 = plot.yLiqLong(longLiq);
+                    nodes.push(
+                      <rect
+                        key={`liq-long-${bar.time}`}
+                        x={x}
+                        y={y0}
+                        width={halfW}
+                        height={Math.max(y1 - y0, 2)}
+                        fill={toneColor("sell", tokens)}
+                        opacity={0.85}
+                      />,
+                    );
+                  }
+                  if (shortLiq > 0) {
+                    const y0 = plot.liqMidY;
+                    const y1 = plot.yLiqShort(shortLiq);
+                    nodes.push(
+                      <rect
+                        key={`liq-short-${bar.time}`}
+                        x={x + halfW + 1}
+                        y={y1}
+                        width={halfW}
+                        height={Math.max(y0 - y1, 2)}
+                        fill={toneColor("buy", tokens)}
+                        opacity={0.85}
+                      />,
+                    );
+                  }
+                  return nodes;
+                })}
               </g>
 
               {plot.visible.map((bar, i) => (
@@ -721,10 +793,22 @@ export default function FootprintPairChart({
                   </Text>
                   <Text fontFamily="mono" fontSize="2xs" color={tokens.panelBody} lineHeight="1.4">
                     {formatTooltipLine("Funding", formatFundingRate(hoverBar.funding_rate))}
-                    {(hoverBar.liq_count ?? 0) > 0
-                      ? ` · Liq ${formatVolDollar((hoverBar.liq_long_notional ?? 0) + (hoverBar.liq_short_notional ?? 0))}`
-                      : ""}
                   </Text>
+                  {(hoverBar.liq_count ?? 0) > 0 ? (
+                    <Text fontFamily="mono" fontSize="2xs" color={tokens.panelBody} lineHeight="1.4">
+                      {formatTooltipLine(
+                        "Liq long",
+                        formatVolDollar(hoverBar.liq_long_notional ?? 0),
+                      )}
+                      {" · "}
+                      {formatTooltipLine(
+                        "Liq short",
+                        formatVolDollar(hoverBar.liq_short_notional ?? 0),
+                      )}
+                      {" · "}
+                      {formatTooltipLine("Events", String(hoverBar.liq_count ?? 0))}
+                    </Text>
+                  ) : null}
                 </Stack>
               </Box>
             ) : null}

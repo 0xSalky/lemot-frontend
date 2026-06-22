@@ -205,19 +205,19 @@ const HomePage = () => {
                     </ResponsiveCardGrid>
                 </Tabs.Content>
 
-                <Tabs.Content value="scanner-swing">
-                    <ScannerResults
-                        profile="swing"
-                        latestBatch={batches.swing}
-                        loading={loading.swing}
-                    />
-                </Tabs.Content>
-
                 <Tabs.Content value="scanner-day">
                     <ScannerResults
                         profile="day"
                         latestBatch={batches.day}
                         loading={loading.day}
+                    />
+                </Tabs.Content>
+
+                <Tabs.Content value="scanner-swing">
+                    <ScannerResults
+                        profile="swing"
+                        latestBatch={batches.swing}
+                        loading={loading.swing}
                     />
                 </Tabs.Content>
 
