@@ -13,6 +13,12 @@ import type {
 /** Auto-refresh interval for scanner/footprint charts in day scan (2 minutes). */
 export const SCANNER_CHART_REFRESH_MS = 2 * 60 * 1000;
 
+export function formatRefreshCountdown(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 /** CCXT-style unified symbol, e.g. `BTC/USDT:USDT` → base `BTC`. */
 export function scannerSymbolToBase(symbol: string): string {
   const i = symbol.indexOf("/");

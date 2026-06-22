@@ -6,7 +6,7 @@ import {
   type ScannerChartPayload,
   type ScannerChartTimeframe,
 } from "@/types/scannerTypes";
-import { fetchScannerChart, formatLevelPrice, SCANNER_CHART_REFRESH_MS } from "@/services/scannerUtils";
+import { fetchScannerChart, formatLevelPrice, formatRefreshCountdown, SCANNER_CHART_REFRESH_MS } from "@/services/scannerUtils";
 import type { ThemeTokens } from "@/components/ui/theme-color";
 import { Box, Flex, NativeSelect, Text } from "@chakra-ui/react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -78,12 +78,6 @@ function zoomScaleFromStep(step: number): number {
 function formatZoomLabel(step: number): string {
   if (step === 0) return "1x";
   return `${zoomScaleFromStep(step).toFixed(1)}x`;
-}
-
-function formatRefreshCountdown(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${String(s).padStart(2, "0")}`;
 }
 
 function ScannerSetupChart({

@@ -24,6 +24,7 @@ type DaySetupChartProps = {
   defaultChartTimeframe?: ScannerChartTimeframe;
   /** Day scan only — swing always uses the simple REST chart layout. */
   footprintEnabled?: boolean;
+  footprintRefreshCountdownSec?: number;
 };
 
 const FOOTPRINT_LOADING_HEIGHTS = [120, 64, 56] as const;
@@ -98,6 +99,7 @@ export default function DaySetupChart({
   footprintLoading = false,
   defaultChartTimeframe = "30m",
   footprintEnabled = true,
+  footprintRefreshCountdownSec,
 }: DaySetupChartProps) {
   const base = scannerSymbolToBase(symbol);
   const expectsFootprint = footprintEnabled && expectsFootprintSymbol(base);
@@ -143,6 +145,7 @@ export default function DaySetupChart({
           timeframe={fpTimeframe}
           onTimeframeChange={handleFootprintTimeframeChange}
           loading={fpLoading}
+          refreshCountdownSec={footprintRefreshCountdownSec}
           tokens={tokens}
           bands={bands}
           embedded

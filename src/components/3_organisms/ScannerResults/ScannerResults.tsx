@@ -28,7 +28,7 @@ import { useThemeColor, useThemeTokens, type ThemeTokens } from "@/components/ui
 import { fetchFootprintView, hasOrderflowData } from "@/services/footprintUtils";
 import { Box, Badge, Flex, Stack, Text } from "@chakra-ui/react";
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FootprintPairView, FootprintViewPayload } from "@/types/footprintTypes";
 
 type ScannerResultsProps = {
@@ -238,6 +238,7 @@ function SetupCard({
     profile,
     footprintPair,
     footprintLoading,
+    footprintRefreshCountdownSec,
 }: {
     setup: ScannerSetupRow;
     tokens: ThemeTokens;
@@ -245,6 +246,7 @@ function SetupCard({
     profile: ScannerProfile;
     footprintPair?: FootprintPairView | null;
     footprintLoading?: boolean;
+    footprintRefreshCountdownSec?: number;
 }) {
     const bands = orderedBands(Array.isArray(setup.bands) ? setup.bands : []);
 
@@ -274,6 +276,7 @@ function SetupCard({
                 footprintPair={profile === "day" ? footprintPair : null}
                 footprintLoading={profile === "day" ? footprintLoading : false}
                 footprintEnabled={profile === "day"}
+                footprintRefreshCountdownSec={footprintRefreshCountdownSec}
                 defaultChartTimeframe={defaultChartTimeframe}
             />
             <Stack gap="3" mt="2">
@@ -369,6 +372,10 @@ const ScannerResults = ({ profile, latestBatch, loading = false }: ScannerResult
     const defaultChartTimeframe = SCANNER_PROFILE_CHART_TIMEFRAME[profile];
     const [footprintPayload, setFootprintPayload] = useState<FootprintViewPayload | null>(null);
     const [footprintLoading, setFootprintLoading] = useState(false);
+    const nextFootprintRefreshAtRef = useRef(0);
+    const [footprintRefreshCountdownSec, setFootprintRefreshCountdownSec] = useState(
+        Math.ceil(SCANNER_CHART_REFRESH_MS / 1000),
+    );
 
     const batchMeta =
         latestBatch != null && !("message" in latestBatch) ? latestBatch.batch : null;
@@ -398,11 +405,22 @@ const ScannerResults = ({ profile, latestBatch, loading = false }: ScannerResult
 
         const symbols = activeFootprintKey.split(",");
         let cancelled = false;
+        const totalSec = Math.ceil(SCANNER_CHART_REFRESH_MS / 1000);
+
+        const resetRefreshDeadline = () => {
+            nextFootprintRefreshAtRef.current = Date.now() + SCANNER_CHART_REFRESH_MS;
+            setFootprintRefreshCountdownSec(totalSec);
+        };
+
+        resetRefreshDeadline();
 
         const loadFootprint = (initial: boolean) => {
             void fetchFootprintView(symbols, { profile: "day", timeframe: "30m" })
                 .then((data) => {
-                    if (!cancelled) setFootprintPayload(data);
+                    if (!cancelled) {
+                        setFootprintPayload(data);
+                        resetRefreshDeadline();
+                    }
                 })
                 .catch(() => {
                     if (!cancelled) setFootprintPayload(null);
@@ -415,9 +433,18 @@ const ScannerResults = ({ profile, latestBatch, loading = false }: ScannerResult
         loadFootprint(true);
         const refreshId = window.setInterval(() => loadFootprint(false), SCANNER_CHART_REFRESH_MS);
 
+        const tickId = window.setInterval(() => {
+            const remaining = Math.max(
+                0,
+                Math.ceil((nextFootprintRefreshAtRef.current - Date.now()) / 1000),
+            );
+            setFootprintRefreshCountdownSec(remaining);
+        }, 1000);
+
         return () => {
             cancelled = true;
             window.clearInterval(refreshId);
+            window.clearInterval(tickId);
         };
     }, [activeFootprintKey]);
 
@@ -504,6 +531,9 @@ const ScannerResults = ({ profile, latestBatch, loading = false }: ScannerResult
                                 : null
                         }
                         footprintLoading={profile === "day" ? footprintLoading : false}
+                        footprintRefreshCountdownSec={
+                            profile === "day" ? footprintRefreshCountdownSec : undefined
+                        }
                     />
                 ))}
             </ResponsiveCardGrid>

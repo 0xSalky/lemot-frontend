@@ -9,7 +9,7 @@ import {
   formatOiChange,
   formatOiLevel,
 } from "@/services/footprintUtils";
-import { formatLevelPrice, formatVolDollar } from "@/services/scannerUtils";
+import { formatLevelPrice, formatRefreshCountdown, formatVolDollar } from "@/services/scannerUtils";
 import type { FootprintMergedBar, FootprintTimeframe } from "@/types/footprintTypes";
 import { FOOTPRINT_TIMEFRAMES } from "@/types/footprintTypes";
 import type { ScannerBandRow } from "@/types/scannerTypes";
@@ -34,6 +34,7 @@ type FootprintPairChartProps = {
   timeframe: FootprintTimeframe;
   onTimeframeChange?: (timeframe: FootprintTimeframe) => void;
   loading?: boolean;
+  refreshCountdownSec?: number;
   tokens: ThemeTokens;
   bands?: ScannerBandRow[];
   embedded?: boolean;
@@ -99,6 +100,7 @@ export default function FootprintPairChart({
   timeframe,
   onTimeframeChange,
   loading = false,
+  refreshCountdownSec,
   tokens,
   bands = [],
   embedded = false,
@@ -302,7 +304,18 @@ export default function FootprintPairChart({
             {timeframe} · price · delta + CVD · OI · orderflow live
           </Text>
           {onTimeframeChange ? (
-            <NativeSelect.Root size="xs" width={{ base: "2.5rem", md: "3rem" }}>
+            <Flex align="center" gap="1.5">
+              {refreshCountdownSec != null ? (
+                <Text
+                  fontFamily="mono"
+                  fontSize="2xs"
+                  color={tokens.panelMuted}
+                  title="Next chart refresh"
+                >
+                  {formatRefreshCountdown(refreshCountdownSec)}
+                </Text>
+              ) : null}
+              <NativeSelect.Root size="xs" width={{ base: "2.5rem", md: "3rem" }}>
               <NativeSelect.Field
                 value={timeframe}
                 fontFamily="mono"
@@ -327,6 +340,7 @@ export default function FootprintPairChart({
                 ))}
               </NativeSelect.Field>
             </NativeSelect.Root>
+            </Flex>
           ) : null}
         </Flex>
       </Box>
