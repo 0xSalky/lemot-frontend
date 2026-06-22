@@ -181,22 +181,30 @@ const HomePage = () => {
     }, [scannerPairs]);
 
     return (
-        <Stack w="100%" maxW={CONTENT_MAX_WIDTH} mx="auto" gap="1rem">
+        <Stack
+            w="100%"
+            maxW={CONTENT_MAX_WIDTH}
+            mx="auto"
+            gap="1rem"
+            pt={{ base: "0.75rem", md: "1rem" }}
+            pb={{ base: "2rem", md: "2.5rem" }}
+        >
             <Tabs.Root defaultValue="pairs" colorPalette={palette}>
-                <Box overflowX="auto" pb="1">
-                    <Tabs.List
-                        bg="transparent"
-                        borderBottomWidth="1px"
-                        borderColor={tokens.panelBorder}
-                        minW="max-content"
-                    >
+                <Tabs.List
+                    bg="transparent"
+                    borderBottomWidth="1px"
+                    borderColor={tokens.panelBorder}
+                    flexWrap="wrap"
+                    gap="1.5"
+                    w="100%"
+                    pb="1"
+                >
                         <ThemeTabTrigger value="pairs">Pairs</ThemeTabTrigger>
                         <ThemeTabTrigger value="scanner-day">Day scan</ThemeTabTrigger>
                         <ThemeTabTrigger value="scanner-swing">Swing scan</ThemeTabTrigger>
                         <ThemeTabTrigger value="scanner-chat">AI Chat</ThemeTabTrigger>
                         <ThemeTabTrigger value="config">Config</ThemeTabTrigger>
-                    </Tabs.List>
-                </Box>
+                </Tabs.List>
 
                 <Tabs.Content value="pairs">
                     <ResponsiveCardGrid>
@@ -238,22 +246,36 @@ const HomePage = () => {
                         <Stack gap="4">
                             <Stack gap="6">
                                 <ConfigSection title="Appearance">
-                                    <Stack direction="row" gap="2" align="flex-end">
-                                        <Stack gap="1" minW="6rem">
-                                            <Text fontSize="xs" fontFamily="mono" color={tokens.panelMuted}>
-                                                Color mode
-                                            </Text>
-                                            <Box>
-                                                <ColorModeButton
-                                                    variant="outline"
-                                                    borderColor={tokens.panelBorder}
-                                                    color={tokens.panelBody}
-                                                />
-                                            </Box>
+                                    <Stack gap="3">
+                                        <Stack
+                                            direction={{ base: "column", sm: "row" }}
+                                            gap="3"
+                                            align={{ base: "stretch", sm: "flex-end" }}
+                                            flexWrap="wrap"
+                                        >
+                                            <Stack gap="1" minW="6rem">
+                                                <Text fontSize="xs" fontFamily="mono" color={tokens.panelMuted}>
+                                                    Color mode
+                                                </Text>
+                                                <Box w="fit-content">
+                                                    <ColorModeButton
+                                                        variant="outline"
+                                                        borderColor={tokens.panelBorder}
+                                                        color={tokens.panelBody}
+                                                    />
+                                                </Box>
+                                            </Stack>
+                                            <ThemeSkinSelector />
                                         </Stack>
-                                        <ThemeSkinSelector />
                                         {!serverConfigured ? (
-                                            <Button size="xs" variant="ghost" onClick={signOut}>
+                                            <Button
+                                                size="xs"
+                                                variant="outline"
+                                                alignSelf="flex-start"
+                                                borderColor={tokens.panelBorder}
+                                                color={tokens.panelBody}
+                                                onClick={signOut}
+                                            >
                                                 Disconnect API
                                             </Button>
                                         ) : null}
