@@ -261,13 +261,6 @@ const HomePage = () => {
                                 </ConfigSection>
 
                                 <Separator borderColor={tokens.panelBorder} />
-                                <Separator borderColor={tokens.panelBorder} />
-
-                                <ConfigSection title="Signals (live)">
-                                    <SignalsConfigPanel tokens={tokens} />
-                                </ConfigSection>
-
-                                <Separator borderColor={tokens.panelBorder} />
 
                                 <ConfigSection title="Day scanner">
                                     <ScannerConfigPanel
@@ -287,6 +280,12 @@ const HomePage = () => {
                                         onRefresh={() => loadScanner("swing")}
                                         onRun={() => runScannerScan("swing")}
                                     />
+                                </ConfigSection>
+
+                                <Separator borderColor={tokens.panelBorder} />
+
+                                <ConfigSection title="Signals (live)">
+                                    <SignalsConfigPanel tokens={tokens} />
                                 </ConfigSection>
 
                                 <Separator borderColor={tokens.panelBorder} />
