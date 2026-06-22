@@ -314,25 +314,17 @@ const HomePage = () => {
                                 {!serverConfigured ? (
                                     <>
                                         <Separator borderColor={tokens.panelBorder} />
-
                                         <ConfigSection title="API">
-                                            <Stack gap="1" minW="6rem">
-                                                <Text fontSize="xs" fontFamily="mono" color={tokens.panelMuted}>
-                                                    Disconnect API
-                                                </Text>
-                                                {!serverConfigured ? (
-                                                    <Button
-                                                        size="xs"
-                                                        variant="outline"
-                                                        alignSelf="flex-start"
-                                                        borderColor={tokens.panelBorder}
-                                                        color={tokens.panelBody}
-                                                        onClick={signOut}
-                                                    >
-                                                        Disconnect API
-                                                    </Button>
-                                                ) : null}
-                                            </Stack>
+                                            <Button
+                                                size="xs"
+                                                variant="outline"
+                                                alignSelf="flex-start"
+                                                borderColor={tokens.panelBorder}
+                                                color={tokens.panelBody}
+                                                onClick={signOut}
+                                            >
+                                                Disconnect API
+                                            </Button>
                                         </ConfigSection>
                                     </>
                                 ) : null}
