@@ -3,6 +3,7 @@ import AccountBalance from "@/components/3_organisms/AccountBalance/AccountBalan
 import AssetInterface from "@/components/3_organisms/AssetInterface/AssetInterface";
 import ScannerChat from "@/components/3_organisms/ScannerChat/ScannerChat";
 import ScannerResults from "@/components/3_organisms/ScannerResults/ScannerResults";
+import SignalsConfigPanel from "@/components/3_organisms/SignalsConfigPanel/SignalsConfigPanel";
 import { useTradingAccess } from "@/components/3_organisms/TradingAccess/TradingAccess";
 import ResponsiveCardGrid from "@/components/4_layouts/ResponsiveCardGrid/ResponsiveCardGrid";
 import { ColorModeButton } from "@/components/ui/color-mode";
@@ -260,6 +261,14 @@ const HomePage = () => {
                                 </ConfigSection>
 
                                 <Separator borderColor={tokens.panelBorder} />
+                                <Separator borderColor={tokens.panelBorder} />
+
+                                <ConfigSection title="Signals (live)">
+                                    <SignalsConfigPanel tokens={tokens} />
+                                </ConfigSection>
+
+                                <Separator borderColor={tokens.panelBorder} />
+
                                 <ConfigSection title="Day scanner">
                                     <ScannerConfigPanel
                                         profile="day"

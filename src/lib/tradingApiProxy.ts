@@ -165,3 +165,27 @@ export async function proxyTradingPost(
 
   await forwardUpstreamResponse(res, upstream);
 }
+
+export async function proxyTradingPatch(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  path: string,
+  body?: unknown,
+): Promise<void> {
+  const creds = resolveTradingCredentials(req);
+  if (!creds) {
+    credentialsRequiredResponse(res);
+    return;
+  }
+
+  const upstream = await fetch(`${creds.baseUrl}${path}${upstreamQuery(req)}`, {
+    method: "PATCH",
+    headers: {
+      "X-API-Key": creds.apiKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body ?? req.body ?? {}),
+  });
+
+  await forwardUpstreamResponse(res, upstream);
+}
