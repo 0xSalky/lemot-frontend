@@ -199,11 +199,11 @@ const HomePage = () => {
                     w="100%"
                     pb="1"
                 >
-                        <ThemeTabTrigger value="pairs">Pairs</ThemeTabTrigger>
-                        <ThemeTabTrigger value="scanner-day">Day scan</ThemeTabTrigger>
-                        <ThemeTabTrigger value="scanner-swing">Swing scan</ThemeTabTrigger>
-                        <ThemeTabTrigger value="scanner-chat">AI Chat</ThemeTabTrigger>
-                        <ThemeTabTrigger value="config">Config</ThemeTabTrigger>
+                    <ThemeTabTrigger value="pairs">Pairs</ThemeTabTrigger>
+                    <ThemeTabTrigger value="scanner-day">Day scan</ThemeTabTrigger>
+                    <ThemeTabTrigger value="scanner-swing">Swing scan</ThemeTabTrigger>
+                    <ThemeTabTrigger value="scanner-chat">AI Chat</ThemeTabTrigger>
+                    <ThemeTabTrigger value="config">Config</ThemeTabTrigger>
                 </Tabs.List>
 
                 <Tabs.Content value="pairs">
@@ -267,18 +267,6 @@ const HomePage = () => {
                                             </Stack>
                                             <ThemeSkinSelector />
                                         </Stack>
-                                        {!serverConfigured ? (
-                                            <Button
-                                                size="xs"
-                                                variant="outline"
-                                                alignSelf="flex-start"
-                                                borderColor={tokens.panelBorder}
-                                                color={tokens.panelBody}
-                                                onClick={signOut}
-                                            >
-                                                Disconnect API
-                                            </Button>
-                                        ) : null}
                                     </Stack>
                                 </ConfigSection>
 
@@ -322,6 +310,32 @@ const HomePage = () => {
                                         <AccountBalance />
                                     </Stack>
                                 </ConfigSection>
+
+                                {!serverConfigured ? (
+                                    <>
+                                        <Separator borderColor={tokens.panelBorder} />
+
+                                        <ConfigSection title="API">
+                                            <Stack gap="1" minW="6rem">
+                                                <Text fontSize="xs" fontFamily="mono" color={tokens.panelMuted}>
+                                                    Disconnect API
+                                                </Text>
+                                                {!serverConfigured ? (
+                                                    <Button
+                                                        size="xs"
+                                                        variant="outline"
+                                                        alignSelf="flex-start"
+                                                        borderColor={tokens.panelBorder}
+                                                        color={tokens.panelBody}
+                                                        onClick={signOut}
+                                                    >
+                                                        Disconnect API
+                                                    </Button>
+                                                ) : null}
+                                            </Stack>
+                                        </ConfigSection>
+                                    </>
+                                ) : null}
                             </Stack>
                         </Stack>
                     </Box>
