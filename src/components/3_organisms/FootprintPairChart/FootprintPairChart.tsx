@@ -23,6 +23,8 @@ const LIQ_HEIGHT = 48;
 const PAD_X = 8;
 const PAD_TOP = 8;
 const PAD_BOTTOM = 8;
+const TOOLTIP_W = 220;
+const TOOLTIP_GAP = 60;
 const TOTAL_HEIGHT = PRICE_HEIGHT + DELTA_HEIGHT + OI_HEIGHT + LIQ_HEIGHT;
 const ZOOM_FACTOR = 1.2;
 const ZOOM_MIN = 0.3;
@@ -59,6 +61,28 @@ function zoomScaleFromStep(step: number): number {
 function formatZoomLabel(step: number): string {
   if (step === 0) return "1x";
   return `${zoomScaleFromStep(step).toFixed(1)}x`;
+}
+
+function computeTooltipPlacement(hoverX: number, chartWidth: number): { left: number } {
+  const minX = PAD_X;
+  const maxX = chartWidth - PAD_X - TOOLTIP_W;
+
+  const leftOfCursor = hoverX - TOOLTIP_W - TOOLTIP_GAP;
+  const rightOfCursor = hoverX + TOOLTIP_GAP;
+
+  const fitsLeft = leftOfCursor >= minX;
+  const fitsRight = rightOfCursor <= maxX;
+
+  if (fitsLeft) {
+    return { left: leftOfCursor };
+  }
+  if (fitsRight) {
+    return { left: rightOfCursor };
+  }
+
+  const spaceLeft = hoverX - minX - TOOLTIP_GAP;
+  const spaceRight = chartWidth - PAD_X - hoverX - TOOLTIP_GAP;
+  return { left: spaceLeft >= spaceRight ? minX : maxX };
 }
 
 function visibleBarsForZoom(bars: FootprintMergedBar[], zoomScale: number): FootprintMergedBar[] {
@@ -299,6 +323,10 @@ export default function FootprintPairChart({
   }, [bands, bars, clipUid, width, zoomStep]);
 
   const hoverBar = hoverIndex != null && plot ? plot.visible[hoverIndex] : null;
+  const tooltipPlacement =
+    hoverIndex != null && plot
+      ? computeTooltipPlacement(plot.xAt(hoverIndex), plot.chartWidth)
+      : null;
 
   if (!bars.length && !loading) {
     return (
@@ -338,30 +366,30 @@ export default function FootprintPairChart({
                 </Text>
               ) : null}
               <NativeSelect.Root size="xs" width={{ base: "2.5rem", md: "3rem" }}>
-              <NativeSelect.Field
-                value={timeframe}
-                fontFamily="mono"
-                fontSize={{ base: "10px", md: "2xs" }}
-                h={{ base: "1.35rem", md: "1.5rem" }}
-                minH={{ base: "1.35rem", md: "1.5rem" }}
-                py="0"
-                px="1"
-                bg={tokens.panelBgUser}
-                borderColor={tokens.panelBorder}
-                onChange={(e) => {
-                  const next = e.currentTarget.value;
-                  if ((FOOTPRINT_TIMEFRAMES as readonly string[]).includes(next)) {
-                    onTimeframeChange(next as FootprintTimeframe);
-                  }
-                }}
-              >
-                {FOOTPRINT_TIMEFRAMES.map((tf) => (
-                  <option key={tf} value={tf}>
-                    {tf}
-                  </option>
-                ))}
-              </NativeSelect.Field>
-            </NativeSelect.Root>
+                <NativeSelect.Field
+                  value={timeframe}
+                  fontFamily="mono"
+                  fontSize={{ base: "10px", md: "2xs" }}
+                  h={{ base: "1.35rem", md: "1.5rem" }}
+                  minH={{ base: "1.35rem", md: "1.5rem" }}
+                  py="0"
+                  px="1"
+                  bg={tokens.panelBgUser}
+                  borderColor={tokens.panelBorder}
+                  onChange={(e) => {
+                    const next = e.currentTarget.value;
+                    if ((FOOTPRINT_TIMEFRAMES as readonly string[]).includes(next)) {
+                      onTimeframeChange(next as FootprintTimeframe);
+                    }
+                  }}
+                >
+                  {FOOTPRINT_TIMEFRAMES.map((tf) => (
+                    <option key={tf} value={tf}>
+                      {tf}
+                    </option>
+                  ))}
+                </NativeSelect.Field>
+              </NativeSelect.Root>
             </Flex>
           ) : null}
         </Flex>
@@ -753,12 +781,13 @@ export default function FootprintPairChart({
               </Text>
             </Box>
 
-            {hoverBar ? (
+            {hoverBar && tooltipPlacement ? (
               <Box
                 position="absolute"
-                left={`${Math.min(Math.max(plot.xAt(hoverIndex ?? 0), 80), plot.chartWidth - 160)}px`}
+                left={`${tooltipPlacement.left}px`}
                 top="28px"
                 zIndex={6}
+                w={`${TOOLTIP_W}px`}
                 px="2"
                 py="1.5"
                 bg={tokens.panelBgUser}
@@ -767,7 +796,6 @@ export default function FootprintPairChart({
                 rounded="sm"
                 boxShadow="sm"
                 pointerEvents="none"
-                maxW="220px"
               >
                 <Stack gap="0.5">
                   <Text fontFamily="mono" fontSize="2xs" fontWeight="semibold" color={tokens.panelHeading}>
