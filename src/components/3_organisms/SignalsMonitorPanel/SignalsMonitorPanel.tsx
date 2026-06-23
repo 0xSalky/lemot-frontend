@@ -504,6 +504,8 @@ function buildDetailLine(
   if (meta?.trigger != null) parts.push(String(meta.trigger));
   if (meta?.placement != null) parts.push(String(meta.placement));
   if (meta?.enter_probability_pct != null) parts.push(`${String(meta.enter_probability_pct)}%`);
+  if (meta?.verdict != null) parts.push(String(meta.verdict));
+  if (meta?.setup_grade != null) parts.push(`grade ${String(meta.setup_grade)}`);
   if (event.timeframe) parts.push(event.timeframe);
 
   if (parts.length === 0) return event.message;
@@ -529,6 +531,9 @@ function TerminalLine({
   const side = event.side?.toLowerCase();
   const meta = event.meta;
   const isArchive = meta?.imported === true;
+  const hasAdvice =
+    event.event_type === "alert_sent" &&
+    (meta?.ai_message != null || meta?.verdict != null);
   const showAiHint = hasAiTooltip(meta);
   const profileLabel = (event.profile ?? "—").toUpperCase();
   const tf = event.timeframe ?? (event.profile === "day" ? "30m" : event.profile === "swing" ? "1h" : null);
@@ -538,7 +543,10 @@ function TerminalLine({
   const headerTags = (
     <TagGrid
       tags={[
-        { label: style.label, tone: eventTypeTone(event.event_type, tokens) },
+        {
+          label: hasAdvice ? "ALERT+AI" : style.label,
+          tone: eventTypeTone(event.event_type, tokens),
+        },
         side === "long" || side === "short"
           ? {
               label: side.toUpperCase(),
@@ -547,12 +555,18 @@ function TerminalLine({
           : null,
         isArchive
           ? { label: "hist", tone: tokens.tagBlue }
-          : meta?.band_side != null
-            ? { label: String(meta.band_side), tone: tokens.tagBlue }
-            : showAiHint
-              ? { label: "AI read", tone: tokens.tagAccent }
-              : meta?.verdict != null
-                ? { label: String(meta.verdict), tone: tokens.tagAccent }
+          : meta?.verdict != null
+            ? {
+                label: String(meta.verdict).toUpperCase(),
+                tone:
+                  String(meta.verdict).toLowerCase() === "enter"
+                    ? tokens.tagGreen
+                    : tokens.tagRed,
+              }
+            : meta?.band_side != null
+              ? { label: String(meta.band_side), tone: tokens.tagBlue }
+              : showAiHint
+                ? { label: "AI read", tone: tokens.tagAccent }
                 : null,
       ]}
     />
