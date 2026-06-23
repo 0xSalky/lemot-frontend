@@ -1,7 +1,11 @@
 "use client";
 
-import FootprintPairChart from "@/components/3_organisms/FootprintPairChart/FootprintPairChart";
-import ScannerSetupChart from "@/components/3_organisms/ScannerSetupChart/ScannerSetupChart";
+import FootprintPairChart, {
+  FOOTPRINT_CHART_TOTAL_HEIGHT,
+} from "@/components/3_organisms/FootprintPairChart/FootprintPairChart";
+import ScannerSetupChart, {
+  SETUP_CHART_HEIGHT,
+} from "@/components/3_organisms/ScannerSetupChart/ScannerSetupChart";
 import type { ThemeTokens } from "@/components/ui/theme-color";
 import {
   expectsFootprintSymbol,
@@ -11,7 +15,7 @@ import {
 import { scannerSymbolToBase } from "@/services/scannerUtils";
 import type { FootprintPairView, FootprintTimeframe } from "@/types/footprintTypes";
 import type { ScannerBandRow, ScannerChartPayload, ScannerChartTimeframe } from "@/types/scannerTypes";
-import { Box, Flex, Skeleton, Spinner, Stack, Text } from "@chakra-ui/react";
+import { Box, Text } from "@chakra-ui/react";
 import { useCallback, useState, type ReactNode } from "react";
 
 type DaySetupChartProps = {
@@ -30,9 +34,8 @@ type DaySetupChartProps = {
   managedRefreshCountdownSec?: number;
 };
 
-const FOOTPRINT_LOADING_HEIGHTS = [120, 64, 56] as const;
-const FOOTPRINT_CHART_HEIGHT = FOOTPRINT_LOADING_HEIGHTS.reduce((sum, h) => sum + h, 0);
-const SIMPLE_CHART_HEIGHT = 168;
+const FOOTPRINT_CHART_HEIGHT = FOOTPRINT_CHART_TOTAL_HEIGHT;
+const SIMPLE_CHART_HEIGHT = SETUP_CHART_HEIGHT;
 
 function DayChartBleed({
   children,
@@ -57,30 +60,19 @@ function DayChartBleed({
   );
 }
 
-function FootprintChartLoading({ base, tokens }: { base: string; tokens: ThemeTokens }) {
+function FootprintChartLoading({ tokens }: { tokens: ThemeTokens }) {
   return (
-    <DayChartBleed tokens={tokens} minHeight={FOOTPRINT_CHART_HEIGHT + 48}>
-      <Flex
-        align="center"
-        justify="flex-end"
-        gap="2"
-        px="3"
-        py="2"
-        borderBottomWidth="1px"
-        borderColor={tokens.panelBorder}
+    <DayChartBleed tokens={tokens} minHeight={FOOTPRINT_CHART_HEIGHT}>
+      <Box
+        h={`${FOOTPRINT_CHART_HEIGHT}px`}
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
       >
-        <Spinner size="sm" color={tokens.panelHeading} />
-      </Flex>
-      <Stack gap="0">
-        {FOOTPRINT_LOADING_HEIGHTS.map((height, index) => (
-          <Skeleton
-            key={height}
-            height={`${height}px`}
-            rounded="0"
-            opacity={0.35 - index * 0.05}
-          />
-        ))}
-      </Stack>
+        <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
+          Loading footprint…
+        </Text>
+      </Box>
     </DayChartBleed>
   );
 }
@@ -132,7 +124,7 @@ export default function DaySetupChart({
   const showFootprintLoading = expectsFootprint && footprintLoading && !showOrderflow;
 
   if (showFootprintLoading) {
-    return <FootprintChartLoading base={base} tokens={tokens} />;
+    return <FootprintChartLoading tokens={tokens} />;
   }
 
   if (showOrderflow && pairForDisplay) {

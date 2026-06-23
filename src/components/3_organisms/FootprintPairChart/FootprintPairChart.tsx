@@ -16,7 +16,7 @@ import type { ScannerBandRow } from "@/types/scannerTypes";
 import { Box, Flex, NativeSelect, Stack, Text } from "@chakra-ui/react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
-const PRICE_HEIGHT = 120;
+const PRICE_HEIGHT = 200;
 const DELTA_HEIGHT = 64;
 const OI_HEIGHT = 56;
 const LIQ_HEIGHT = 48;
@@ -26,6 +26,8 @@ const PAD_BOTTOM = 8;
 const TOOLTIP_W = 220;
 const TOOLTIP_GAP = 60;
 const TOTAL_HEIGHT = PRICE_HEIGHT + DELTA_HEIGHT + OI_HEIGHT + LIQ_HEIGHT;
+
+export { TOTAL_HEIGHT as FOOTPRINT_CHART_TOTAL_HEIGHT };
 const ZOOM_FACTOR = 1.2;
 const ZOOM_MIN = 0.3;
 const ZOOM_MAX = 5;
@@ -277,16 +279,6 @@ export default function FootprintPairChart({
       ];
     });
 
-    const offscreenAbove = bands
-      .filter((b) => Math.min(b.low, b.high) > maxPrice)
-      .sort((a, b) => Math.min(a.low, a.high) - Math.min(b.low, b.high))
-      .slice(0, 2);
-
-    const offscreenBelow = bands
-      .filter((b) => Math.max(b.low, b.high) < minPrice)
-      .sort((a, b) => Math.max(b.low, b.high) - Math.max(a.low, a.high))
-      .slice(0, 2);
-
     return {
       chartWidth,
       visible,
@@ -294,8 +286,6 @@ export default function FootprintPairChart({
       cvdPoints,
       oiPoints,
       bandRects,
-      offscreenAbove,
-      offscreenBelow,
       xAt,
       yPrice,
       yDeltaTop,
@@ -348,54 +338,8 @@ export default function FootprintPairChart({
       overflow="hidden"
       bg={embedded ? "transparent" : tokens.panelBg}
     >
-      {(onTimeframeChange != null || refreshCountdownSec != null) && (
-      <Box px="3" py="2" borderBottomWidth="1px" borderColor={tokens.panelBorder}>
-        <Flex align="center" justify="flex-end" gap="2" flexWrap="wrap">
-          {onTimeframeChange ? (
-            <Flex align="center" gap="1.5">
-              {refreshCountdownSec != null ? (
-                <Text
-                  fontFamily="mono"
-                  fontSize="2xs"
-                  color={tokens.panelMuted}
-                  title="Next chart refresh"
-                >
-                  {formatRefreshCountdown(refreshCountdownSec)}
-                </Text>
-              ) : null}
-              <NativeSelect.Root size="xs" width={{ base: "2.5rem", md: "3rem" }}>
-                <NativeSelect.Field
-                  value={timeframe}
-                  fontFamily="mono"
-                  fontSize={{ base: "10px", md: "2xs" }}
-                  h={{ base: "1.35rem", md: "1.5rem" }}
-                  minH={{ base: "1.35rem", md: "1.5rem" }}
-                  py="0"
-                  px="1"
-                  bg={tokens.panelBgUser}
-                  borderColor={tokens.panelBorder}
-                  onChange={(e) => {
-                    const next = e.currentTarget.value;
-                    if ((FOOTPRINT_TIMEFRAMES as readonly string[]).includes(next)) {
-                      onTimeframeChange(next as FootprintTimeframe);
-                    }
-                  }}
-                >
-                  {FOOTPRINT_TIMEFRAMES.map((tf) => (
-                    <option key={tf} value={tf}>
-                      {tf}
-                    </option>
-                  ))}
-                </NativeSelect.Field>
-              </NativeSelect.Root>
-            </Flex>
-          ) : null}
-        </Flex>
-      </Box>
-      )}
-
       <Box position="relative" h={`${TOTAL_HEIGHT}px`} overflow="hidden">
-        <Flex position="absolute" top="2" left="2" zIndex={5} gap="1">
+        <Flex position="absolute" top="2" left="2" zIndex={5} gap="1" align="center">
           <Box
             as="button"
             aria-label="Zoom in"
@@ -454,6 +398,58 @@ export default function FootprintPairChart({
           </Text>
         </Flex>
 
+        {(onTimeframeChange != null || refreshCountdownSec != null) ? (
+          <Flex
+            position="absolute"
+            top="2"
+            right="2"
+            zIndex={5}
+            align="center"
+            gap="1.5"
+          >
+            {refreshCountdownSec != null ? (
+              <Text
+                fontFamily="mono"
+                fontSize="2xs"
+                lineHeight="1.5rem"
+                color={tokens.panelMuted}
+                title="Next chart refresh"
+              >
+                {formatRefreshCountdown(refreshCountdownSec)}
+              </Text>
+            ) : null}
+            {onTimeframeChange ? (
+              <NativeSelect.Root size="xs" width={{ base: "2.25rem", md: "3rem" }} maxW={{ base: "2.25rem", md: "3rem" }}>
+                <NativeSelect.Field
+                  className="chart-tf-select"
+                  value={timeframe}
+                  fontFamily="mono"
+                  fontSize={{ base: "10px", md: "2xs" }}
+                  h="1.5rem"
+                  minH="1.5rem"
+                  maxH="1.5rem"
+                  py="0"
+                  px="0.5"
+                  bg={tokens.panelBgUser}
+                  borderColor={tokens.panelBorder}
+                  onChange={(e) => {
+                    const next = e.currentTarget.value;
+                    if ((FOOTPRINT_TIMEFRAMES as readonly string[]).includes(next)) {
+                      onTimeframeChange(next as FootprintTimeframe);
+                    }
+                  }}
+                >
+                  {FOOTPRINT_TIMEFRAMES.map((tf) => (
+                    <option key={tf} value={tf}>
+                      {tf}
+                    </option>
+                  ))}
+                </NativeSelect.Field>
+              </NativeSelect.Root>
+            ) : null}
+          </Flex>
+        ) : null}
+
         {loading || !plot ? (
           <Box h="100%" display="flex" alignItems="center" justifyContent="center">
             <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
@@ -462,56 +458,6 @@ export default function FootprintPairChart({
           </Box>
         ) : (
           <>
-            {plot.offscreenAbove.length > 0 ? (
-              <Box
-                position="absolute"
-                top="2"
-                right="2"
-                zIndex={4}
-                display="flex"
-                flexDirection="column"
-                alignItems="flex-end"
-                gap="0.5"
-                pointerEvents="none"
-              >
-                {plot.offscreenAbove.map((band) => (
-                  <Text
-                    key={`above-${band.low}-${band.high}`}
-                    fontFamily="mono"
-                    fontSize="2xs"
-                    color={tokens.tagRed.color}
-                  >
-                    RES {formatLevelPrice(Math.min(band.low, band.high))}
-                  </Text>
-                ))}
-              </Box>
-            ) : null}
-
-            {plot.offscreenBelow.length > 0 ? (
-              <Box
-                position="absolute"
-                top={`${PRICE_HEIGHT - 22}px`}
-                right="2"
-                zIndex={4}
-                display="flex"
-                flexDirection="column"
-                alignItems="flex-end"
-                gap="0.5"
-                pointerEvents="none"
-              >
-                {plot.offscreenBelow.map((band) => (
-                  <Text
-                    key={`below-${band.low}-${band.high}`}
-                    fontFamily="mono"
-                    fontSize="2xs"
-                    color={tokens.tagGreen.color}
-                  >
-                    SUP {formatLevelPrice(Math.max(band.low, band.high))}
-                  </Text>
-                ))}
-              </Box>
-            ) : null}
-
             <svg
               width="100%"
               height={TOTAL_HEIGHT}

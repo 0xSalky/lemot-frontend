@@ -12,7 +12,9 @@ import type { ThemeTokens } from "@/components/ui/theme-color";
 import { Box, Flex, NativeSelect, Text } from "@chakra-ui/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-const CHART_HEIGHT = 168;
+const CHART_HEIGHT = 250;
+
+export { CHART_HEIGHT as SETUP_CHART_HEIGHT };
 const CHART_REFRESH_MS = SCANNER_CHART_REFRESH_MS;
 const ZOOM_FACTOR = 1.2;
 const ZOOM_MIN = 0.3;
@@ -264,16 +266,6 @@ function ScannerSetupChart({
       }];
     });
 
-    const offscreenAbove = bands
-      .filter((b) => Math.min(b.low, b.high) > maxPrice)
-      .sort((a, b) => Math.min(a.low, a.high) - Math.min(b.low, b.high))
-      .slice(0, 2);
-
-    const offscreenBelow = bands
-      .filter((b) => Math.max(b.low, b.high) < minPrice)
-      .sort((a, b) => Math.max(b.low, b.high) - Math.max(a.low, a.high))
-      .slice(0, 2);
-
     const spotY = yAt(spotPrice);
     const lastX = xAt(visibleCandles.length - 1);
     const lastY = yAt(spotPrice);
@@ -281,8 +273,6 @@ function ScannerSetupChart({
     return {
       closePoints,
       bandRects,
-      offscreenAbove,
-      offscreenBelow,
       spotY,
       spotPrice,
       innerW,
@@ -300,55 +290,6 @@ function ScannerSetupChart({
       borderColor={tokens.panelBorder}
       overflow="hidden"
     >
-      <Box px="3" py="2" borderBottomWidth="1px" borderColor={tokens.panelBorder}>
-        <Flex align="center" justify="space-between" gap="2">
-          <Text fontFamily="mono" fontSize="2xs" color={tokens.panelLabel}>
-            {timeframe} close · nearby bands
-          </Text>
-          <Flex align="center" gap="1.5">
-            <Text
-              fontFamily="mono"
-              fontSize="2xs"
-              color={tokens.panelMuted}
-              title="Next chart refresh"
-            >
-              {formatRefreshCountdown(countdownSec)}
-            </Text>
-            <NativeSelect.Root
-              size="xs"
-              width={{ base: "2.1rem", md: "2.5rem" }}
-              minW={{ base: "2.1rem", md: "2.5rem" }}
-            >
-              <NativeSelect.Field
-                className="chart-tf-select"
-                value={timeframe}
-                fontFamily="mono"
-                fontSize={{ base: "10px", md: "2xs" }}
-                h={{ base: "1.2rem", md: "1.35rem" }}
-                minH={{ base: "1.2rem", md: "1.35rem" }}
-                py="0"
-                px="1"
-                bg={tokens.panelBgUser}
-                borderColor={tokens.panelBorder}
-                onChange={(e) => {
-                  const next = e.currentTarget.value;
-                  if ((SCANNER_CHART_TIMEFRAMES as readonly string[]).includes(next)) {
-                    setTimeframe(next as ScannerChartTimeframe);
-                    setZoomStep(0);
-                  }
-                }}
-              >
-                {SCANNER_CHART_TIMEFRAMES.map((tf) => (
-                  <option key={tf} value={tf}>
-                    {tf}
-                  </option>
-                ))}
-              </NativeSelect.Field>
-            </NativeSelect.Root>
-          </Flex>
-        </Flex>
-      </Box>
-
       <Box
         ref={containerRef}
         w="100%"
@@ -379,13 +320,7 @@ function ScannerSetupChart({
           </Box>
         ) : (
           <>
-            <Flex
-              position="absolute"
-              top="2"
-              left="2"
-              zIndex={4}
-              gap="1"
-            >
+            <Flex position="absolute" top="2" left="2" zIndex={5} gap="1" align="center">
               <Box
                 as="button"
                 aria-label="Zoom in"
@@ -445,6 +380,53 @@ function ScannerSetupChart({
               </Text>
             </Flex>
 
+            <Flex
+              position="absolute"
+              top="2"
+              right="2"
+              zIndex={5}
+              align="center"
+              gap="1.5"
+            >
+              <Text
+                fontFamily="mono"
+                fontSize="2xs"
+                lineHeight="1.5rem"
+                color={tokens.panelMuted}
+                title="Next chart refresh"
+              >
+                {formatRefreshCountdown(countdownSec)}
+              </Text>
+              <NativeSelect.Root size="xs" width={{ base: "2.25rem", md: "3rem" }} maxW={{ base: "2.25rem", md: "3rem" }}>
+                <NativeSelect.Field
+                  className="chart-tf-select"
+                  value={timeframe}
+                  fontFamily="mono"
+                  fontSize={{ base: "10px", md: "2xs" }}
+                  h="1.5rem"
+                  minH="1.5rem"
+                  maxH="1.5rem"
+                  py="0"
+                  px="0.5"
+                  bg={tokens.panelBgUser}
+                  borderColor={tokens.panelBorder}
+                  onChange={(e) => {
+                    const next = e.currentTarget.value;
+                    if ((SCANNER_CHART_TIMEFRAMES as readonly string[]).includes(next)) {
+                      setTimeframe(next as ScannerChartTimeframe);
+                      setZoomStep(0);
+                    }
+                  }}
+                >
+                  {SCANNER_CHART_TIMEFRAMES.map((tf) => (
+                    <option key={tf} value={tf}>
+                      {tf}
+                    </option>
+                  ))}
+                </NativeSelect.Field>
+              </NativeSelect.Root>
+            </Flex>
+
             {plot.bandRects.map((band) => (
               <Box
                 key={band.key}
@@ -463,56 +445,6 @@ function ScannerSetupChart({
                 pointerEvents="none"
               />
             ))}
-
-            {plot.offscreenAbove.length > 0 ? (
-              <Box
-                position="absolute"
-                top="1"
-                right="2"
-                zIndex={2}
-                display="flex"
-                flexDirection="column"
-                alignItems="flex-end"
-                gap="0.5"
-                pointerEvents="none"
-              >
-                {plot.offscreenAbove.map((band) => (
-                  <Text
-                    key={`above-${band.low}-${band.high}`}
-                    fontFamily="mono"
-                    fontSize="2xs"
-                    color={tokens.tagRed.color}
-                  >
-                    RES {formatLevelPrice(Math.min(band.low, band.high))}
-                  </Text>
-                ))}
-              </Box>
-            ) : null}
-
-            {plot.offscreenBelow.length > 0 ? (
-              <Box
-                position="absolute"
-                bottom="1"
-                right="2"
-                zIndex={2}
-                display="flex"
-                flexDirection="column"
-                alignItems="flex-end"
-                gap="0.5"
-                pointerEvents="none"
-              >
-                {plot.offscreenBelow.map((band) => (
-                  <Text
-                    key={`below-${band.low}-${band.high}`}
-                    fontFamily="mono"
-                    fontSize="2xs"
-                    color={tokens.tagGreen.color}
-                  >
-                    SUP {formatLevelPrice(Math.max(band.low, band.high))}
-                  </Text>
-                ))}
-              </Box>
-            ) : null}
 
             <Box
               color={tokens.panelHeading}
