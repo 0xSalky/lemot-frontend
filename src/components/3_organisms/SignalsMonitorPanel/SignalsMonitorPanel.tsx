@@ -228,10 +228,20 @@ function fmtPrice(value: unknown): string | null {
 }
 
 function fmtBand(low: unknown, high: unknown): string | null {
-  const l = fmtPrice(low);
-  const h = fmtPrice(high);
-  if (l == null || h == null) return null;
-  return `${l}–${h}`;
+  const lo = Number(low);
+  const hi = Number(high);
+  if (!Number.isFinite(lo) || !Number.isFinite(hi)) return null;
+  const top = fmtPrice(Math.max(lo, hi));
+  const bottom = fmtPrice(Math.min(lo, hi));
+  if (top == null || bottom == null) return null;
+  return `${top}–${bottom}`;
+}
+
+function fmtPriceBandLine(price: unknown, low: unknown, high: unknown): string | null {
+  const p = fmtPrice(price);
+  const band = fmtBand(low, high);
+  if (p == null || band == null) return null;
+  return `${p} | ${band}`;
 }
 
 function EventTag({
@@ -307,8 +317,7 @@ function BandWatchRow({
   tokens: ThemeTokens;
 }) {
   const base = symbolBase(entry.symbol);
-  const band = fmtBand(entry.band_low, entry.band_high);
-  const price = fmtPrice(entry.price);
+  const priceBand = fmtPriceBandLine(entry.price, entry.band_low, entry.band_high);
   const accent = profileAccent(tokens, profileKey);
   const distLabel = entry.at_band ? "IN" : `${entry.distance_pct.toFixed(2)}%`;
   const weightLabel = `w=${entry.band_weight}`;
@@ -339,12 +348,11 @@ function BandWatchRow({
         <Text color={tokens.inlineStrong} fontWeight="bold" fontSize="sm" minW="3rem">
           {base}
         </Text>
-        {price ? (
+        {priceBand ? (
           <Text color={tokens.panelBody} fontSize="xs">
-            @ {price}
+            {priceBand}
           </Text>
         ) : null}
-        {band ? <Text color={tokens.panelBody}>{band}</Text> : null}
       </Flex>
       <Tooltip
         showArrow
