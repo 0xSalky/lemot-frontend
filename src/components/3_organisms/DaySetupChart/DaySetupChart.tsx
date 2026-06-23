@@ -59,22 +59,14 @@ function FootprintChartLoading({ base, tokens }: { base: string; tokens: ThemeTo
     <DayChartBleed tokens={tokens} minHeight={FOOTPRINT_CHART_HEIGHT + 48}>
       <Flex
         align="center"
-        justify="space-between"
+        justify="flex-end"
         gap="2"
         px="3"
         py="2"
         borderBottomWidth="1px"
         borderColor={tokens.panelBorder}
       >
-        <Text fontFamily="mono" fontSize="2xs" color={tokens.panelLabel}>
-          30m · price · delta + CVD · OI · loading…
-        </Text>
-        <Flex align="center" gap="2">
-          <Spinner size="sm" color={tokens.panelHeading} />
-          <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
-            {base}
-          </Text>
-        </Flex>
+        <Spinner size="sm" color={tokens.panelHeading} />
       </Flex>
       <Stack gap="0">
         {FOOTPRINT_LOADING_HEIGHTS.map((height, index) => (

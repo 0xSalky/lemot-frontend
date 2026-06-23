@@ -1,6 +1,11 @@
 import { proxyTradingPost } from "@/lib/tradingApiProxy";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+/** Day/swing scan + Claude analysis can run several minutes. */
+export const config = {
+  maxDuration: 600,
+};
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse,
@@ -14,5 +19,7 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  await proxyTradingPost(req, res, "/scanner/run");
+  await proxyTradingPost(req, res, "/scanner/run", undefined, {
+    upstreamTimeoutMs: 10 * 60 * 1000,
+  });
 }

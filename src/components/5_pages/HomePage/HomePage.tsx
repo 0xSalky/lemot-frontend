@@ -138,29 +138,14 @@ const HomePage = () => {
 
     const runScannerScan = useCallback((profile: ScannerProfile) => {
         const label = scannerProfileLabel(profile);
-        toaster.success({
-            title: `${label} scan requested`,
-            description: "May take a few minutes. Refresh results when ready.",
+        toaster.info({
+            title: `${label} scan started`,
+            description: "This may take a few minutes. Tap Refresh when ready.",
         });
-        void runScanner(profile)
-            .then((result) => {
-                if (!result.success) {
-                    toaster.error({
-                        title: `${label} scan`,
-                        description: result.message,
-                    });
-                    return;
-                }
-                loadScanner(profile);
-            })
-            .catch((e) => {
-                console.error(`[scanner run ${profile}]`, e);
-                toaster.error({
-                    title: `${label} scan`,
-                    description: "Request failed",
-                });
-            });
-    }, [loadScanner]);
+        void runScanner(profile).catch((e) => {
+            console.error(`[scanner run ${profile}]`, e);
+        });
+    }, []);
 
     const scannerPairs = useMemo(() => {
         const bases: string[] = [];

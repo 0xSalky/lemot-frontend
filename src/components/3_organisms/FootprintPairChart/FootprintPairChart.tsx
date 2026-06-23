@@ -348,11 +348,9 @@ export default function FootprintPairChart({
       overflow="hidden"
       bg={embedded ? "transparent" : tokens.panelBg}
     >
+      {(onTimeframeChange != null || refreshCountdownSec != null) && (
       <Box px="3" py="2" borderBottomWidth="1px" borderColor={tokens.panelBorder}>
-        <Flex align="center" justify="space-between" gap="2" flexWrap="wrap">
-          <Text fontFamily="mono" fontSize="2xs" color={tokens.panelLabel}>
-            {timeframe} · price · delta + CVD · OI · liquidations · orderflow live
-          </Text>
+        <Flex align="center" justify="flex-end" gap="2" flexWrap="wrap">
           {onTimeframeChange ? (
             <Flex align="center" gap="1.5">
               {refreshCountdownSec != null ? (
@@ -394,6 +392,7 @@ export default function FootprintPairChart({
           ) : null}
         </Flex>
       </Box>
+      )}
 
       <Box position="relative" h={`${TOTAL_HEIGHT}px`} overflow="hidden">
         <Flex position="absolute" top="2" left="2" zIndex={5} gap="1">

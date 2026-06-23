@@ -147,6 +147,7 @@ export async function proxyTradingPost(
   res: NextApiResponse,
   path: string,
   body?: unknown,
+  options?: { upstreamTimeoutMs?: number },
 ): Promise<void> {
   const creds = resolveTradingCredentials(req);
   if (!creds) {
@@ -154,16 +155,29 @@ export async function proxyTradingPost(
     return;
   }
 
-  const upstream = await fetch(`${creds.baseUrl}${path}${upstreamQuery(req)}`, {
-    method: "POST",
-    headers: {
-      "X-API-Key": creds.apiKey,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body ?? req.body ?? {}),
-  });
+  const controller = options?.upstreamTimeoutMs
+    ? new AbortController()
+    : null;
+  const timer =
+    controller && options?.upstreamTimeoutMs
+      ? setTimeout(() => controller.abort(), options.upstreamTimeoutMs)
+      : null;
 
-  await forwardUpstreamResponse(res, upstream);
+  try {
+    const upstream = await fetch(`${creds.baseUrl}${path}${upstreamQuery(req)}`, {
+      method: "POST",
+      headers: {
+        "X-API-Key": creds.apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body ?? req.body ?? {}),
+      signal: controller?.signal,
+    });
+
+    await forwardUpstreamResponse(res, upstream);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 export async function proxyTradingPatch(
