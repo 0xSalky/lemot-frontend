@@ -10,6 +10,7 @@ export interface SignalsBandWatchEntry {
   at_band: boolean;
   band_weight: number;
   span_pct?: number | null;
+  price_vs_band?: string;
   max_dist_pct?: number;
 }
 
@@ -154,6 +155,7 @@ function normalizeBandWatchEntry(raw: unknown): SignalsBandWatchEntry | null {
     at_band: Boolean(row.at_band),
     band_weight: Number(row.band_weight ?? 0),
     span_pct: row.span_pct != null ? Number(row.span_pct) : null,
+    price_vs_band: typeof row.price_vs_band === "string" ? row.price_vs_band : undefined,
     max_dist_pct: row.max_dist_pct != null ? Number(row.max_dist_pct) : undefined,
   };
 }

@@ -311,6 +311,7 @@ function BandWatchRow({
   const price = fmtPrice(entry.price);
   const accent = profileAccent(tokens, profileKey);
   const distLabel = entry.at_band ? "IN" : `${entry.distance_pct.toFixed(2)}%`;
+  const weightLabel = `w=${entry.band_weight}`;
   const sideTone =
     entry.band_side === "SUP"
       ? tokens.tagGreen
@@ -345,16 +346,38 @@ function BandWatchRow({
         ) : null}
         {band ? <Text color={tokens.panelBody}>{band}</Text> : null}
       </Flex>
-      <TagGrid
-        tags={[
-          { label: entry.band_side, tone: sideTone },
-          {
-            label: distLabel,
-            tone: entry.at_band ? tokens.tagGreen : tokens.tagAccent,
-          },
-          { label: `wt ${entry.band_weight}`, tone: tokens.tagBlue },
-        ]}
-      />
+      <Tooltip
+        showArrow
+        openDelay={200}
+        content={
+          <Box
+            bg={tokens.panelBgUser}
+            borderWidth="1px"
+            borderColor={tokens.panelBorder}
+            rounded="md"
+            p="2"
+            fontFamily="mono"
+            fontSize="2xs"
+            color={tokens.panelBody}
+          >
+            Band confluence weight (same as scanner w=)
+          </Box>
+        }
+        contentProps={{ bg: "transparent", border: "none", p: 0 }}
+      >
+        <Box>
+          <TagGrid
+            tags={[
+              { label: entry.band_side, tone: sideTone },
+              {
+                label: distLabel,
+                tone: entry.at_band ? tokens.tagGreen : tokens.tagAccent,
+              },
+              { label: weightLabel, tone: tokens.tagBlue },
+            ]}
+          />
+        </Box>
+      </Tooltip>
     </Flex>
   );
 }
@@ -970,7 +993,7 @@ export default function SignalsMonitorPanel({ active = true }: SignalsMonitorPan
       </Box>
 
       <Text mt="2" fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
-        Near band = live poll. History = past Telegram alerts. Skips are hidden.
+        Near band = live actionable levels only (SUP not broken below, RES not broken above).
       </Text>
     </Box>
   );
