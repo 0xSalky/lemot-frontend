@@ -1,6 +1,7 @@
 import type {
     ScannerAiSetupAnalysis,
     ScannerBandRow,
+    ScannerChartPayload,
     ScannerChartTimeframe,
     ScannerLatestBatchFetchResult,
     ScannerSetupRow,
@@ -13,6 +14,7 @@ import {
     isLevelAnchor,
     levelsHighToLow,
     orderedBands,
+    prefetchScannerCharts,
     scannerProfileLabel,
     SCANNER_PROFILE_CHART_TIMEFRAME,
     scannerSymbolToBase,
@@ -25,7 +27,8 @@ import FootprintOrderflowTags from "@/components/2_molecules/FootprintOrderflowT
 import SetupHeaderTags from "@/components/2_molecules/SetupHeaderTags/SetupHeaderTags";
 import DaySetupChart from "@/components/3_organisms/DaySetupChart/DaySetupChart";
 import { useThemeColor, useThemeTokens, type ThemeTokens } from "@/components/ui/theme-color";
-import { fetchFootprintView, hasOrderflowData } from "@/services/footprintUtils";
+import { usePageVisible } from "@/hooks/usePageVisible";
+import { expectsFootprintSymbol, fetchFootprintView, hasOrderflowData } from "@/services/footprintUtils";
 import { Box, Badge, Flex, Stack, Text } from "@chakra-ui/react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -35,6 +38,8 @@ type ScannerResultsProps = {
     profile: ScannerProfile;
     latestBatch: ScannerLatestBatchFetchResult | null;
     loading?: boolean;
+    /** False when scanner tab is hidden — pauses chart/footprint polling. */
+    active?: boolean;
 };
 
 const AI_TEXT = {
@@ -239,6 +244,9 @@ function SetupCard({
     footprintPair,
     footprintLoading,
     footprintRefreshCountdownSec,
+    managedChart,
+    managedChartLoading,
+    managedRefreshCountdownSec,
 }: {
     setup: ScannerSetupRow;
     tokens: ThemeTokens;
@@ -247,6 +255,9 @@ function SetupCard({
     footprintPair?: FootprintPairView | null;
     footprintLoading?: boolean;
     footprintRefreshCountdownSec?: number;
+    managedChart?: ScannerChartPayload | null;
+    managedChartLoading?: boolean;
+    managedRefreshCountdownSec?: number;
 }) {
     const bands = orderedBands(Array.isArray(setup.bands) ? setup.bands : []);
 
@@ -278,6 +289,9 @@ function SetupCard({
                 footprintEnabled={profile === "day"}
                 footprintRefreshCountdownSec={footprintRefreshCountdownSec}
                 defaultChartTimeframe={defaultChartTimeframe}
+                managedChart={managedChart}
+                managedChartLoading={managedChartLoading}
+                managedRefreshCountdownSec={managedRefreshCountdownSec}
             />
             <Stack gap="3" mt="2">
                 {bands.map((band, bandIdx) => (
@@ -364,9 +378,11 @@ function BandBlock({ band }: { band: ScannerBandRow }) {
     );
 }
 
-const ScannerResults = ({ profile, latestBatch, loading = false }: ScannerResultsProps) => {
+const ScannerResults = ({ profile, latestBatch, loading = false, active = true }: ScannerResultsProps) => {
     const { palette } = useThemeColor();
     const tokens = useThemeTokens(palette);
+    const pageVisible = usePageVisible();
+    const pollingEnabled = active && pageVisible;
     const setups = setupsFromBatch(latestBatch);
     const profileLabel = scannerProfileLabel(profile);
     const defaultChartTimeframe = SCANNER_PROFILE_CHART_TIMEFRAME[profile];
@@ -374,6 +390,12 @@ const ScannerResults = ({ profile, latestBatch, loading = false }: ScannerResult
     const [footprintLoading, setFootprintLoading] = useState(false);
     const nextFootprintRefreshAtRef = useRef(0);
     const [footprintRefreshCountdownSec, setFootprintRefreshCountdownSec] = useState(
+        Math.ceil(SCANNER_CHART_REFRESH_MS / 1000),
+    );
+    const [managedCharts, setManagedCharts] = useState<Record<string, ScannerChartPayload | null>>({});
+    const [managedChartsLoading, setManagedChartsLoading] = useState(false);
+    const nextChartRefreshAtRef = useRef(0);
+    const [managedRefreshCountdownSec, setManagedRefreshCountdownSec] = useState(
         Math.ceil(SCANNER_CHART_REFRESH_MS / 1000),
     );
 
@@ -390,6 +412,29 @@ const ScannerResults = ({ profile, latestBatch, loading = false }: ScannerResult
     const activeFootprintKey = profile === "day" ? footprintSymbolsKey : "";
     const [prevFootprintKey, setPrevFootprintKey] = useState<string | null>(null);
 
+    const restChartSymbols = useMemo(() => {
+        if (!pollingEnabled || setups.length === 0) return [];
+        if (profile === "swing") {
+            return setups.map((setup) => setup.symbol);
+        }
+        if (profile === "day" && !footprintLoading) {
+            return setups
+                .filter((setup) => {
+                    const base = scannerSymbolToBase(setup.symbol);
+                    if (!expectsFootprintSymbol(base)) return true;
+                    const pair = footprintPayload?.pairs[base];
+                    return !hasOrderflowData(pair);
+                })
+                .map((setup) => setup.symbol);
+        }
+        return [];
+    }, [footprintLoading, footprintPayload, pollingEnabled, profile, setups]);
+
+    const restChartSymbolsKey = useMemo(
+        () => restChartSymbols.slice().sort().join(","),
+        [restChartSymbols],
+    );
+
     if (activeFootprintKey !== prevFootprintKey) {
         setPrevFootprintKey(activeFootprintKey);
         if (!activeFootprintKey) {
@@ -401,7 +446,7 @@ const ScannerResults = ({ profile, latestBatch, loading = false }: ScannerResult
     }
 
     useEffect(() => {
-        if (!activeFootprintKey) return;
+        if (!activeFootprintKey || !pollingEnabled) return;
 
         const symbols = activeFootprintKey.split(",");
         let cancelled = false;
@@ -431,7 +476,10 @@ const ScannerResults = ({ profile, latestBatch, loading = false }: ScannerResult
         };
 
         loadFootprint(true);
-        const refreshId = window.setInterval(() => loadFootprint(false), SCANNER_CHART_REFRESH_MS);
+        const refreshId = window.setInterval(() => {
+            if (document.visibilityState !== "visible") return;
+            loadFootprint(false);
+        }, SCANNER_CHART_REFRESH_MS);
 
         const tickId = window.setInterval(() => {
             const remaining = Math.max(
@@ -446,7 +494,60 @@ const ScannerResults = ({ profile, latestBatch, loading = false }: ScannerResult
             window.clearInterval(refreshId);
             window.clearInterval(tickId);
         };
-    }, [activeFootprintKey]);
+    }, [activeFootprintKey, pollingEnabled]);
+
+    useEffect(() => {
+        if (!restChartSymbolsKey || !pollingEnabled) return;
+
+        const symbols = restChartSymbolsKey.split(",").filter(Boolean);
+        let cancelled = false;
+        const totalSec = Math.ceil(SCANNER_CHART_REFRESH_MS / 1000);
+
+        const resetRefreshDeadline = () => {
+            nextChartRefreshAtRef.current = Date.now() + SCANNER_CHART_REFRESH_MS;
+            setManagedRefreshCountdownSec(totalSec);
+        };
+
+        resetRefreshDeadline();
+        setManagedChartsLoading(true);
+
+        const loadCharts = (initial: boolean) => {
+            void prefetchScannerCharts(symbols, defaultChartTimeframe)
+                .then((charts) => {
+                    if (!cancelled) {
+                        setManagedCharts(charts);
+                        resetRefreshDeadline();
+                    }
+                })
+                .catch(() => {
+                    if (!cancelled) setManagedCharts({});
+                })
+                .finally(() => {
+                    if (!cancelled && initial) setManagedChartsLoading(false);
+                });
+        };
+
+        loadCharts(true);
+
+        const refreshId = window.setInterval(() => {
+            if (document.visibilityState !== "visible") return;
+            loadCharts(false);
+        }, SCANNER_CHART_REFRESH_MS);
+
+        const tickId = window.setInterval(() => {
+            const remaining = Math.max(
+                0,
+                Math.ceil((nextChartRefreshAtRef.current - Date.now()) / 1000),
+            );
+            setManagedRefreshCountdownSec(remaining);
+        }, 1000);
+
+        return () => {
+            cancelled = true;
+            window.clearInterval(refreshId);
+            window.clearInterval(tickId);
+        };
+    }, [defaultChartTimeframe, pollingEnabled, restChartSymbolsKey]);
 
     const wsConnected =
         footprintPayload?.health &&
@@ -518,7 +619,16 @@ const ScannerResults = ({ profile, latestBatch, loading = false }: ScannerResult
                 </Stack>
             ) : null}
             <ResponsiveCardGrid>
-                {setups.map((setup) => (
+                {setups.map((setup) => {
+                    const usesManagedChart =
+                        profile === "swing" ||
+                        (profile === "day" &&
+                            (!expectsFootprintSymbol(scannerSymbolToBase(setup.symbol)) ||
+                                !hasOrderflowData(
+                                    footprintPayload?.pairs[scannerSymbolToBase(setup.symbol)],
+                                )));
+
+                    return (
                     <SetupCard
                         key={setup.id}
                         setup={setup}
@@ -534,8 +644,14 @@ const ScannerResults = ({ profile, latestBatch, loading = false }: ScannerResult
                         footprintRefreshCountdownSec={
                             profile === "day" ? footprintRefreshCountdownSec : undefined
                         }
+                        managedChart={usesManagedChart ? managedCharts[setup.symbol] ?? null : undefined}
+                        managedChartLoading={usesManagedChart ? managedChartsLoading : false}
+                        managedRefreshCountdownSec={
+                            usesManagedChart ? managedRefreshCountdownSec : undefined
+                        }
                     />
-                ))}
+                    );
+                })}
             </ResponsiveCardGrid>
         </Stack>
     );

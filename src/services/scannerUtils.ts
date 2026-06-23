@@ -10,8 +10,10 @@ import type {
   ScannerSetupRow,
 } from "@/types/scannerTypes";
 
-/** Auto-refresh interval for scanner/footprint charts in day scan (2 minutes). */
-export const SCANNER_CHART_REFRESH_MS = 2 * 60 * 1000;
+/** Auto-refresh interval for scanner/footprint charts (5 minutes). */
+export const SCANNER_CHART_REFRESH_MS = 5 * 60 * 1000;
+
+const CHART_CLIENT_CACHE_TTL_MS = 45_000;
 
 export function formatRefreshCountdown(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -113,7 +115,10 @@ export async function fetchLatestScannerBatch(
   };
 }
 
-const chartPayloadCache = new Map<string, Promise<ScannerChartPayload | null>>();
+const chartPayloadCache = new Map<
+  string,
+  { expiresAt: number; promise: Promise<ScannerChartPayload | null> }
+>();
 
 export async function fetchScannerChart(
   symbol: string,
@@ -125,40 +130,62 @@ export async function fetchScannerChart(
 
   if (options?.bustCache) {
     chartPayloadCache.delete(key);
+  } else {
+    const cached = chartPayloadCache.get(key);
+    if (cached && Date.now() < cached.expiresAt) {
+      return cached.promise;
+    }
   }
 
-  let pending = chartPayloadCache.get(key);
-  if (!pending) {
-    pending = (async () => {
-      const params = new URLSearchParams({
-        symbol: symbol.trim(),
-        timeframe,
-      });
-      const res = await apiFetch(`/api/scanner/chart?${params.toString()}`, {
-        cache: "no-store",
-      });
-      const raw = await res.text();
-      let data: unknown;
-      try {
-        data = raw ? JSON.parse(raw) : {};
-      } catch {
-        return null;
-      }
-      if (!res.ok) return null;
-      const payload = data as Partial<ScannerChartPayload>;
-      if (!Array.isArray(payload.candles) || payload.candles.length === 0) {
-        return null;
-      }
-      return {
-        symbol: payload.symbol ?? symbol.trim(),
-        timeframe: payload.timeframe ?? timeframe,
-        candles: payload.candles,
-      };
-    })();
-    chartPayloadCache.set(key, pending);
-  }
+  const promise = (async () => {
+    const params = new URLSearchParams({
+      symbol: symbol.trim(),
+      timeframe,
+    });
+    const res = await apiFetch(`/api/scanner/chart?${params.toString()}`, {
+      cache: "no-store",
+    });
+    const raw = await res.text();
+    let data: unknown;
+    try {
+      data = raw ? JSON.parse(raw) : {};
+    } catch {
+      return null;
+    }
+    if (!res.ok) return null;
+    const payload = data as Partial<ScannerChartPayload>;
+    if (!Array.isArray(payload.candles) || payload.candles.length === 0) {
+      return null;
+    }
+    return {
+      symbol: payload.symbol ?? symbol.trim(),
+      timeframe: payload.timeframe ?? timeframe,
+      candles: payload.candles,
+    };
+  })();
 
-  return pending;
+  chartPayloadCache.set(key, {
+    expiresAt: Date.now() + CHART_CLIENT_CACHE_TTL_MS,
+    promise,
+  });
+
+  return promise;
+}
+
+/** One parallel batch for all setup cards — avoids N independent refresh timers. */
+export async function prefetchScannerCharts(
+  symbols: readonly string[],
+  timeframe: ScannerChartTimeframe,
+  options?: { bustCache?: boolean },
+): Promise<Record<string, ScannerChartPayload | null>> {
+  const unique = [...new Set(symbols.map((s) => s.trim()).filter(Boolean))];
+  const entries = await Promise.all(
+    unique.map(
+      async (symbol) =>
+        [symbol, await fetchScannerChart(symbol, timeframe, options)] as const,
+    ),
+  );
+  return Object.fromEntries(entries);
 }
 
 export type ScannerRunResult =

@@ -7,6 +7,7 @@ import {
   type ScannerChartTimeframe,
 } from "@/types/scannerTypes";
 import { fetchScannerChart, formatLevelPrice, formatRefreshCountdown, SCANNER_CHART_REFRESH_MS } from "@/services/scannerUtils";
+import { usePageVisible } from "@/hooks/usePageVisible";
 import type { ThemeTokens } from "@/components/ui/theme-color";
 import { Box, Flex, NativeSelect, Text } from "@chakra-ui/react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -37,6 +38,10 @@ type ScannerSetupChartProps = {
   defaultTimeframe?: ScannerChartTimeframe;
   /** When true, outer bleed margins are omitted (parent card handles layout). */
   embedded?: boolean;
+  /** Batched chart from ScannerResults — skips per-card polling when timeframe matches default. */
+  managedChart?: ScannerChartPayload | null;
+  managedChartLoading?: boolean;
+  managedRefreshCountdownSec?: number;
 };
 
 function computeChartBounds(
@@ -87,7 +92,11 @@ function ScannerSetupChart({
   tokens,
   defaultTimeframe = "1h",
   embedded = false,
+  managedChart,
+  managedChartLoading = false,
+  managedRefreshCountdownSec,
 }: ScannerSetupChartProps) {
+  const pageVisible = usePageVisible();
   const containerRef = useRef<HTMLDivElement>(null);
   const nextRefreshAtRef = useRef(0);
   const [containerWidth, setContainerWidth] = useState(0);
@@ -103,10 +112,25 @@ function ScannerSetupChart({
     error: null,
   });
 
+  const useManagedChart =
+    managedChart !== undefined && timeframe === defaultTimeframe;
   const fetchKey = `${symbol}|${timeframe}`;
-  const loading = fetchState.key !== fetchKey;
-  const chart = fetchState.key === fetchKey ? fetchState.chart : null;
-  const error = fetchState.key === fetchKey ? fetchState.error : null;
+  const loading = useManagedChart
+    ? managedChartLoading
+    : fetchState.key !== fetchKey;
+  const chart = useManagedChart
+    ? managedChart
+    : fetchState.key === fetchKey
+      ? fetchState.chart
+      : null;
+  const error = useManagedChart
+    ? null
+    : fetchState.key === fetchKey
+      ? fetchState.error
+      : null;
+  const countdownSec = useManagedChart
+    ? managedRefreshCountdownSec ?? refreshCountdownSec
+    : refreshCountdownSec;
 
   useEffect(() => {
     setTimeframe(defaultTimeframe);
@@ -128,6 +152,8 @@ function ScannerSetupChart({
   }, []);
 
   useEffect(() => {
+    if (useManagedChart || !pageVisible) return;
+
     let cancelled = false;
     const totalSec = Math.ceil(CHART_REFRESH_MS / 1000);
 
@@ -176,8 +202,8 @@ function ScannerSetupChart({
     loadChart(false);
 
     const refreshId = window.setInterval(() => {
-      resetRefreshDeadline();
-      loadChart(true);
+      if (document.visibilityState !== "visible") return;
+      loadChart(false);
     }, CHART_REFRESH_MS);
 
     const tickId = window.setInterval(() => {
@@ -193,7 +219,7 @@ function ScannerSetupChart({
       window.clearInterval(refreshId);
       window.clearInterval(tickId);
     };
-  }, [fetchKey, symbol, timeframe]);
+  }, [fetchKey, pageVisible, symbol, timeframe, useManagedChart]);
 
   const chartWidth = Math.max(containerWidth, 280);
 
@@ -286,7 +312,7 @@ function ScannerSetupChart({
               color={tokens.panelMuted}
               title="Next chart refresh"
             >
-              {formatRefreshCountdown(refreshCountdownSec)}
+              {formatRefreshCountdown(countdownSec)}
             </Text>
             <NativeSelect.Root
               size="xs"

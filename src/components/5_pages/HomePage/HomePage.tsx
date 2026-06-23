@@ -124,6 +124,7 @@ const HomePage = () => {
     });
     const [loading, setLoading] = useState<Record<ScannerProfile, boolean>>(INITIAL_SCANNER_LOADING);
     const loadIdRef = useRef<Record<ScannerProfile, number>>({ swing: 0, day: 0 });
+    const [activeTab, setActiveTab] = useState("pairs");
 
     const loadScanner = useCallback((profile: ScannerProfile) => {
         setLoading((prev) => ({ ...prev, [profile]: true }));
@@ -174,7 +175,12 @@ const HomePage = () => {
             pt={{ base: "0.75rem", md: "1rem" }}
             pb={{ base: "2rem", md: "2.5rem" }}
         >
-            <Tabs.Root defaultValue="pairs" colorPalette={palette}>
+            <Tabs.Root
+                value={activeTab}
+                onValueChange={(event) => setActiveTab(event.value)}
+                defaultValue="pairs"
+                colorPalette={palette}
+            >
                 <Tabs.List
                     bg="transparent"
                     borderBottomWidth="1px"
@@ -200,19 +206,25 @@ const HomePage = () => {
                 </Tabs.Content>
 
                 <Tabs.Content value="scanner-day">
-                    <ScannerResults
-                        profile="day"
-                        latestBatch={batches.day}
-                        loading={loading.day}
-                    />
+                    {activeTab === "scanner-day" ? (
+                        <ScannerResults
+                            profile="day"
+                            latestBatch={batches.day}
+                            loading={loading.day}
+                            active
+                        />
+                    ) : null}
                 </Tabs.Content>
 
                 <Tabs.Content value="scanner-swing">
-                    <ScannerResults
-                        profile="swing"
-                        latestBatch={batches.swing}
-                        loading={loading.swing}
-                    />
+                    {activeTab === "scanner-swing" ? (
+                        <ScannerResults
+                            profile="swing"
+                            latestBatch={batches.swing}
+                            loading={loading.swing}
+                            active
+                        />
+                    ) : null}
                 </Tabs.Content>
 
                 <Tabs.Content value="scanner-chat">

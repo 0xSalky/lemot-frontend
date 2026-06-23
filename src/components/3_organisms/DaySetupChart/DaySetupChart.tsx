@@ -10,7 +10,7 @@ import {
 } from "@/services/footprintUtils";
 import { scannerSymbolToBase } from "@/services/scannerUtils";
 import type { FootprintPairView, FootprintTimeframe } from "@/types/footprintTypes";
-import type { ScannerBandRow, ScannerChartTimeframe } from "@/types/scannerTypes";
+import type { ScannerBandRow, ScannerChartPayload, ScannerChartTimeframe } from "@/types/scannerTypes";
 import { Box, Flex, Skeleton, Spinner, Stack, Text } from "@chakra-ui/react";
 import { useCallback, useState, type ReactNode } from "react";
 
@@ -25,6 +25,9 @@ type DaySetupChartProps = {
   /** Day scan only — swing always uses the simple REST chart layout. */
   footprintEnabled?: boolean;
   footprintRefreshCountdownSec?: number;
+  managedChart?: ScannerChartPayload | null;
+  managedChartLoading?: boolean;
+  managedRefreshCountdownSec?: number;
 };
 
 const FOOTPRINT_LOADING_HEIGHTS = [120, 64, 56] as const;
@@ -92,6 +95,9 @@ export default function DaySetupChart({
   defaultChartTimeframe = "30m",
   footprintEnabled = true,
   footprintRefreshCountdownSec,
+  managedChart,
+  managedChartLoading,
+  managedRefreshCountdownSec,
 }: DaySetupChartProps) {
   const base = scannerSymbolToBase(symbol);
   const expectsFootprint = footprintEnabled && expectsFootprintSymbol(base);
@@ -156,6 +162,9 @@ export default function DaySetupChart({
         tokens={tokens}
         defaultTimeframe={defaultChartTimeframe}
         embedded
+        managedChart={managedChart}
+        managedChartLoading={managedChartLoading}
+        managedRefreshCountdownSec={managedRefreshCountdownSec}
       />
     </DayChartBleed>
   );
