@@ -10,6 +10,8 @@ import type {
 } from "@/types/footprintTypes";
 import { FOOTPRINT_SYMBOLS } from "@/types/footprintTypes";
 
+const footprintViewCache = new Map<string, Promise<FootprintViewPayload>>();
+
 export async function fetchFootprintView(
   symbols: readonly string[] = FOOTPRINT_SYMBOLS,
   options?: {
@@ -17,26 +19,43 @@ export async function fetchFootprintView(
     profile?: FootprintProfile;
   },
 ): Promise<FootprintViewPayload> {
-  const params = new URLSearchParams({
-    symbols: symbols.join(","),
-  });
-  if (options?.timeframe) {
-    params.set("timeframe", options.timeframe);
-  }
-  if (options?.profile) {
-    params.set("profile", options.profile);
+  const key = [
+    options?.profile ?? "day",
+    options?.timeframe ?? "30m",
+    [...symbols].sort().join(","),
+  ].join("|");
+
+  let pending = footprintViewCache.get(key);
+  if (!pending) {
+    pending = (async () => {
+      const params = new URLSearchParams({
+        symbols: symbols.join(","),
+      });
+      if (options?.timeframe) {
+        params.set("timeframe", options.timeframe);
+      }
+      if (options?.profile) {
+        params.set("profile", options.profile);
+      }
+
+      const res = await apiFetch(`/api/footprint/view?${params.toString()}`, {
+        cache: "no-store",
+      });
+
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { detail?: string };
+        throw new Error(body.detail ?? `Footprint request failed (${res.status})`);
+      }
+
+      return (await res.json()) as FootprintViewPayload;
+    })();
+    footprintViewCache.set(key, pending);
+    void pending.finally(() => {
+      window.setTimeout(() => footprintViewCache.delete(key), 30_000);
+    });
   }
 
-  const res = await apiFetch(`/api/footprint/view?${params.toString()}`, {
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { detail?: string };
-    throw new Error(body.detail ?? `Footprint request failed (${res.status})`);
-  }
-
-  return (await res.json()) as FootprintViewPayload;
+  return pending;
 }
 
 export function hasFootprintData(pair?: FootprintPairView | null): boolean {

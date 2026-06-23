@@ -459,7 +459,11 @@ const ScannerResults = ({ profile, latestBatch, loading = false, active = true }
 
         resetRefreshDeadline();
 
+        const footprintLoadInFlight = useRef(false);
+
         const loadFootprint = (initial: boolean) => {
+            if (footprintLoadInFlight.current) return;
+            footprintLoadInFlight.current = true;
             void fetchFootprintView(symbols, { profile: "day", timeframe: "30m" })
                 .then((data) => {
                     if (!cancelled) {
@@ -471,6 +475,7 @@ const ScannerResults = ({ profile, latestBatch, loading = false, active = true }
                     if (!cancelled) setFootprintPayload(null);
                 })
                 .finally(() => {
+                    footprintLoadInFlight.current = false;
                     if (!cancelled && initial) setFootprintLoading(false);
                 });
         };
