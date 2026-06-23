@@ -266,8 +266,14 @@ export type ScannerAnalyzeResult =
 
 export async function runScanner(
   profile: ScannerProfile = DEFAULT_SCANNER_PROFILE,
+  options?: { analyze?: boolean },
 ): Promise<ScannerRunResult> {
   const params = new URLSearchParams({ profile });
+  if (options?.analyze === false) {
+    params.set("analyze", "false");
+  } else if (options?.analyze === true) {
+    params.set("analyze", "true");
+  }
   const res = await apiFetch(`/api/scanner/run?${params.toString()}`, { method: "POST" });
   const raw = await res.text();
   let data: unknown;

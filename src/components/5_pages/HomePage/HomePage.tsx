@@ -72,13 +72,17 @@ function runScannerBatchFetch(
 function ScannerConfigPanel({
     profile,
     loading,
+    running,
     onRefresh,
-    onRun,
+    onRunScan,
+    onRunScanWithAi,
 }: {
     profile: ScannerProfile;
     loading: boolean;
+    running: boolean;
     onRefresh: () => void;
-    onRun: () => void;
+    onRunScan: () => void;
+    onRunScanWithAi: () => void;
 }) {
     const { palette } = useThemeColor();
     const tokens = useThemeTokens(palette);
@@ -106,9 +110,20 @@ function ScannerConfigPanel({
                     variant="outline"
                     colorPalette={palette}
                     borderColor={tokens.panelBorder}
-                    onClick={onRun}
+                    loading={running}
+                    onClick={onRunScan}
                 >
                     Run {label} scan
+                </Button>
+                <Button
+                    size="xs"
+                    variant="outline"
+                    colorPalette={palette}
+                    borderColor={tokens.panelBorder}
+                    loading={running}
+                    onClick={onRunScanWithAi}
+                >
+                    Run {label} scan + AI
                 </Button>
             </Stack>
         </Stack>
@@ -124,6 +139,7 @@ const HomePage = () => {
         day: null,
     });
     const [loading, setLoading] = useState<Record<ScannerProfile, boolean>>(INITIAL_SCANNER_LOADING);
+    const [running, setRunning] = useState<Record<ScannerProfile, boolean>>({ swing: false, day: false });
     const loadIdRef = useRef<Record<ScannerProfile, number>>({ swing: 0, day: 0 });
     const [activeTab, setActiveTab] = useState("pairs");
 
@@ -138,16 +154,52 @@ const HomePage = () => {
         }
     }, []);
 
-    const runScannerScan = useCallback((profile: ScannerProfile) => {
-        const label = scannerProfileLabel(profile);
-        toaster.info({
-            title: `${label} scan started`,
-            description: "This may take a few minutes. Tap Refresh when ready.",
-        });
-        void runScanner(profile).catch((e) => {
-            console.error(`[scanner run ${profile}]`, e);
-        });
-    }, []);
+    const runScannerJob = useCallback(
+        (profile: ScannerProfile, withAi: boolean) => {
+            const label = scannerProfileLabel(profile);
+            toaster.info({
+                title: withAi ? `${label} scan + AI started` : `${label} scan started`,
+                description: "This may take a few minutes. Tap Refresh when ready.",
+            });
+            setRunning((prev) => ({ ...prev, [profile]: true }));
+            void runScanner(profile, { analyze: withAi })
+                .then((result) => {
+                    if (!result.success) {
+                        toaster.error({ title: `${label} scan failed`, description: result.message });
+                        return;
+                    }
+                    if (withAi && result.ai_error) {
+                        toaster.warning({
+                            title: `${label} scan saved, AI failed`,
+                            description: result.ai_error,
+                        });
+                        return;
+                    }
+                    if (withAi && result.ai_skip_reason) {
+                        toaster.warning({
+                            title: `${label} scan saved, AI skipped`,
+                            description: result.ai_skip_reason,
+                        });
+                        return;
+                    }
+                    toaster.success({
+                        title: withAi ? `${label} scan + AI complete` : `${label} scan complete`,
+                        description:
+                            result.setup_count != null
+                                ? `${result.setup_count} setups`
+                                : undefined,
+                    });
+                })
+                .catch((e) => {
+                    console.error(`[scanner run ${profile}]`, e);
+                    toaster.error({ title: `${label} scan failed`, description: String(e) });
+                })
+                .finally(() => {
+                    setRunning((prev) => ({ ...prev, [profile]: false }));
+                });
+        },
+        [],
+    );
 
     const scannerPairs = useMemo(() => {
         const bases: string[] = [];
@@ -279,8 +331,10 @@ const HomePage = () => {
                                     <ScannerConfigPanel
                                         profile="day"
                                         loading={loading.day}
+                                        running={running.day}
                                         onRefresh={() => loadScanner("day")}
-                                        onRun={() => runScannerScan("day")}
+                                        onRunScan={() => runScannerJob("day", false)}
+                                        onRunScanWithAi={() => runScannerJob("day", true)}
                                     />
                                 </ConfigSection>
 
@@ -290,8 +344,10 @@ const HomePage = () => {
                                     <ScannerConfigPanel
                                         profile="swing"
                                         loading={loading.swing}
+                                        running={running.swing}
                                         onRefresh={() => loadScanner("swing")}
-                                        onRun={() => runScannerScan("swing")}
+                                        onRunScan={() => runScannerJob("swing", false)}
+                                        onRunScanWithAi={() => runScannerJob("swing", true)}
                                     />
                                 </ConfigSection>
 
