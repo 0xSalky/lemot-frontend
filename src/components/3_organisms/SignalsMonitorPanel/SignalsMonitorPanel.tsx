@@ -16,9 +16,9 @@ import type {
   SignalsProfileHealth,
   SignalsServiceStatus,
 } from "@/types/signalsMonitorTypes";
-import { Box, Flex, Stack, Text } from "@chakra-ui/react";
+import { Box, Flex, Spinner, Stack, Text } from "@chakra-ui/react";
 import { keyframes } from "@emotion/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const TF_SECONDS: Record<string, number> = {
   "30m": 1800,
@@ -283,9 +283,11 @@ function EventTag({
 function TagGrid({
   tags,
   minColWidth = "4.75rem",
+  layout = "full",
 }: {
   tags: Array<{ label: string; tone: { bg: string; color: string; border: string } } | null>;
   minColWidth?: string;
+  layout?: "full" | "compact";
 }) {
   const cells = [...tags.slice(0, 3)];
   while (cells.length < 3) cells.push(null);
@@ -295,7 +297,7 @@ function TagGrid({
       display="grid"
       gridTemplateColumns={`repeat(3, minmax(${minColWidth}, 1fr))`}
       gap="1.5"
-      w={{ base: "100%", md: "15rem" }}
+      w={layout === "full" ? { base: "100%", md: "15rem" } : "auto"}
       flexShrink={0}
     >
       {cells.map((tag, index) => (
@@ -329,10 +331,8 @@ function BandWatchRow({
         : tokens.tagBlue;
 
   return (
-    <Flex
-      gap="3"
-      align="center"
-      flexWrap="wrap"
+    <Stack
+      gap="1"
       py="2"
       px="3"
       borderLeftWidth="2px"
@@ -341,52 +341,63 @@ function BandWatchRow({
       fontFamily="mono"
       fontSize="xs"
     >
-      <Flex gap="3" align="center" flexWrap="wrap" minW="0" flex="1">
-        <Text color={tokens.panelLabel} fontSize="2xs" minW="2.5rem">
-          {profileKey.toUpperCase()}
-        </Text>
-        <Text color={tokens.inlineStrong} fontWeight="bold" fontSize="sm" minW="3rem">
-          {base}
-        </Text>
-        {priceBand ? (
-          <Text color={tokens.panelBody} fontSize="xs">
-            {priceBand}
+      <Flex gap="2" align="center" justify="space-between" minW="0">
+        <Flex gap="3" align="center" minW="0">
+          <Text color={tokens.panelLabel} fontSize="2xs" flexShrink={0}>
+            {profileKey.toUpperCase()}
           </Text>
-        ) : null}
-      </Flex>
-      <Tooltip
-        showArrow
-        openDelay={200}
-        content={
-          <Box
-            bg={tokens.panelBgUser}
-            borderWidth="1px"
-            borderColor={tokens.panelBorder}
-            rounded="md"
-            p="2"
-            fontFamily="mono"
-            fontSize="2xs"
-            color={tokens.panelBody}
-          >
-            Band confluence weight (same as scanner w=)
+          <Text color={tokens.inlineStrong} fontWeight="bold" fontSize="sm" flexShrink={0}>
+            {base}
+          </Text>
+        </Flex>
+        <Tooltip
+          showArrow
+          openDelay={200}
+          content={
+            <Box
+              bg={tokens.panelBgUser}
+              borderWidth="1px"
+              borderColor={tokens.panelBorder}
+              rounded="md"
+              p="2"
+              fontFamily="mono"
+              fontSize="2xs"
+              color={tokens.panelBody}
+            >
+              Band confluence weight (same as scanner w=)
+            </Box>
+          }
+          contentProps={{ bg: "transparent", border: "none", p: 0 }}
+        >
+          <Box flexShrink={0}>
+            <TagGrid
+              layout="compact"
+              minColWidth="3.25rem"
+              tags={[
+                { label: entry.band_side, tone: sideTone },
+                {
+                  label: distLabel,
+                  tone: entry.at_band ? tokens.tagGreen : tokens.tagAccent,
+                },
+                { label: weightLabel, tone: tokens.tagBlue },
+              ]}
+            />
           </Box>
-        }
-        contentProps={{ bg: "transparent", border: "none", p: 0 }}
-      >
-        <Box>
-          <TagGrid
-            tags={[
-              { label: entry.band_side, tone: sideTone },
-              {
-                label: distLabel,
-                tone: entry.at_band ? tokens.tagGreen : tokens.tagAccent,
-              },
-              { label: weightLabel, tone: tokens.tagBlue },
-            ]}
-          />
-        </Box>
-      </Tooltip>
-    </Flex>
+        </Tooltip>
+      </Flex>
+      {priceBand ? (
+        <Text
+          color={tokens.panelBody}
+          fontSize="xs"
+          whiteSpace="nowrap"
+          overflowX="auto"
+          lineHeight="1.4"
+          css={{ WebkitOverflowScrolling: "touch" }}
+        >
+          {priceBand}
+        </Text>
+      ) : null}
+    </Stack>
   );
 }
 
@@ -677,6 +688,25 @@ type SignalsMonitorPanelProps = {
   active?: boolean;
 };
 
+async function fetchMonitorSnapshot() {
+  const [healthData, activityData, statsData] = await Promise.all([
+    fetchSignalsHealth(),
+    fetchSignalsActivity(120),
+    fetchSignalsStats(24),
+  ]);
+  const countdownBase: Record<string, number> = {};
+  for (const [key, profile] of Object.entries(healthData.profiles)) {
+    countdownBase[key] = profile.next_bar_close_in_sec;
+  }
+  return {
+    health: healthData,
+    liveEvents: activityData.live_events,
+    historyEvents: activityData.history_events,
+    stats: statsData,
+    countdownBase,
+  };
+}
+
 export default function SignalsMonitorPanel({ active = true }: SignalsMonitorPanelProps) {
   const { palette } = useThemeColor();
   const tokens = useThemeTokens(palette);
@@ -690,31 +720,33 @@ export default function SignalsMonitorPanel({ active = true }: SignalsMonitorPan
   const [tick, setTick] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const refresh = useCallback(async () => {
-    const [healthData, activityData, statsData] = await Promise.all([
-      fetchSignalsHealth(),
-      fetchSignalsActivity(120),
-      fetchSignalsStats(24),
-    ]);
-    setHealth(healthData);
-    setLiveEvents(activityData.live_events);
-    setHistoryEvents(activityData.history_events);
-    setStats(statsData);
-    const bases: Record<string, number> = {};
-    for (const [key, profile] of Object.entries(healthData.profiles)) {
-      bases[key] = profile.next_bar_close_in_sec;
-    }
-    setCountdownBase(bases);
-    setTick(0);
-    setLoading(false);
-  }, []);
-
   useEffect(() => {
     if (!active || !pageVisible) return;
-    void refresh();
-    const id = window.setInterval(() => void refresh(), 15_000);
-    return () => window.clearInterval(id);
-  }, [active, pageVisible, refresh]);
+
+    let cancelled = false;
+
+    const poll = () => {
+      void (async () => {
+        const data = await fetchMonitorSnapshot();
+        if (cancelled) return;
+        setHealth(data.health);
+        setLiveEvents(data.liveEvents);
+        setHistoryEvents(data.historyEvents);
+        setStats(data.stats);
+        setCountdownBase(data.countdownBase);
+        setTick(0);
+        setLoading(false);
+      })();
+    };
+
+    const initial = window.setTimeout(poll, 0);
+    const id = window.setInterval(poll, 15_000);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(initial);
+      window.clearInterval(id);
+    };
+  }, [active, pageVisible]);
 
   useEffect(() => {
     if (!active) return;
@@ -727,9 +759,11 @@ export default function SignalsMonitorPanel({ active = true }: SignalsMonitorPan
     return Object.entries(health.profiles);
   }, [health]);
 
-  const liveStatusColor = health
-    ? statusColor(tokens, health.service_status)
-    : tokens.warn;
+  const liveStatusColor = loading && !health
+    ? tokens.panelMuted
+    : health
+      ? statusColor(tokens, health.service_status)
+      : tokens.warn;
 
   const bandWatchEntries = useMemo(() => {
     const rows: Array<{ profileKey: string; entry: SignalsBandWatchEntry }> = [];
@@ -748,8 +782,11 @@ export default function SignalsMonitorPanel({ active = true }: SignalsMonitorPan
   );
 
   const nearBandMaxPct = health?.monitor_near_band_max_dist_pct ?? 2;
-  const showPaused = health?.paused || !health?.signals_enabled;
-  const noProfiles = profileEntries.length === 0;
+  const showPaused = Boolean(health && (health.paused || !health.signals_enabled));
+  const noProfiles = !loading && profileEntries.length === 0;
+  const statusLabel = loading && !health
+    ? "LOADING"
+    : (health?.service_status?.toUpperCase() ?? "—");
 
   return (
     <Box mt="2">
@@ -801,8 +838,7 @@ export default function SignalsMonitorPanel({ active = true }: SignalsMonitorPan
                 SIGNALS_TERMINAL
               </Text>
               <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
-                poll {health?.poll_interval_sec ?? 30}s · near band ≤{nearBandMaxPct}% ·{" "}
-                {health?.service_status?.toUpperCase() ?? "…"}
+                poll {health?.poll_interval_sec ?? 30}s · near band ≤{nearBandMaxPct}% · {statusLabel}
               </Text>
             </Stack>
           </Flex>
@@ -852,7 +888,7 @@ export default function SignalsMonitorPanel({ active = true }: SignalsMonitorPan
             borderColor={tokens.panelBorder}
           >
             <Text fontFamily="mono" fontSize="xs" color={tokens.panelHeading}>
-              // signals paused — runner idle, no profile evaluation
+              {"// signals paused — runner idle, no profile evaluation"}
             </Text>
           </Box>
         ) : null}
@@ -866,7 +902,7 @@ export default function SignalsMonitorPanel({ active = true }: SignalsMonitorPan
             borderColor={tokens.panelBorder}
           >
             <Text fontFamily="mono" fontSize="xs" color={tokens.panelMuted}>
-              // no active profiles — enable day or swing in Config
+              {"// no active profiles — enable day or swing in Config"}
             </Text>
           </Box>
         ) : null}
@@ -980,9 +1016,12 @@ export default function SignalsMonitorPanel({ active = true }: SignalsMonitorPan
           bandWatchEntries.length === 0 &&
           liveEvents.length === 0 &&
           historyEvents.length === 0 ? (
-            <Text p="4" fontFamily="mono" fontSize="xs" color={tokens.panelMuted}>
-              booting monitor stream…
-            </Text>
+            <Flex p="6" gap="3" align="center" justify="center" color={tokens.panelMuted}>
+              <Spinner size="sm" color={tokens.panelHeading} />
+              <Text fontFamily="mono" fontSize="xs">
+                Loading signals monitor…
+              </Text>
+            </Flex>
           ) : null}
 
           {!loading &&
@@ -990,9 +1029,9 @@ export default function SignalsMonitorPanel({ active = true }: SignalsMonitorPan
           liveEvents.length === 0 &&
           historyEvents.length === 0 ? (
             <Text p="4" fontFamily="mono" fontSize="xs" color={tokens.panelMuted} lineHeight="1.6">
-              // quiet — no symbols within {nearBandMaxPct}% of an HTF band.
+              {`// quiet — no symbols within ${nearBandMaxPct}% of an HTF band.`}
               <br />
-              // past alerts appear in history when available.
+              {"// past alerts appear in history when available."}
             </Text>
           ) : null}
         </Box>
