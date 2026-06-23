@@ -244,6 +244,35 @@ function fmtPriceBandLine(price: unknown, low: unknown, high: unknown): string |
   return `${p} | ${band}`;
 }
 
+function TableSectionHeader({ title, tokens }: { title: string; tokens: ThemeTokens }) {
+  return (
+    <Text
+      px="3"
+      py="2"
+      fontFamily="mono"
+      fontSize="2xs"
+      fontWeight="semibold"
+      color={tokens.panelHeading}
+      letterSpacing="0.12em"
+      borderLeftWidth="3px"
+      borderLeftColor={tokens.tagAccent.color}
+      borderBottomWidth="1px"
+      borderColor={tokens.panelBorder}
+      bg={`linear-gradient(90deg, ${tokens.blockquoteBg} 0%, transparent 80%)`}
+      position="sticky"
+      top={0}
+      zIndex={1}
+    >
+      {title}
+    </Text>
+  );
+}
+
+function rowStripeBg(tokens: ThemeTokens, index: number, active = false): string {
+  if (active) return tokens.panelBgUser;
+  return index % 2 === 1 ? tokens.blockquoteBg : "transparent";
+}
+
 function EventTag({
   label,
   tone,
@@ -260,13 +289,13 @@ function EventTag({
       w={block ? "100%" : undefined}
       textAlign={block ? "center" : undefined}
       px="1.5"
-      py="0"
+      py="0.5"
       rounded="sm"
       fontFamily="mono"
       fontSize="2xs"
-      fontWeight="medium"
-      letterSpacing="0.04em"
-      lineHeight="1.5"
+      fontWeight="semibold"
+      letterSpacing="0.05em"
+      lineHeight="1.4"
       bg={tone.bg}
       color={tone.color}
       borderWidth="1px"
@@ -274,6 +303,8 @@ function EventTag({
       whiteSpace="nowrap"
       overflow="hidden"
       textOverflow="ellipsis"
+      transition="box-shadow 0.15s ease"
+      _hover={{ boxShadow: `0 0 10px ${tone.border}` }}
     >
       {label}
     </Box>
@@ -313,10 +344,12 @@ function BandWatchRow({
   entry,
   profileKey,
   tokens,
+  rowIndex = 0,
 }: {
   entry: SignalsBandWatchEntry;
   profileKey: string;
   tokens: ThemeTokens;
+  rowIndex?: number;
 }) {
   const base = symbolBase(entry.symbol);
   const priceBand = fmtPriceBandLine(entry.price, entry.band_low, entry.band_high);
@@ -333,11 +366,15 @@ function BandWatchRow({
   return (
     <Stack
       gap="1"
-      py="2"
+      py="2.5"
       px="3"
       borderLeftWidth="2px"
       borderLeftColor={accent}
-      _hover={{ bg: tokens.blockquoteBg }}
+      borderBottomWidth="1px"
+      borderBottomColor={tokens.panelBorder}
+      bg={rowStripeBg(tokens, rowIndex)}
+      _hover={{ bg: tokens.panelBgUser }}
+      transition="background 0.15s ease"
       fontFamily="mono"
       fontSize="xs"
     >
@@ -392,6 +429,8 @@ function BandWatchRow({
           whiteSpace="nowrap"
           overflowX="auto"
           lineHeight="1.4"
+          pl="0.5"
+          fontVariantNumeric="tabular-nums"
           css={{ WebkitOverflowScrolling: "touch" }}
         >
           {priceBand}
@@ -516,11 +555,14 @@ function TerminalLine({
   event,
   tokens,
   eventStyles,
+  rowIndex = 0,
 }: {
   event: SignalMonitorEvent;
   tokens: ThemeTokens;
   eventStyles: Record<string, EventStyle>;
+  rowIndex?: number;
 }) {
+  const [aiOpen, setAiOpen] = useState(false);
   const style =
     eventStyles[event.event_type] ?? {
       color: tokens.panelMuted,
@@ -572,18 +614,30 @@ function TerminalLine({
     />
   );
 
+  const toggleAi = () => {
+    if (showAiHint) setAiOpen((open) => !open);
+  };
+
   const row = (
     <Stack
       gap="1"
-      py="2"
+      py="2.5"
       px="3"
-      _hover={{ bg: tokens.blockquoteBg }}
+      bg={rowStripeBg(tokens, rowIndex, aiOpen)}
+      _hover={{ bg: aiOpen ? tokens.panelBgUser : tokens.blockquoteBg }}
       borderLeftWidth="2px"
       borderLeftColor={style.color}
+      borderBottomWidth="1px"
+      borderBottomColor={tokens.panelBorder}
       fontFamily="mono"
       fontSize="xs"
       lineHeight="1.45"
       transition="background 0.15s ease"
+      cursor={showAiHint ? "pointer" : undefined}
+      onClick={showAiHint ? toggleAi : undefined}
+      role={showAiHint ? "button" : undefined}
+      aria-expanded={showAiHint ? aiOpen : undefined}
+      aria-label={showAiHint ? "Toggle AI entry read" : undefined}
     >
       <Flex
         gap="3"
@@ -610,33 +664,77 @@ function TerminalLine({
         {headerTags}
       </Flex>
       {detailShort ? (
-        <Text color={tokens.panelBody} fontSize="2xs" pl="0.5" lineHeight="1.5">
-          {detailShort}
+        <Flex align="center" gap="2" minW="0" pl="0.5">
+          <Text
+            color={tokens.panelBody}
+            fontSize="2xs"
+            lineHeight="1.5"
+            flex="1"
+            minW="0"
+            textDecoration={showAiHint && !aiOpen ? "underline dotted" : undefined}
+            textDecorationColor={tokens.tagAccent.border}
+            textUnderlineOffset="3px"
+          >
+            {detailShort}
+          </Text>
+          {showAiHint ? (
+            <Text
+              flexShrink={0}
+              fontSize="2xs"
+              color={tokens.tagAccent.color}
+              letterSpacing="0.06em"
+            >
+              {aiOpen ? "▲ hide" : "▼ AI read"}
+            </Text>
+          ) : null}
+        </Flex>
+      ) : showAiHint ? (
+        <Text fontSize="2xs" color={tokens.tagAccent.color} pl="0.5" letterSpacing="0.06em">
+          {aiOpen ? "▲ hide AI read" : "▼ tap for AI read"}
         </Text>
       ) : null}
     </Stack>
   );
 
   if (showAiHint && meta) {
-    return (
-      <Tooltip
-        showArrow
-        openDelay={200}
-        content={
-          <Box
-            bg={tokens.panelBgUser}
-            borderWidth="1px"
-            borderColor={tokens.panelBorder}
-            rounded="md"
-            boxShadow={`0 0 24px ${tokens.panelBorder}`}
-          >
-            <AiTooltipContent meta={meta} tokens={tokens} />
-          </Box>
-        }
-        contentProps={{ bg: "transparent", border: "none", p: 0 }}
+    const aiPanel = aiOpen ? (
+      <Box
+        px="3"
+        pb="3"
+        pt="1"
+        bg={tokens.panelBgUser}
+        borderBottomWidth="1px"
+        borderBottomColor={tokens.panelBorder}
+        borderLeftWidth="2px"
+        borderLeftColor={tokens.tagAccent.color}
       >
-        <Box cursor="help">{row}</Box>
-      </Tooltip>
+        <AiTooltipContent meta={meta} tokens={tokens} />
+      </Box>
+    ) : null;
+
+    return (
+      <Box>
+        <Tooltip
+          showArrow
+          openDelay={200}
+          disabled={aiOpen}
+          content={
+            <Box
+              bg={tokens.panelBgUser}
+              borderWidth="1px"
+              borderColor={tokens.panelBorder}
+              rounded="md"
+              boxShadow={`0 0 24px ${tokens.panelBorder}`}
+            >
+              <AiTooltipContent meta={meta} tokens={tokens} />
+            </Box>
+          }
+          contentProps={{ bg: "transparent", border: "none", p: 0 }}
+        >
+          <Box>{row}</Box>
+        </Tooltip>
+        {aiPanel}
+      </Box>
     );
   }
 
@@ -952,23 +1050,17 @@ export default function SignalsMonitorPanel({ active = true }: SignalsMonitorPan
         >
           {bandWatchEntries.length > 0 ? (
             <Box borderBottomWidth="1px" borderColor={tokens.panelBorder}>
-              <Text
-                px="3"
-                py="2"
-                fontFamily="mono"
-                fontSize="2xs"
-                color={tokens.panelHeading}
-                letterSpacing="0.1em"
-                bg={tokens.blockquoteBg}
-              >
-                NEAR BAND · {bandWatchEntries.length} live
-              </Text>
-              {bandWatchEntries.map(({ profileKey, entry }) => (
+              <TableSectionHeader
+                title={`NEAR BAND · ${bandWatchEntries.length} live`}
+                tokens={tokens}
+              />
+              {bandWatchEntries.map(({ profileKey, entry }, index) => (
                 <BandWatchRow
                   key={`${profileKey}-${entry.symbol}-${entry.band_low}-${entry.band_high}`}
                   entry={entry}
                   profileKey={profileKey}
                   tokens={tokens}
+                  rowIndex={index}
                 />
               ))}
             </Box>
@@ -976,25 +1068,17 @@ export default function SignalsMonitorPanel({ active = true }: SignalsMonitorPan
 
           {liveEvents.length > 0 ? (
             <Box borderBottomWidth={historyEvents.length > 0 ? "1px" : undefined} borderColor={tokens.panelBorder}>
-              <Text
-                px="3"
-                py="2"
-                fontFamily="mono"
-                fontSize="2xs"
-                color={tokens.panelHeading}
-                letterSpacing="0.1em"
-                bg={tokens.blockquoteBg}
-                borderBottomWidth="1px"
-                borderColor={tokens.panelBorder}
-              >
-                SIGNAL ACTIVITY · {liveEvents.length} live
-              </Text>
-              {liveEvents.map((event) => (
+              <TableSectionHeader
+                title={`SIGNAL ACTIVITY · ${liveEvents.length} live`}
+                tokens={tokens}
+              />
+              {liveEvents.map((event, index) => (
                 <TerminalLine
                   key={`live-${event.id}-${event.created_at}-${event.symbol ?? ""}`}
                   event={event}
                   tokens={tokens}
                   eventStyles={eventStyles}
+                  rowIndex={index}
                 />
               ))}
             </Box>
@@ -1002,25 +1086,17 @@ export default function SignalsMonitorPanel({ active = true }: SignalsMonitorPan
 
           {historyEvents.length > 0 ? (
             <Box>
-              <Text
-                px="3"
-                py="2"
-                fontFamily="mono"
-                fontSize="2xs"
-                color={tokens.panelHeading}
-                letterSpacing="0.1em"
-                bg={tokens.blockquoteBg}
-                borderBottomWidth="1px"
-                borderColor={tokens.panelBorder}
-              >
-                HISTORY · {historyEvents.length} shown ({archiveTotal} total alerts)
-              </Text>
-              {historyEvents.map((event) => (
+              <TableSectionHeader
+                title={`HISTORY · ${historyEvents.length} shown (${archiveTotal} total alerts)`}
+                tokens={tokens}
+              />
+              {historyEvents.map((event, index) => (
                 <TerminalLine
                   key={`hist-${event.id}-${event.created_at}-${event.symbol ?? ""}`}
                   event={event}
                   tokens={tokens}
                   eventStyles={eventStyles}
+                  rowIndex={index}
                 />
               ))}
             </Box>
