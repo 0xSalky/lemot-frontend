@@ -1,9 +1,9 @@
 import { proxyTradingPost } from "@/lib/tradingApiProxy";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-/** Day/swing scan + Claude analysis can run several minutes. */
+/** Scan can run several minutes; Vercel Hobby caps serverless functions at 300s. */
 export const config = {
-  maxDuration: 600,
+  maxDuration: 300,
 };
 
 export default async function handler(
@@ -20,6 +20,6 @@ export default async function handler(
   }
 
   await proxyTradingPost(req, res, "/scanner/run", undefined, {
-    upstreamTimeoutMs: 10 * 60 * 1000,
+    upstreamTimeoutMs: 290 * 1000,
   });
 }
