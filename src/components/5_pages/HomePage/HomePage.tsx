@@ -4,6 +4,7 @@ import AssetInterface from "@/components/3_organisms/AssetInterface/AssetInterfa
 import ScannerChat from "@/components/3_organisms/ScannerChat/ScannerChat";
 import ScannerResults from "@/components/3_organisms/ScannerResults/ScannerResults";
 import SignalsConfigPanel from "@/components/3_organisms/SignalsConfigPanel/SignalsConfigPanel";
+import SignalsMonitorPanel from "@/components/3_organisms/SignalsMonitorPanel/SignalsMonitorPanel";
 import { useTradingAccess } from "@/components/3_organisms/TradingAccess/TradingAccess";
 import ResponsiveCardGrid from "@/components/4_layouts/ResponsiveCardGrid/ResponsiveCardGrid";
 import { ColorModeButton } from "@/components/ui/color-mode";
@@ -194,6 +195,7 @@ const HomePage = () => {
                     <ThemeTabTrigger value="scanner-day">Day scan</ThemeTabTrigger>
                     <ThemeTabTrigger value="scanner-swing">Swing scan</ThemeTabTrigger>
                     <ThemeTabTrigger value="scanner-chat">AI Chat</ThemeTabTrigger>
+                    <ThemeTabTrigger value="signals">Signals</ThemeTabTrigger>
                     <ThemeTabTrigger value="config">Config</ThemeTabTrigger>
                 </Tabs.List>
 
@@ -229,6 +231,10 @@ const HomePage = () => {
 
                 <Tabs.Content value="scanner-chat">
                     <ScannerChat />
+                </Tabs.Content>
+
+                <Tabs.Content value="signals">
+                    {activeTab === "signals" ? <SignalsMonitorPanel active /> : null}
                 </Tabs.Content>
 
                 <Tabs.Content value="config">
