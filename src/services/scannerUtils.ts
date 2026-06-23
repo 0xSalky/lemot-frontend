@@ -13,7 +13,7 @@ import type {
 /** Auto-refresh interval for scanner/footprint charts (5 minutes). */
 export const SCANNER_CHART_REFRESH_MS = 5 * 60 * 1000;
 
-const CHART_CLIENT_CACHE_TTL_MS = 45_000;
+const CHART_CLIENT_CACHE_TTL_MS = 300_000;
 
 export function formatRefreshCountdown(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -172,20 +172,75 @@ export async function fetchScannerChart(
   return promise;
 }
 
-/** One parallel batch for all setup cards — avoids N independent refresh timers. */
+/** One HTTP round-trip for all setup cards — backend fetches Bybit in parallel. */
 export async function prefetchScannerCharts(
   symbols: readonly string[],
   timeframe: ScannerChartTimeframe,
   options?: { bustCache?: boolean },
 ): Promise<Record<string, ScannerChartPayload | null>> {
   const unique = [...new Set(symbols.map((s) => s.trim()).filter(Boolean))];
-  const entries = await Promise.all(
-    unique.map(
-      async (symbol) =>
-        [symbol, await fetchScannerChart(symbol, timeframe, options)] as const,
-    ),
-  );
-  return Object.fromEntries(entries);
+  if (unique.length === 0) return {};
+
+  if (unique.length === 1) {
+    const symbol = unique[0];
+    const chart = await fetchScannerChart(symbol, timeframe, options);
+    return { [symbol]: chart };
+  }
+
+  if (options?.bustCache) {
+    for (const symbol of unique) {
+      chartPayloadCache.delete(`${symbol}|${timeframe}`);
+    }
+  } else {
+    const allCached = unique.every((symbol) => {
+      const cached = chartPayloadCache.get(`${symbol}|${timeframe}`);
+      return cached && Date.now() < cached.expiresAt;
+    });
+    if (allCached) {
+      const entries = await Promise.all(
+        unique.map(
+          async (symbol) =>
+            [symbol, await fetchScannerChart(symbol, timeframe)] as const,
+        ),
+      );
+      return Object.fromEntries(entries);
+    }
+  }
+
+  const params = new URLSearchParams({
+    symbols: unique.join(","),
+    timeframe,
+  });
+  const res = await apiFetch(`/api/scanner/charts?${params.toString()}`, {
+    cache: "no-store",
+  });
+  const raw = await res.text();
+  let data: unknown;
+  try {
+    data = raw ? JSON.parse(raw) : {};
+  } catch {
+    return Object.fromEntries(unique.map((symbol) => [symbol, null]));
+  }
+  if (!res.ok) {
+    return Object.fromEntries(unique.map((symbol) => [symbol, null]));
+  }
+
+  const record = data as {
+    charts?: Record<string, ScannerChartPayload | null>;
+  };
+  const charts = record.charts ?? {};
+  const out: Record<string, ScannerChartPayload | null> = {};
+  for (const symbol of unique) {
+    const payload = charts[symbol] ?? null;
+    out[symbol] = payload;
+    if (payload && Array.isArray(payload.candles) && payload.candles.length > 0) {
+      chartPayloadCache.set(`${symbol}|${timeframe}`, {
+        expiresAt: Date.now() + CHART_CLIENT_CACHE_TTL_MS,
+        promise: Promise.resolve(payload),
+      });
+    }
+  }
+  return out;
 }
 
 export type ScannerRunResult =
