@@ -389,6 +389,7 @@ const ScannerResults = ({ profile, latestBatch, loading = false, active = true }
     const [footprintPayload, setFootprintPayload] = useState<FootprintViewPayload | null>(null);
     const [footprintLoading, setFootprintLoading] = useState(false);
     const nextFootprintRefreshAtRef = useRef(0);
+    const footprintLoadInFlight = useRef(false);
     const [footprintRefreshCountdownSec, setFootprintRefreshCountdownSec] = useState(
         Math.ceil(SCANNER_CHART_REFRESH_MS / 1000),
     );
@@ -459,8 +460,6 @@ const ScannerResults = ({ profile, latestBatch, loading = false, active = true }
 
         resetRefreshDeadline();
 
-        const footprintLoadInFlight = useRef(false);
-
         const loadFootprint = (initial: boolean) => {
             if (footprintLoadInFlight.current) return;
             footprintLoadInFlight.current = true;
@@ -496,6 +495,7 @@ const ScannerResults = ({ profile, latestBatch, loading = false, active = true }
 
         return () => {
             cancelled = true;
+            footprintLoadInFlight.current = false;
             window.clearInterval(refreshId);
             window.clearInterval(tickId);
         };
