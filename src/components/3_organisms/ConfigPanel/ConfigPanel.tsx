@@ -1,5 +1,6 @@
 "use client";
 
+import ConfirmDialog from "@/components/2_molecules/ConfirmDialog/ConfirmDialog";
 import AccountBalance from "@/components/3_organisms/AccountBalance/AccountBalance";
 import SignalsConfigPanel from "@/components/3_organisms/SignalsConfigPanel/SignalsConfigPanel";
 import { useTradingAccess } from "@/components/3_organisms/TradingAccess/TradingAccess";
@@ -13,7 +14,12 @@ import {
   type ScannerProfile,
 } from "@/services/scannerUtils";
 import { Box, Button, Separator, Stack, Text } from "@chakra-ui/react";
-import { useCallback, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
+
+type PendingScan = {
+  profile: ScannerProfile;
+  withAi: boolean;
+};
 
 function ConfigSection({ title, children }: { title: string; children: ReactNode }) {
   const tokens = useThemeTokens();
@@ -38,14 +44,14 @@ function ScannerConfigPanel({
   profile,
   loading,
   onRefresh,
-  onRunScan,
-  onRunScanWithAi,
+  onRequestScan,
+  onRequestScanWithAi,
 }: {
   profile: ScannerProfile;
   loading: boolean;
   onRefresh: () => void;
-  onRunScan: () => void;
-  onRunScanWithAi: () => void;
+  onRequestScan: () => void;
+  onRequestScanWithAi: () => void;
 }) {
   const { palette } = useThemeColor();
   const tokens = useThemeTokens(palette);
@@ -73,7 +79,7 @@ function ScannerConfigPanel({
           variant="outline"
           colorPalette={palette}
           borderColor={tokens.panelBorder}
-          onClick={onRunScan}
+          onClick={onRequestScan}
         >
           Run {label} scan
         </Button>
@@ -82,7 +88,7 @@ function ScannerConfigPanel({
           variant="outline"
           colorPalette={palette}
           borderColor={tokens.panelBorder}
-          onClick={onRunScanWithAi}
+          onClick={onRequestScanWithAi}
         >
           Run {label} scan + AI
         </Button>
@@ -97,19 +103,34 @@ export type ConfigPanelProps = {
 };
 
 export default function ConfigPanel({ scannerLoading, onScannerRefresh }: ConfigPanelProps) {
+  const { palette } = useThemeColor();
   const tokens = useThemeTokens();
   const { serverConfigured, signOut } = useTradingAccess();
+  const [pendingScan, setPendingScan] = useState<PendingScan | null>(null);
+  const [startingScan, setStartingScan] = useState(false);
 
-  const runScannerJob = useCallback((profile: ScannerProfile, withAi: boolean) => {
+  const runScannerJob = useCallback(async (profile: ScannerProfile, withAi: boolean) => {
     const label = scannerProfileLabel(profile);
-    toaster.info({
-      title: withAi ? `${label} scan + AI started` : `${label} scan started`,
-      description: "Runs on the server. Tap Refresh when ready — may take several minutes.",
-    });
-    void runScanner(profile, { analyze: withAi }).catch((e) => {
+    setStartingScan(true);
+    try {
+      await runScanner(profile, { analyze: withAi });
+      toaster.info({
+        title: withAi ? `${label} scan + AI started` : `${label} scan started`,
+        description: "Runs on the server. Tap Refresh when ready — may take several minutes.",
+      });
+      setPendingScan(null);
+    } catch (e) {
       console.error(`[scanner run ${profile}]`, e);
-    });
+      toaster.error({
+        title: "Scanner failed to start",
+        description: e instanceof Error ? e.message : "Request failed",
+      });
+    } finally {
+      setStartingScan(false);
+    }
   }, []);
+
+  const pendingLabel = pendingScan ? scannerProfileLabel(pendingScan.profile) : "";
 
   return (
     <Box
@@ -120,6 +141,38 @@ export default function ConfigPanel({ scannerLoading, onScannerRefresh }: Config
       bg={tokens.panelBg}
       rounded="md"
     >
+      <ConfirmDialog
+        open={pendingScan != null}
+        title={
+          pendingScan?.withAi
+            ? `Run ${pendingLabel} scan + AI?`
+            : `Run ${pendingLabel} scan?`
+        }
+        description={
+          pendingScan?.withAi ? (
+            <>
+              Starts a new {pendingLabel} scanner batch with Claude analysis on the server. This
+              can take several minutes and replaces the latest batch when finished.
+            </>
+          ) : (
+            <>
+              Starts a new {pendingLabel} scanner batch without AI analysis. Faster — use Refresh
+              when the run completes.
+            </>
+          )
+        }
+        confirmLabel={pendingScan?.withAi ? "Run scan + AI" : "Run scan"}
+        confirmColorPalette={pendingScan?.withAi ? "blue" : palette}
+        loading={startingScan}
+        onCancel={() => {
+          if (!startingScan) setPendingScan(null);
+        }}
+        onConfirm={() => {
+          if (!pendingScan || startingScan) return;
+          void runScannerJob(pendingScan.profile, pendingScan.withAi);
+        }}
+      />
+
       <Stack gap="4">
         <Stack gap="6">
           <ConfigSection title="Appearance">
@@ -154,8 +207,8 @@ export default function ConfigPanel({ scannerLoading, onScannerRefresh }: Config
               profile="day"
               loading={scannerLoading.day}
               onRefresh={() => onScannerRefresh("day")}
-              onRunScan={() => runScannerJob("day", false)}
-              onRunScanWithAi={() => runScannerJob("day", true)}
+              onRequestScan={() => setPendingScan({ profile: "day", withAi: false })}
+              onRequestScanWithAi={() => setPendingScan({ profile: "day", withAi: true })}
             />
           </ConfigSection>
 
@@ -166,8 +219,8 @@ export default function ConfigPanel({ scannerLoading, onScannerRefresh }: Config
               profile="swing"
               loading={scannerLoading.swing}
               onRefresh={() => onScannerRefresh("swing")}
-              onRunScan={() => runScannerJob("swing", false)}
-              onRunScanWithAi={() => runScannerJob("swing", true)}
+              onRequestScan={() => setPendingScan({ profile: "swing", withAi: false })}
+              onRequestScanWithAi={() => setPendingScan({ profile: "swing", withAi: true })}
             />
           </ConfigSection>
 

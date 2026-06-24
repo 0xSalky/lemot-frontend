@@ -4,6 +4,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import type { ThemeTokens } from "@/components/ui/theme-color";
 import { Box, Flex, Text } from "@chakra-ui/react";
 import { keyframes } from "@emotion/react";
+import { useCallback, useEffect, useState } from "react";
 import type { SignalCondition, SignalConditionState } from "./signalConditions";
 import { countMetConditions } from "./signalConditions";
 
@@ -18,6 +19,20 @@ function stateColor(tokens: ThemeTokens, state: SignalConditionState): string {
   return tokens.panelMuted;
 }
 
+function useHoverCapable(): boolean {
+  const [hoverCapable, setHoverCapable] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const update = () => setHoverCapable(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  return hoverCapable;
+}
+
 function ConditionDot({
   condition,
   tokens,
@@ -27,6 +42,8 @@ function ConditionDot({
   tokens: ThemeTokens;
   pulse?: boolean;
 }) {
+  const [open, setOpen] = useState(false);
+  const hoverCapable = useHoverCapable();
   const color = stateColor(tokens, condition.state);
   const filled = condition.state === "met";
   const tooltip = (
@@ -45,10 +62,29 @@ function ConditionDot({
     </Box>
   );
 
+  const handleClick = useCallback(
+    (event: React.MouseEvent) => {
+      event.stopPropagation();
+      setOpen((value) => !value);
+    },
+    [],
+  );
+
+  const handlePointerEnter = useCallback(() => {
+    if (hoverCapable) setOpen(true);
+  }, [hoverCapable]);
+
+  const handlePointerLeave = useCallback(() => {
+    if (hoverCapable) setOpen(false);
+  }, [hoverCapable]);
+
   return (
     <Tooltip
       showArrow
-      openDelay={150}
+      open={open}
+      onOpenChange={(details) => setOpen(details.open)}
+      openDelay={hoverCapable ? 150 : 0}
+      closeOnClick={false}
       content={
         <Box
           bg={tokens.panelBgUser}
@@ -62,7 +98,18 @@ function ConditionDot({
       }
       contentProps={{ bg: "transparent", border: "none", p: 0 }}
     >
-      <Flex direction="column" align="center" gap="0.5" cursor="help" minW="2.1rem" px="0.5">
+      <Flex
+        direction="column"
+        align="center"
+        gap="0.5"
+        cursor="pointer"
+        minW="2.1rem"
+        px="0.5"
+        onClick={handleClick}
+        onPointerEnter={handlePointerEnter}
+        onPointerLeave={handlePointerLeave}
+        aria-label={`${condition.label}: tap for details`}
+      >
         <Box
           w="0.55rem"
           h="0.55rem"
@@ -74,7 +121,7 @@ function ConditionDot({
           boxShadow={filled ? `0 0 10px ${color}` : undefined}
           animation={pulse && filled ? `${dotPulse} 2.4s ease-in-out infinite` : undefined}
           transition="box-shadow 0.2s ease, transform 0.2s ease"
-          _hover={{ transform: "scale(1.2)" }}
+          _hover={{ transform: hoverCapable ? "scale(1.2)" : undefined }}
         />
         <Text
           fontFamily="mono"
