@@ -133,6 +133,8 @@ export default function SignalsConfigPanel({ tokens }: SignalsConfigPanelProps) 
   const masterOff = !unavailable && !controls.signals_enabled;
   const busy = savingKey != null;
   const panelDisabled = unavailable || busy;
+  const dayOff = panelDisabled || masterOff || !controls.day_enabled;
+  const swingOff = panelDisabled || masterOff || !controls.swing_enabled;
 
   return (
     <Stack gap="3">
@@ -158,22 +160,12 @@ export default function SignalsConfigPanel({ tokens }: SignalsConfigPanelProps) 
       <Stack gap="0">
         <RuntimeSwitchRow
           label="Telegram signals"
-          description="Master switch — pauses fractal alerts and AI reads while you sleep."
+          description="Master switch — pauses all fractal alerts and AI reads."
           checked={controls.signals_enabled}
           disabled={panelDisabled}
           colorPalette={palette}
           tokens={tokens}
           onChange={(next) => void update({ signals_enabled: next }, "signals_enabled")}
-        />
-
-        <RuntimeSwitchRow
-          label="AI entry advice"
-          description="Sonnet follow-up after each alert. Alerts can stay on with AI off."
-          checked={controls.entry_advice_enabled}
-          disabled={panelDisabled || masterOff}
-          colorPalette="blue"
-          tokens={tokens}
-          onChange={(next) => void update({ entry_advice_enabled: next }, "entry_advice_enabled")}
         />
 
         <RuntimeSwitchRow
@@ -187,6 +179,18 @@ export default function SignalsConfigPanel({ tokens }: SignalsConfigPanelProps) 
         />
 
         <RuntimeSwitchRow
+          label="Day AI entry advice"
+          description="Sonnet follow-up after day alerts only — independent from swing."
+          checked={controls.day_entry_advice_enabled}
+          disabled={dayOff}
+          colorPalette="blue"
+          tokens={tokens}
+          onChange={(next) =>
+            void update({ day_entry_advice_enabled: next }, "day_entry_advice_enabled")
+          }
+        />
+
+        <RuntimeSwitchRow
           label="Swing signals"
           description="1h fractal band alerts from the swing scanner universe."
           checked={controls.swing_enabled}
@@ -194,6 +198,18 @@ export default function SignalsConfigPanel({ tokens }: SignalsConfigPanelProps) 
           colorPalette="orange"
           tokens={tokens}
           onChange={(next) => void update({ swing_enabled: next }, "swing_enabled")}
+        />
+
+        <RuntimeSwitchRow
+          label="Swing AI entry advice"
+          description="Sonnet follow-up after swing alerts only — independent from day."
+          checked={controls.swing_entry_advice_enabled}
+          disabled={swingOff}
+          colorPalette="blue"
+          tokens={tokens}
+          onChange={(next) =>
+            void update({ swing_entry_advice_enabled: next }, "swing_entry_advice_enabled")
+          }
         />
       </Stack>
 

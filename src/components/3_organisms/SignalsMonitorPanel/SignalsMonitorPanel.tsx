@@ -10,7 +10,7 @@ import {
   fetchSignalsStats,
 } from "@/services/signalsMonitor";
 import { SignalConditionDots } from "./SignalConditionDots";
-import { buildAlertConditions, buildBandWatchConditions } from "./signalConditions";
+import { buildAlertConditions, buildBandWatchConditions, mergeHistoricSignalEvents } from "./signalConditions";
 import type {
   SignalMonitorEvent,
   SignalsBandWatchEntry,
@@ -245,27 +245,6 @@ function fmtPriceBandLine(price: unknown, low: unknown, high: unknown): string |
   const band = fmtBand(low, high);
   if (p == null || band == null) return null;
   return `${p} | ${band}`;
-}
-
-function TableSectionHeader({ title, tokens }: { title: string; tokens: ThemeTokens }) {
-  return (
-    <Text
-      px="3"
-      py="2"
-      fontFamily="mono"
-      fontSize="2xs"
-      fontWeight="semibold"
-      color={tokens.panelHeading}
-      letterSpacing="0.12em"
-      borderLeftWidth="3px"
-      borderLeftColor={tokens.tagAccent.color}
-      borderBottomWidth="1px"
-      borderColor={tokens.panelBorder}
-      bg={`linear-gradient(90deg, ${tokens.blockquoteBg} 0%, transparent 80%)`}
-    >
-      {title}
-    </Text>
-  );
 }
 
 function rowStripeBg(tokens: ThemeTokens, index: number, active = false): string {
@@ -574,12 +553,14 @@ function TerminalLine({
   eventStyles,
   rowIndex = 0,
   live = false,
+  showConditionDots = true,
 }: {
   event: SignalMonitorEvent;
   tokens: ThemeTokens;
   eventStyles: Record<string, EventStyle>;
   rowIndex?: number;
   live?: boolean;
+  showConditionDots?: boolean;
 }) {
   const [aiOpen, setAiOpen] = useState(false);
   const style =
@@ -716,7 +697,7 @@ function TerminalLine({
           {aiOpen ? "▲ hide AI read" : "▼ tap for AI read"}
         </Text>
       ) : null}
-      {alertConditions ? (
+      {showConditionDots && alertConditions ? (
         <SignalConditionDots
           conditions={alertConditions}
           tokens={tokens}
@@ -834,7 +815,7 @@ type SignalsMonitorPanelProps = {
 async function fetchMonitorSnapshot() {
   const [healthData, activityData, statsData] = await Promise.all([
     fetchSignalsHealth(),
-    fetchSignalsActivity(120),
+    fetchSignalsActivity(200),
     fetchSignalsStats(24),
   ]);
   const countdownBase: Record<string, number> = {};
@@ -862,7 +843,7 @@ export default function SignalsMonitorPanel({ active = true }: SignalsMonitorPan
   const [countdownBase, setCountdownBase] = useState<Record<string, number>>({});
   const [tick, setTick] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [feedTab, setFeedTab] = useState("signals");
+  const [feedTab, setFeedTab] = useState("watchlist");
 
   useEffect(() => {
     if (!active || !pageVisible) return;
@@ -935,9 +916,9 @@ export default function SignalsMonitorPanel({ active = true }: SignalsMonitorPan
     [watchlistEntries],
   );
 
-  const archiveTotal = useMemo(
-    () => profileEntries.reduce((sum, [, profile]) => sum + profile.alerts_total, 0),
-    [profileEntries],
+  const historicEvents = useMemo(
+    () => mergeHistoricSignalEvents(liveEvents, historyEvents),
+    [liveEvents, historyEvents],
   );
 
   const nearBandMaxPct = health?.monitor_near_band_max_dist_pct ?? 2;
@@ -1024,12 +1005,25 @@ export default function SignalsMonitorPanel({ active = true }: SignalsMonitorPan
               </Box>
             </Text>
             <Text>
-              AI{" "}
+              AI day{" "}
               <Box
                 as="span"
-                color={health?.entry_advice_enabled ? tokens.tagAccent.color : tokens.panelMuted}
+                color={
+                  health?.day_entry_advice_enabled ? tokens.tagAccent.color : tokens.panelMuted
+                }
               >
-                {health?.entry_advice_enabled ? "on" : "off"}
+                {health?.day_entry_advice_enabled ? "on" : "off"}
+              </Box>
+              {" · "}swing{" "}
+              <Box
+                as="span"
+                color={
+                  health?.swing_entry_advice_enabled
+                    ? tokens.tagAccent.color
+                    : tokens.panelMuted
+                }
+              >
+                {health?.swing_entry_advice_enabled ? "on" : "off"}
               </Box>
             </Text>
             <Text animation={`${blink} 1.2s step-end infinite`} color={tokens.title}>
@@ -1083,24 +1077,6 @@ export default function SignalsMonitorPanel({ active = true }: SignalsMonitorPan
           </Flex>
         ) : null}
 
-        {watchlistEntries.length > 0 ? (
-          <Box borderBottomWidth="1px" borderColor={tokens.panelBorder}>
-            <TableSectionHeader
-              title={`WATCHLIST · ${watchlistEntries.length} symbols · ${watchlistNearCount} near band`}
-              tokens={tokens}
-            />
-            {watchlistEntries.map(({ profileKey, entry }, index) => (
-              <BandWatchRow
-                key={`${profileKey}-${entry.symbol}-${entry.band_low ?? "x"}-${entry.band_high ?? "x"}`}
-                entry={entry}
-                profileKey={profileKey}
-                tokens={tokens}
-                rowIndex={index}
-              />
-            ))}
-          </Box>
-        ) : null}
-
         <Tabs.Root
           value={feedTab}
           onValueChange={(event) => setFeedTab(event.value)}
@@ -1114,42 +1090,24 @@ export default function SignalsMonitorPanel({ active = true }: SignalsMonitorPan
             borderColor={tokens.panelBorder}
             gap="2"
           >
-            <ThemeTabTrigger value="signals">
-              Signals{liveEvents.length > 0 ? ` · ${liveEvents.length}` : ""}
+            <ThemeTabTrigger value="watchlist">
+              Watchlist
+              {watchlistEntries.length > 0 ? ` · ${watchlistEntries.length}` : ""}
             </ThemeTabTrigger>
             <ThemeTabTrigger value="historic">
-              Historic{historyEvents.length > 0 ? ` · ${historyEvents.length}` : ""}
+              Historic{historicEvents.length > 0 ? ` · ${historicEvents.length}` : ""}
             </ThemeTabTrigger>
           </Tabs.List>
 
-          <Tabs.Content value="signals" p="0">
-            {loading && liveEvents.length === 0 ? (
+          <Tabs.Content value="watchlist" p="0">
+            {loading && watchlistEntries.length === 0 ? (
               <Flex p="6" gap="3" align="center" justify="center" color={tokens.panelMuted}>
                 <Spinner size="sm" color={tokens.panelHeading} />
                 <Text fontFamily="mono" fontSize="xs">
-                  Loading signals…
+                  Loading watchlist…
                 </Text>
               </Flex>
-            ) : liveEvents.length > 0 ? (
-              liveEvents.map((event, index) => (
-                <TerminalLine
-                  key={`live-${event.id}-${event.created_at}-${event.symbol ?? ""}`}
-                  event={event}
-                  tokens={tokens}
-                  eventStyles={eventStyles}
-                  rowIndex={index}
-                  live
-                />
-              ))
-            ) : (
-              <Text p="4" fontFamily="mono" fontSize="xs" color={tokens.panelMuted} lineHeight="1.6">
-                {`// no live signals — alerts appear here when fractal + band rules fire.`}
-              </Text>
-            )}
-          </Tabs.Content>
-
-          <Tabs.Content value="historic" p="0">
-            {historyEvents.length > 0 ? (
+            ) : watchlistEntries.length > 0 ? (
               <>
                 <Box
                   px="3"
@@ -1159,22 +1117,61 @@ export default function SignalsMonitorPanel({ active = true }: SignalsMonitorPan
                   bg={tokens.blockquoteBg}
                 >
                   <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
-                    {archiveTotal} total alerts in archive · showing {historyEvents.length}
+                    {watchlistNearCount} near band · ≤{nearBandMaxPct}% threshold
                   </Text>
                 </Box>
-                {historyEvents.map((event, index) => (
-                  <TerminalLine
-                    key={`hist-${event.id}-${event.created_at}-${event.symbol ?? ""}`}
-                    event={event}
+                {watchlistEntries.map(({ profileKey, entry }, index) => (
+                  <BandWatchRow
+                    key={`${profileKey}-${entry.symbol}-${entry.band_low ?? "x"}-${entry.band_high ?? "x"}`}
+                    entry={entry}
+                    profileKey={profileKey}
                     tokens={tokens}
-                    eventStyles={eventStyles}
                     rowIndex={index}
                   />
                 ))}
               </>
             ) : (
               <Text p="4" fontFamily="mono" fontSize="xs" color={tokens.panelMuted} lineHeight="1.6">
-                {"// no historic alerts yet — past Telegram alerts appear here."}
+                {`// no symbols in watchlist — run scanner and enable day or swing.`}
+              </Text>
+            )}
+          </Tabs.Content>
+
+          <Tabs.Content value="historic" p="0">
+            {loading && historicEvents.length === 0 ? (
+              <Flex p="6" gap="3" align="center" justify="center" color={tokens.panelMuted}>
+                <Spinner size="sm" color={tokens.panelHeading} />
+                <Text fontFamily="mono" fontSize="xs">
+                  Loading signal history…
+                </Text>
+              </Flex>
+            ) : historicEvents.length > 0 ? (
+              <>
+                <Box
+                  px="3"
+                  py="2"
+                  borderBottomWidth="1px"
+                  borderColor={tokens.panelBorder}
+                  bg={tokens.blockquoteBg}
+                >
+                  <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
+                    past alerts with AI read · tap row for full message
+                  </Text>
+                </Box>
+                {historicEvents.map((event, index) => (
+                  <TerminalLine
+                    key={`hist-${event.id}-${event.created_at}-${event.symbol ?? ""}`}
+                    event={event}
+                    tokens={tokens}
+                    eventStyles={eventStyles}
+                    rowIndex={index}
+                    showConditionDots={false}
+                  />
+                ))}
+              </>
+            ) : (
+              <Text p="4" fontFamily="mono" fontSize="xs" color={tokens.panelMuted} lineHeight="1.6">
+                {"// no past signals yet — fired alerts with AI advice appear here."}
               </Text>
             )}
           </Tabs.Content>
@@ -1184,7 +1181,7 @@ export default function SignalsMonitorPanel({ active = true }: SignalsMonitorPan
       </Box>
 
       <Text mt="2" fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
-        Watchlist = all scanner symbols · near band ≤{nearBandMaxPct}% · dots show proximity checks.
+        Watchlist = scanner symbols with band proximity dots · Historic = past alerts.
       </Text>
     </Box>
   );

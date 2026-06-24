@@ -62,7 +62,7 @@ function ConditionDot({
       }
       contentProps={{ bg: "transparent", border: "none", p: 0 }}
     >
-      <Flex direction="column" align="center" gap="0.5" cursor="help" minW="1.35rem">
+      <Flex direction="column" align="center" gap="0.5" cursor="help" minW="2.1rem" px="0.5">
         <Box
           w="0.55rem"
           h="0.55rem"
@@ -78,11 +78,12 @@ function ConditionDot({
         />
         <Text
           fontFamily="mono"
-          fontSize="0.5rem"
+          fontSize="0.45rem"
           color={filled ? color : tokens.panelMuted}
-          letterSpacing="0.06em"
+          letterSpacing="0.02em"
           lineHeight="1"
           userSelect="none"
+          whiteSpace="nowrap"
         >
           {condition.short}
         </Text>
@@ -148,7 +149,7 @@ export function SignalConditionDots({
             letterSpacing="0.12em"
             textTransform="uppercase"
           >
-            {variant === "watch" ? "Band setup" : "Signal checks"}
+            {variant === "watch" ? "Band checks" : "Entry checks"}
           </Text>
           <Text fontFamily="mono" fontSize="0.5rem" color={accent}>
             {metCount}/{total}

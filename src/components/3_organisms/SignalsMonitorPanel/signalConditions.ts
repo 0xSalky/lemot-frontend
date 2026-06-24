@@ -1,4 +1,8 @@
-import type { SignalsBandWatchEntry, SignalEventType } from "@/types/signalsMonitorTypes";
+import type {
+  SignalMonitorEvent,
+  SignalsBandWatchEntry,
+  SignalEventType,
+} from "@/types/signalsMonitorTypes";
 
 export type SignalConditionState = "met" | "unmet" | "unknown";
 
@@ -66,17 +70,31 @@ function inferFromReason(
   return states;
 }
 
-function placementLabel(placement: string | null, side: string | null): string {
-  if (placement === "in_band") return "In band";
-  if (placement === "below_band") return "Below band";
-  if (placement === "above_band") return "Above band";
-  return side?.toLowerCase() === "long" ? "Fractal zone" : "Fractal zone";
+function placementShort(placement: string | null): string {
+  if (placement === "in_band") return "ZONE";
+  if (placement === "below_band") return "BELOW";
+  if (placement === "above_band") return "ABOVE";
+  return "ZONE";
+}
+
+function placementLabel(placement: string | null): string {
+  if (placement === "in_band") return "Fractal in band";
+  if (placement === "below_band") return "Fractal below band";
+  if (placement === "above_band") return "Fractal above band";
+  return "Fractal zone";
+}
+
+function triggerShort(trigger: string | null): string {
+  if (trigger === "reclaim") return "RCLM";
+  if (trigger === "reject") return "REJ";
+  if (trigger === "fractal") return "CLEAN";
+  return "TRIG";
 }
 
 function triggerLabel(trigger: string | null): string {
-  if (trigger === "reclaim") return "Reclaim";
-  if (trigger === "reject") return "Reject";
-  if (trigger === "fractal") return "Fractal";
+  if (trigger === "reclaim") return "Reclaim above band";
+  if (trigger === "reject") return "Reject below band";
+  if (trigger === "fractal") return "Clean fractal in zone";
   return "Trigger";
 }
 
@@ -84,7 +102,7 @@ function defaultSentState(eventType: SignalEventType): SignalConditionState {
   return eventType === "alert_sent" ? "met" : "unknown";
 }
 
-/** Derive the seven mechanical alert checks from event meta (fallback when API has no conditions[]). */
+/** Derive mechanical alert checks from event meta (fallback when API has no conditions[]). */
 export function buildAlertConditions(
   meta: Record<string, unknown> | null,
   side: string | null,
@@ -111,19 +129,27 @@ export function buildAlertConditions(
   const placement = meta.placement != null ? String(meta.placement) : null;
   const trigger = meta.trigger != null ? String(meta.trigger) : null;
   const sideL = side?.toLowerCase();
-  const bandLabel =
+  const bandShort =
     bandSide === "SUP" || bandSide === "RES"
-      ? `${bandSide} band`
+      ? bandSide
       : sideL === "long"
-        ? "SUP band"
+        ? "SUP"
         : sideL === "short"
-          ? "RES band"
-          : "Band";
+          ? "RES"
+          : "BAND";
+  const bandLabel =
+    bandShort === "SUP"
+      ? "Support band match"
+      : bandShort === "RES"
+        ? "Resistance band match"
+        : "Band match";
 
   const bandMet =
     reasonStates.band ??
     (sent
-      ? (sideL === "long" && bandSide === "SUP") || (sideL === "short" && bandSide === "RES") || !bandSide
+      ? (sideL === "long" && bandSide === "SUP") ||
+        (sideL === "short" && bandSide === "RES") ||
+        !bandSide
         ? "met"
         : "unknown"
       : "unknown");
@@ -138,52 +164,52 @@ export function buildAlertConditions(
   return [
     {
       id: "fractal",
-      short: "F",
-      label: "Fractal",
+      short: "FRAC",
+      label: "Fractal pivot",
       state: meta.fractal_level != null ? "met" : "unknown",
       detail: fractal ? `pivot @ ${fractal}` : undefined,
     },
     {
       id: "band",
-      short: "B",
+      short: bandShort,
       label: bandLabel,
       state: bandMet,
       detail: band ?? undefined,
     },
     {
       id: "placement",
-      short: "P",
-      label: placementLabel(placement, side),
+      short: placementShort(placement),
+      label: placementLabel(placement),
       state: placementMet,
       detail: placement ?? undefined,
     },
     {
       id: "confirm_open",
-      short: "O",
-      label: "Open held",
+      short: "OPEN",
+      label: "Confirm open held",
       state: base("confirm_open"),
-      detail: sideL === "long" ? "confirm open ≥ band low" : "confirm open ≤ band high",
+      detail: sideL === "long" ? "open stays ≥ band low" : "open stays ≤ band high",
     },
     {
       id: "confirm_close",
-      short: "C",
-      label: "Close held",
+      short: "CLOSE",
+      label: "Confirm close held",
       state: base("confirm_close"),
-      detail: sideL === "long" ? "confirm close ≥ band low" : "confirm close ≤ band high",
+      detail: sideL === "long" ? "close stays ≥ band low" : "close stays ≤ band high",
     },
     {
       id: "trigger",
-      short: "T",
+      short: triggerShort(trigger),
       label: triggerLabel(trigger),
       state: reasonStates.trigger ?? (trigger && sent ? "met" : defaultSentState(eventType)),
       detail: trigger ?? undefined,
     },
     {
       id: "chase",
-      short: "K",
-      label: "Chase OK",
+      short: "CHASE",
+      label: "Chase within limit",
       state: base("chase"),
-      detail: "signal close vs fractal level",
+      detail: "signal close not too far from fractal",
     },
   ];
 }
@@ -209,81 +235,134 @@ export function buildBandWatchConditions(entry: SignalsBandWatchEntry): SignalCo
     ((side === "SUP" && position !== "below") ||
       (side === "RES" && position !== "above") ||
       side === "AT");
+  const sideShort = side === "SUP" ? "SUP" : side === "RES" ? "RES" : "BAND";
+  const sideLabel =
+    side === "SUP" ? "Support band" : side === "RES" ? "Resistance band" : "Band role";
 
   if (!hasBand) {
     return [
       {
         id: "near",
-        short: "N",
-        label: "Near band",
+        short: "NEAR",
+        label: "Near band edge",
         state: "unmet",
-        detail: "no actionable band",
+        detail: "no actionable band from scanner",
       },
       {
         id: "inside",
-        short: "I",
-        label: "Inside",
+        short: "ZONE",
+        label: "Inside band",
         state: "unmet",
-        detail: "no band tracked",
-      },
-      {
-        id: "intact",
-        short: "✓",
-        label: "Intact",
-        state: "unmet",
-        detail: "no band tracked",
+        detail: "price not in a tracked zone",
       },
       {
         id: "side",
-        short: "·",
-        label: "Side",
+        short: "BAND",
+        label: "Band role",
         state: "unknown",
         detail: "awaiting scanner bands",
+      },
+      {
+        id: "intact",
+        short: "HOLD",
+        label: "Band still valid",
+        state: "unmet",
+        detail: "no band to validate",
+      },
+      {
+        id: "dist",
+        short: "DIST",
+        label: "Distance",
+        state: "unknown",
+        detail: "—",
       },
     ];
   }
 
+  const distDetail =
+    entry.distance_pct != null
+      ? `${entry.distance_pct.toFixed(2)}% from nearest edge`
+      : "at band edge";
+
   return [
     {
       id: "near",
-      short: "N",
-      label: "Near band",
+      short: "NEAR",
+      label: "Near band edge",
       state: isNear ? "met" : "unmet",
-      detail: isNear
-        ? `within ${cap}%`
-        : entry.distance_pct != null
-          ? `${entry.distance_pct.toFixed(2)}% from edge (>${cap}%)`
-          : `>${cap}% from edge`,
+      detail: isNear ? `within ${cap}% threshold` : `${distDetail} (>${cap}%)`,
     },
     {
       id: "inside",
-      short: "I",
-      label: "Inside",
+      short: "ZONE",
+      label: "Inside band",
       state: entry.at_band ? "met" : "unmet",
-      detail: entry.at_band ? "price inside band" : `price ${position} band`,
-    },
-    {
-      id: "intact",
-      short: "✓",
-      label: "Intact",
-      state: intact ? "met" : "unmet",
-      detail:
-        side === "SUP"
-          ? "SUP not broken below"
-          : side === "RES"
-            ? "RES not broken above"
-            : "actionable zone",
+      detail: entry.at_band ? "price inside SUP/RES zone" : `price ${position} the zone`,
     },
     {
       id: "side",
-      short: side === "SUP" ? "S" : side === "RES" ? "R" : "·",
-      label: side,
+      short: sideShort,
+      label: sideLabel,
       state: "met",
-      detail: `w=${entry.band_weight}`,
+      detail: `${side} · weight ${entry.band_weight}`,
+    },
+    {
+      id: "intact",
+      short: "HOLD",
+      label: "Band still valid",
+      state: intact ? "met" : "unmet",
+      detail:
+        side === "SUP"
+          ? "SUP not broken — price still ≥ band low"
+          : side === "RES"
+            ? "RES not broken — price still ≤ band high"
+            : "actionable zone",
+    },
+    {
+      id: "dist",
+      short: "DIST",
+      label: "Distance to edge",
+      state: entry.distance_pct === 0 || entry.at_band ? "met" : isNear ? "met" : "unmet",
+      detail: distDetail,
     },
   ];
 }
 
 export function countMetConditions(conditions: SignalCondition[]): number {
   return conditions.filter((c) => c.state === "met").length;
+}
+
+function alertIdentityKey(event: SignalMonitorEvent): string {
+  const meta = event.meta ?? {};
+  return [
+    event.profile ?? "",
+    event.symbol ?? "",
+    event.side ?? "",
+    meta.center_bar_ts ?? "",
+    meta.band_low ?? "",
+    meta.band_high ?? "",
+    event.created_at ?? "",
+  ].join("|");
+}
+
+/** Merge live + history alert rows (ALERT+AI) for the Historic tab. */
+export function mergeHistoricSignalEvents(
+  live: SignalMonitorEvent[],
+  history: SignalMonitorEvent[],
+): SignalMonitorEvent[] {
+  const seen = new Set<string>();
+  const out: SignalMonitorEvent[] = [];
+
+  for (const event of [...live, ...history]) {
+    if (event.event_type !== "alert_sent") continue;
+    const key = alertIdentityKey(event);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(event);
+  }
+
+  out.sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  );
+  return out;
 }

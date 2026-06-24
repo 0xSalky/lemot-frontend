@@ -41,7 +41,8 @@ export interface SignalsMonitorHealth {
   ready: boolean;
   service_status: SignalsServiceStatus;
   signals_enabled: boolean;
-  entry_advice_enabled: boolean;
+  day_entry_advice_enabled: boolean;
+  swing_entry_advice_enabled: boolean;
   poll_interval_sec: number;
   monitor_near_band_max_dist_pct: number;
   last_poll_at: string | null;
@@ -52,7 +53,8 @@ export interface SignalsMonitorHealth {
   profiles: Record<string, SignalsProfileHealth>;
   controls: {
     signals_enabled: boolean;
-    entry_advice_enabled: boolean;
+    day_entry_advice_enabled: boolean;
+    swing_entry_advice_enabled: boolean;
     day_enabled: boolean;
     swing_enabled: boolean;
     updated_at: string | null;
@@ -120,7 +122,8 @@ export const EMPTY_SIGNALS_HEALTH: SignalsMonitorHealth = {
   ready: false,
   service_status: "down",
   signals_enabled: false,
-  entry_advice_enabled: false,
+  day_entry_advice_enabled: false,
+  swing_entry_advice_enabled: false,
   poll_interval_sec: 30,
   monitor_near_band_max_dist_pct: 2,
   last_poll_at: null,
@@ -131,7 +134,8 @@ export const EMPTY_SIGNALS_HEALTH: SignalsMonitorHealth = {
   profiles: {},
   controls: {
     signals_enabled: false,
-    entry_advice_enabled: false,
+    day_entry_advice_enabled: false,
+    swing_entry_advice_enabled: false,
     day_enabled: false,
     swing_enabled: false,
     updated_at: null,
@@ -224,7 +228,8 @@ export function normalizeSignalsHealth(raw: unknown): SignalsMonitorHealth {
     ready: Boolean(data.ready),
     service_status: serviceStatus,
     signals_enabled: Boolean(data.signals_enabled),
-    entry_advice_enabled: Boolean(data.entry_advice_enabled),
+    day_entry_advice_enabled: Boolean(data.day_entry_advice_enabled),
+    swing_entry_advice_enabled: Boolean(data.swing_entry_advice_enabled),
     poll_interval_sec: Number(data.poll_interval_sec ?? 30),
     monitor_near_band_max_dist_pct: Number(data.monitor_near_band_max_dist_pct ?? 2),
     last_poll_at: typeof data.last_poll_at === "string" ? data.last_poll_at : null,
@@ -237,7 +242,8 @@ export function normalizeSignalsHealth(raw: unknown): SignalsMonitorHealth {
     profiles,
     controls: {
       signals_enabled: Boolean(controlsRaw?.signals_enabled),
-      entry_advice_enabled: Boolean(controlsRaw?.entry_advice_enabled),
+      day_entry_advice_enabled: Boolean(controlsRaw?.day_entry_advice_enabled),
+      swing_entry_advice_enabled: Boolean(controlsRaw?.swing_entry_advice_enabled),
       day_enabled: Boolean(controlsRaw?.day_enabled),
       swing_enabled: Boolean(controlsRaw?.swing_enabled),
       updated_at:
