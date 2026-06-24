@@ -1,5 +1,6 @@
 "use client";
 
+import ThemeTabTrigger from "@/components/2_molecules/ThemeTabTrigger/ThemeTabTrigger";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useThemeColor, useThemeTokens, type ThemeTokens } from "@/components/ui/theme-color";
 import { usePageVisible } from "@/hooks/usePageVisible";
@@ -8,6 +9,8 @@ import {
   fetchSignalsHealth,
   fetchSignalsStats,
 } from "@/services/signalsMonitor";
+import { SignalConditionDots } from "./SignalConditionDots";
+import { buildAlertConditions, buildBandWatchConditions } from "./signalConditions";
 import type {
   SignalMonitorEvent,
   SignalsBandWatchEntry,
@@ -16,7 +19,7 @@ import type {
   SignalsProfileHealth,
   SignalsServiceStatus,
 } from "@/types/signalsMonitorTypes";
-import { Box, Flex, Spinner, Stack, Text } from "@chakra-ui/react";
+import { Box, Flex, Spinner, Stack, Tabs, Text } from "@chakra-ui/react";
 import { keyframes } from "@emotion/react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -259,9 +262,6 @@ function TableSectionHeader({ title, tokens }: { title: string; tokens: ThemeTok
       borderBottomWidth="1px"
       borderColor={tokens.panelBorder}
       bg={`linear-gradient(90deg, ${tokens.blockquoteBg} 0%, transparent 80%)`}
-      position="sticky"
-      top={0}
-      zIndex={1}
     >
       {title}
     </Text>
@@ -354,14 +354,21 @@ function BandWatchRow({
   const base = symbolBase(entry.symbol);
   const priceBand = fmtPriceBandLine(entry.price, entry.band_low, entry.band_high);
   const accent = profileAccent(tokens, profileKey);
-  const distLabel = entry.at_band ? "IN" : `${entry.distance_pct.toFixed(2)}%`;
-  const weightLabel = `w=${entry.band_weight}`;
+  const distLabel =
+    entry.at_band
+      ? "IN"
+      : entry.distance_pct != null
+        ? `${entry.distance_pct.toFixed(2)}%`
+        : "—";
+  const weightLabel = entry.band_weight > 0 ? `w=${entry.band_weight}` : "—";
+  const isNear = entry.near_band === true;
   const sideTone =
     entry.band_side === "SUP"
       ? tokens.tagGreen
       : entry.band_side === "RES"
         ? tokens.tagRed
         : tokens.tagBlue;
+  const watchConditions = buildBandWatchConditions(entry);
 
   return (
     <Stack
@@ -369,12 +376,13 @@ function BandWatchRow({
       py="2.5"
       px="3"
       borderLeftWidth="2px"
-      borderLeftColor={accent}
+      borderLeftColor={isNear ? accent : tokens.panelBorder}
       borderBottomWidth="1px"
       borderBottomColor={tokens.panelBorder}
       bg={rowStripeBg(tokens, rowIndex)}
-      _hover={{ bg: tokens.panelBgUser }}
-      transition="background 0.15s ease"
+      opacity={isNear ? 1 : 0.82}
+      _hover={{ bg: tokens.panelBgUser, opacity: 1 }}
+      transition="background 0.15s ease, opacity 0.15s ease"
       fontFamily="mono"
       fontSize="xs"
     >
@@ -414,7 +422,11 @@ function BandWatchRow({
                 { label: entry.band_side, tone: sideTone },
                 {
                   label: distLabel,
-                  tone: entry.at_band ? tokens.tagGreen : tokens.tagAccent,
+                  tone: entry.at_band
+                    ? tokens.tagGreen
+                    : isNear
+                      ? tokens.tagAccent
+                      : tokens.tagNeutral,
                 },
                 { label: weightLabel, tone: tokens.tagBlue },
               ]}
@@ -436,6 +448,11 @@ function BandWatchRow({
           {priceBand}
         </Text>
       ) : null}
+      <SignalConditionDots
+        conditions={watchConditions}
+        tokens={tokens}
+        variant="watch"
+      />
     </Stack>
   );
 }
@@ -556,11 +573,13 @@ function TerminalLine({
   tokens,
   eventStyles,
   rowIndex = 0,
+  live = false,
 }: {
   event: SignalMonitorEvent;
   tokens: ThemeTokens;
   eventStyles: Record<string, EventStyle>;
   rowIndex?: number;
+  live?: boolean;
 }) {
   const [aiOpen, setAiOpen] = useState(false);
   const style =
@@ -581,6 +600,10 @@ function TerminalLine({
   const tf = event.timeframe ?? (event.profile === "day" ? "30m" : event.profile === "swing" ? "1h" : null);
   const detail = buildDetailLine(event, meta);
   const detailShort = detail ? truncateText(detail, 110) : null;
+  const alertConditions =
+    event.event_type === "alert_sent" || event.event_type === "alert_skipped"
+      ? buildAlertConditions(meta, side ?? null, event.event_type)
+      : null;
 
   const headerTags = (
     <TagGrid
@@ -692,6 +715,14 @@ function TerminalLine({
         <Text fontSize="2xs" color={tokens.tagAccent.color} pl="0.5" letterSpacing="0.06em">
           {aiOpen ? "▲ hide AI read" : "▼ tap for AI read"}
         </Text>
+      ) : null}
+      {alertConditions ? (
+        <SignalConditionDots
+          conditions={alertConditions}
+          tokens={tokens}
+          variant="alert"
+          pulse={live && rowIndex === 0}
+        />
       ) : null}
     </Stack>
   );
@@ -831,6 +862,7 @@ export default function SignalsMonitorPanel({ active = true }: SignalsMonitorPan
   const [countdownBase, setCountdownBase] = useState<Record<string, number>>({});
   const [tick, setTick] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [feedTab, setFeedTab] = useState("signals");
 
   useEffect(() => {
     if (!active || !pageVisible) return;
@@ -877,16 +909,31 @@ export default function SignalsMonitorPanel({ active = true }: SignalsMonitorPan
       ? statusColor(tokens, health.service_status)
       : tokens.warn;
 
-  const bandWatchEntries = useMemo(() => {
+  const watchlistEntries = useMemo(() => {
     const rows: Array<{ profileKey: string; entry: SignalsBandWatchEntry }> = [];
     for (const [key, profile] of profileEntries) {
-      for (const entry of profile.band_watch ?? []) {
+      const list =
+        profile.watchlist.length > 0 ? profile.watchlist : profile.band_watch;
+      for (const entry of list) {
         rows.push({ profileKey: key, entry });
       }
     }
-    rows.sort((a, b) => a.entry.distance_pct - b.entry.distance_pct);
+    rows.sort((a, b) => {
+      const nearA = a.entry.near_band ? 0 : 1;
+      const nearB = b.entry.near_band ? 0 : 1;
+      if (nearA !== nearB) return nearA - nearB;
+      const distA = a.entry.distance_pct ?? 999;
+      const distB = b.entry.distance_pct ?? 999;
+      if (distA !== distB) return distA - distB;
+      return a.entry.symbol.localeCompare(b.entry.symbol);
+    });
     return rows;
   }, [profileEntries]);
+
+  const watchlistNearCount = useMemo(
+    () => watchlistEntries.filter(({ entry }) => entry.near_band).length,
+    [watchlistEntries],
+  );
 
   const archiveTotal = useMemo(
     () => profileEntries.reduce((sum, [, profile]) => sum + profile.alerts_total, 0),
@@ -1036,101 +1083,108 @@ export default function SignalsMonitorPanel({ active = true }: SignalsMonitorPan
           </Flex>
         ) : null}
 
-        <Box
-          maxH={{ base: "22rem", md: "28rem" }}
-          overflowY="auto"
-          position="relative"
-          css={{
-            "&::-webkit-scrollbar": { width: "6px" },
-            "&::-webkit-scrollbar-thumb": {
-              background: tokens.panelBorder,
-              borderRadius: "3px",
-            },
-          }}
-        >
-          {bandWatchEntries.length > 0 ? (
-            <Box borderBottomWidth="1px" borderColor={tokens.panelBorder}>
-              <TableSectionHeader
-                title={`NEAR BAND · ${bandWatchEntries.length} live`}
+        {watchlistEntries.length > 0 ? (
+          <Box borderBottomWidth="1px" borderColor={tokens.panelBorder}>
+            <TableSectionHeader
+              title={`WATCHLIST · ${watchlistEntries.length} symbols · ${watchlistNearCount} near band`}
+              tokens={tokens}
+            />
+            {watchlistEntries.map(({ profileKey, entry }, index) => (
+              <BandWatchRow
+                key={`${profileKey}-${entry.symbol}-${entry.band_low ?? "x"}-${entry.band_high ?? "x"}`}
+                entry={entry}
+                profileKey={profileKey}
                 tokens={tokens}
+                rowIndex={index}
               />
-              {bandWatchEntries.map(({ profileKey, entry }, index) => (
-                <BandWatchRow
-                  key={`${profileKey}-${entry.symbol}-${entry.band_low}-${entry.band_high}`}
-                  entry={entry}
-                  profileKey={profileKey}
-                  tokens={tokens}
-                  rowIndex={index}
-                />
-              ))}
-            </Box>
-          ) : null}
+            ))}
+          </Box>
+        ) : null}
 
-          {liveEvents.length > 0 ? (
-            <Box borderBottomWidth={historyEvents.length > 0 ? "1px" : undefined} borderColor={tokens.panelBorder}>
-              <TableSectionHeader
-                title={`SIGNAL ACTIVITY · ${liveEvents.length} live`}
-                tokens={tokens}
-              />
-              {liveEvents.map((event, index) => (
+        <Tabs.Root
+          value={feedTab}
+          onValueChange={(event) => setFeedTab(event.value)}
+          colorPalette={palette}
+        >
+          <Tabs.List
+            px="3"
+            pt="2"
+            bg="transparent"
+            borderBottomWidth="1px"
+            borderColor={tokens.panelBorder}
+            gap="2"
+          >
+            <ThemeTabTrigger value="signals">
+              Signals{liveEvents.length > 0 ? ` · ${liveEvents.length}` : ""}
+            </ThemeTabTrigger>
+            <ThemeTabTrigger value="historic">
+              Historic{historyEvents.length > 0 ? ` · ${historyEvents.length}` : ""}
+            </ThemeTabTrigger>
+          </Tabs.List>
+
+          <Tabs.Content value="signals" p="0">
+            {loading && liveEvents.length === 0 ? (
+              <Flex p="6" gap="3" align="center" justify="center" color={tokens.panelMuted}>
+                <Spinner size="sm" color={tokens.panelHeading} />
+                <Text fontFamily="mono" fontSize="xs">
+                  Loading signals…
+                </Text>
+              </Flex>
+            ) : liveEvents.length > 0 ? (
+              liveEvents.map((event, index) => (
                 <TerminalLine
                   key={`live-${event.id}-${event.created_at}-${event.symbol ?? ""}`}
                   event={event}
                   tokens={tokens}
                   eventStyles={eventStyles}
                   rowIndex={index}
+                  live
                 />
-              ))}
-            </Box>
-          ) : null}
-
-          {historyEvents.length > 0 ? (
-            <Box>
-              <TableSectionHeader
-                title={`HISTORY · ${historyEvents.length} shown (${archiveTotal} total alerts)`}
-                tokens={tokens}
-              />
-              {historyEvents.map((event, index) => (
-                <TerminalLine
-                  key={`hist-${event.id}-${event.created_at}-${event.symbol ?? ""}`}
-                  event={event}
-                  tokens={tokens}
-                  eventStyles={eventStyles}
-                  rowIndex={index}
-                />
-              ))}
-            </Box>
-          ) : null}
-
-          {loading &&
-          bandWatchEntries.length === 0 &&
-          liveEvents.length === 0 &&
-          historyEvents.length === 0 ? (
-            <Flex p="6" gap="3" align="center" justify="center" color={tokens.panelMuted}>
-              <Spinner size="sm" color={tokens.panelHeading} />
-              <Text fontFamily="mono" fontSize="xs">
-                Loading signals monitor…
+              ))
+            ) : (
+              <Text p="4" fontFamily="mono" fontSize="xs" color={tokens.panelMuted} lineHeight="1.6">
+                {`// no live signals — alerts appear here when fractal + band rules fire.`}
               </Text>
-            </Flex>
-          ) : null}
+            )}
+          </Tabs.Content>
 
-          {!loading &&
-          bandWatchEntries.length === 0 &&
-          liveEvents.length === 0 &&
-          historyEvents.length === 0 ? (
-            <Text p="4" fontFamily="mono" fontSize="xs" color={tokens.panelMuted} lineHeight="1.6">
-              {`// quiet — no symbols within ${nearBandMaxPct}% of an HTF band.`}
-              <br />
-              {"// past alerts appear in history when available."}
-            </Text>
-          ) : null}
-        </Box>
+          <Tabs.Content value="historic" p="0">
+            {historyEvents.length > 0 ? (
+              <>
+                <Box
+                  px="3"
+                  py="2"
+                  borderBottomWidth="1px"
+                  borderColor={tokens.panelBorder}
+                  bg={tokens.blockquoteBg}
+                >
+                  <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
+                    {archiveTotal} total alerts in archive · showing {historyEvents.length}
+                  </Text>
+                </Box>
+                {historyEvents.map((event, index) => (
+                  <TerminalLine
+                    key={`hist-${event.id}-${event.created_at}-${event.symbol ?? ""}`}
+                    event={event}
+                    tokens={tokens}
+                    eventStyles={eventStyles}
+                    rowIndex={index}
+                  />
+                ))}
+              </>
+            ) : (
+              <Text p="4" fontFamily="mono" fontSize="xs" color={tokens.panelMuted} lineHeight="1.6">
+                {"// no historic alerts yet — past Telegram alerts appear here."}
+              </Text>
+            )}
+          </Tabs.Content>
+        </Tabs.Root>
 
         {stats ? <StatsStrip stats={stats} tokens={tokens} /> : null}
       </Box>
 
       <Text mt="2" fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
-        Near band = live actionable levels only (SUP not broken below, RES not broken above).
+        Watchlist = all scanner symbols · near band ≤{nearBandMaxPct}% · dots show proximity checks.
       </Text>
     </Box>
   );

@@ -4,13 +4,15 @@ export interface SignalsBandWatchEntry {
   symbol: string;
   price: number;
   band_side: string;
-  band_low: number;
-  band_high: number;
-  distance_pct: number;
+  band_low: number | null;
+  band_high: number | null;
+  distance_pct: number | null;
   at_band: boolean;
   band_weight: number;
+  near_band?: boolean;
+  has_band?: boolean;
   span_pct?: number | null;
-  price_vs_band?: string;
+  price_vs_band?: string | null;
   max_dist_pct?: number;
 }
 
@@ -31,6 +33,7 @@ export interface SignalsProfileHealth {
   last_profile_alerts: number;
   near_band_count: number;
   band_watch: SignalsBandWatchEntry[];
+  watchlist: SignalsBandWatchEntry[];
   monitor_near_band_max_dist_pct: number;
 }
 
@@ -145,17 +148,22 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 function normalizeBandWatchEntry(raw: unknown): SignalsBandWatchEntry | null {
   const row = asRecord(raw);
   if (!row || typeof row.symbol !== "string") return null;
+  const bandLow = row.band_low;
+  const bandHigh = row.band_high;
+  const distance = row.distance_pct;
   return {
     symbol: row.symbol,
     price: Number(row.price ?? 0),
     band_side: String(row.band_side ?? "AT"),
-    band_low: Number(row.band_low ?? 0),
-    band_high: Number(row.band_high ?? 0),
-    distance_pct: Number(row.distance_pct ?? 0),
+    band_low: bandLow != null ? Number(bandLow) : null,
+    band_high: bandHigh != null ? Number(bandHigh) : null,
+    distance_pct: distance != null ? Number(distance) : null,
     at_band: Boolean(row.at_band),
     band_weight: Number(row.band_weight ?? 0),
+    near_band: row.near_band != null ? Boolean(row.near_band) : undefined,
+    has_band: row.has_band != null ? Boolean(row.has_band) : undefined,
     span_pct: row.span_pct != null ? Number(row.span_pct) : null,
-    price_vs_band: typeof row.price_vs_band === "string" ? row.price_vs_band : undefined,
+    price_vs_band: typeof row.price_vs_band === "string" ? row.price_vs_band : null,
     max_dist_pct: row.max_dist_pct != null ? Number(row.max_dist_pct) : undefined,
   };
 }
@@ -192,6 +200,15 @@ export function normalizeSignalsHealth(raw: unknown): SignalsMonitorHealth {
             .map(normalizeBandWatchEntry)
             .filter((row): row is SignalsBandWatchEntry => row != null)
         : [],
+      watchlist: Array.isArray(p.watchlist)
+        ? p.watchlist
+            .map(normalizeBandWatchEntry)
+            .filter((row): row is SignalsBandWatchEntry => row != null)
+        : Array.isArray(p.band_watch)
+          ? p.band_watch
+              .map(normalizeBandWatchEntry)
+              .filter((row): row is SignalsBandWatchEntry => row != null)
+          : [],
       monitor_near_band_max_dist_pct: Number(
         p.monitor_near_band_max_dist_pct ?? data.monitor_near_band_max_dist_pct ?? 2,
       ),
