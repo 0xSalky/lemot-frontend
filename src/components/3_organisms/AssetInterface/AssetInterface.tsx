@@ -317,6 +317,7 @@ function segmentLabel(value: string, tip: string): ReactNode {
 
 const TP_SEGMENT_ITEMS: OptionItem[] = [
     { value: "2", label: segmentLabel("2", "One take-profit at 2R") },
+    { value: "2.5", label: segmentLabel("2.5", "One take-profit at 2.5R") },
     { value: "3", label: segmentLabel("3", "One take-profit at 3R") },
     { value: "4", label: segmentLabel("4", "One take-profit at 4R") },
     { value: "6", label: segmentLabel("6", "One take-profit at 6R") },
