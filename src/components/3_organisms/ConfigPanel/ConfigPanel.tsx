@@ -8,6 +8,7 @@ import { ColorModeButton } from "@/components/ui/color-mode";
 import { toaster } from "@/components/ui/toaster";
 import { ThemeSkinSelector } from "@/components/ui/theme-skin";
 import { useThemeColor, useThemeTokens } from "@/components/ui/theme-color";
+import { themedPanelStyle } from "@/components/ui/themed-panel";
 import {
   runScanner,
   scannerProfileLabel,
@@ -135,12 +136,9 @@ export default function ConfigPanel({ scannerLoading, onScannerRefresh }: Config
 
   return (
     <Box
-      mt="2"
       p="4"
-      borderWidth="1px"
-      borderColor={tokens.panelBorder}
-      bg={tokens.panelBg}
       rounded="md"
+      {...themedPanelStyle(tokens, "default", "panel")}
     >
       <ConfirmDialog
         open={pendingScan != null}

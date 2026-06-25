@@ -17,6 +17,7 @@ import ChatMessageText from "@/components/2_molecules/ChatMessageText/ChatMessag
 import ChatScanSummary from "@/components/2_molecules/ChatScanSummary/ChatScanSummary";
 import ChatStructuredBlock from "@/components/2_molecules/ChatStructuredBlock/ChatStructuredBlock";
 import { useThemeColor, useThemeTokens } from "@/components/ui/theme-color";
+import { themedPanelStyle } from "@/components/ui/themed-panel";
 import { Box, Button, Flex, Separator, Stack, Text, Textarea } from "@chakra-ui/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -51,12 +52,11 @@ function MessageBubble({
                 {formatUtcIsoLocal(message.created_at)}
             </Text>
             <Box
+                {...themedPanelStyle(tokens)}
                 px="3"
                 py="2.5"
                 rounded="md"
                 bg={isUser ? tokens.panelBgUser : tokens.panelBg}
-                borderWidth="1px"
-                borderColor={tokens.panelBorder}
             >
                 {isUser ? (
                     <ChatMessageText content={message.content} tokens={tokens} />
@@ -268,14 +268,10 @@ const ScannerChat = () => {
         <Flex
             w="100%"
             direction="column"
-            borderWidth="1px"
-            borderColor="border.emphasized"
             rounded="md"
-            overflow="hidden"
-            bg="bg.subtle"
-            boxShadow="0 0 22px rgba(255, 78, 205, 0.07)"
             minH={hasTranscript ? "calc(100vh - 6.5rem)" : undefined}
             maxH={hasTranscript ? "calc(100vh - 6.5rem)" : undefined}
+            {...themedPanelStyle(tokens)}
         >
             <Flex
                 px="3"
@@ -284,7 +280,7 @@ const ScannerChat = () => {
                 flexWrap="wrap"
                 align="center"
                 borderBottomWidth="1px"
-                borderColor="border.emphasized"
+                borderColor={tokens.panelBorder}
                 flexShrink={0}
             >
                 <Button
@@ -350,8 +346,8 @@ const ScannerChat = () => {
                     <Box
                         flexShrink={0}
                         borderTopWidth="1px"
-                        borderColor="border.emphasized"
-                        bg="bg.subtle"
+                        borderColor={tokens.panelBorder}
+                        bg={tokens.panelBg}
                         px="3"
                         py="3"
                     >

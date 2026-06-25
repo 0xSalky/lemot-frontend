@@ -1,6 +1,7 @@
 "use client";
 
 import { useThemeColor, useThemeTokens } from "@/components/ui/theme-color";
+import { themedPanelStyle } from "@/components/ui/themed-panel";
 import { DEFAULT_TRADING_API_URL } from "@/services/config";
 import {
   clearStoredTradingCredentials,
@@ -160,11 +161,9 @@ export function TradingAccessProvider({ children }: { children: ReactNode }) {
         <Box
           w="100%"
           maxW="24rem"
-          borderWidth="1px"
-          borderColor="border.emphasized"
           rounded="md"
-          bg="bg.subtle"
           p={{ base: "4", md: "5" }}
+          {...themedPanelStyle(tokens)}
         >
           <Stack gap="4">
             <Stack gap="1">

@@ -164,6 +164,7 @@ function ProfilePulseCard({
       rounded="sm"
       position="relative"
       overflow="hidden"
+      boxShadow={tokens.panelGlow}
     >
       <Box
         position="absolute"
@@ -595,20 +596,20 @@ function TerminalLine({
         },
         side === "long" || side === "short"
           ? {
-              label: side.toUpperCase(),
-              tone: side === "long" ? tokens.tagGreen : tokens.tagRed,
-            }
+            label: side.toUpperCase(),
+            tone: side === "long" ? tokens.tagGreen : tokens.tagRed,
+          }
           : null,
         isArchive
           ? { label: "hist", tone: tokens.tagBlue }
           : meta?.verdict != null
             ? {
-                label: String(meta.verdict).toUpperCase(),
-                tone:
-                  String(meta.verdict).toLowerCase() === "enter"
-                    ? tokens.tagGreen
-                    : tokens.tagRed,
-              }
+              label: String(meta.verdict).toUpperCase(),
+              tone:
+                String(meta.verdict).toLowerCase() === "enter"
+                  ? tokens.tagGreen
+                  : tokens.tagRed,
+            }
             : meta?.band_side != null
               ? { label: String(meta.band_side), tone: tokens.tagBlue }
               : showAiHint
@@ -736,7 +737,7 @@ function TerminalLine({
               borderWidth="1px"
               borderColor={tokens.panelBorder}
               rounded="md"
-              boxShadow={`0 0 24px ${tokens.panelBorder}`}
+              boxShadow={tokens.panelGlow}
             >
               <AiTooltipContent meta={meta} tokens={tokens} />
             </Box>
@@ -929,7 +930,7 @@ export default function SignalsMonitorPanel({ active = true }: SignalsMonitorPan
     : (health?.service_status?.toUpperCase() ?? "—");
 
   return (
-    <Box mt="2">
+    <Box>
       <Box
         borderWidth="1px"
         borderColor={tokens.panelBorder}
@@ -937,7 +938,7 @@ export default function SignalsMonitorPanel({ active = true }: SignalsMonitorPan
         rounded="md"
         overflow="hidden"
         position="relative"
-        boxShadow={`0 0 40px ${tokens.panelBorder}`}
+        boxShadow={tokens.panelGlowStrong}
       >
         <Box
           position="absolute"

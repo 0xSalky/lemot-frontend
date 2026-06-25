@@ -1,6 +1,7 @@
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useThemeColor, useThemeTokens } from "@/components/ui/theme-color";
+import { themedPanelStyle } from "@/components/ui/themed-panel";
 import { apiFetch } from "@/services/apiFetch";
 import { DEFAULT_RISK, DEFAULT_STOP_LOSS, DEFAULT_TP_PRESET, NATR_MULTIPLIER, TP_PRESETS } from "@/services/config";
 import { Box, Button, Flex, Input, Stack, Text } from "@chakra-ui/react";
@@ -203,15 +204,7 @@ const AssetInterface = ({ pair }: AssetInterfaceProps) => {
     };
 
     return (
-        <Box
-            w="100%"
-            borderWidth="1px"
-            borderColor="border.emphasized"
-            rounded="md"
-            overflow="hidden"
-            bg="bg.subtle"
-            boxShadow="0 0 22px rgba(255, 78, 205, 0.07)"
-        >
+        <Box w="100%" rounded="md" {...themedPanelStyle(tokens)}>
             <Flex
                 px="3"
                 py="2"
@@ -220,7 +213,7 @@ const AssetInterface = ({ pair }: AssetInterfaceProps) => {
                 justify="space-between"
                 gap="3"
                 borderBottomWidth="1px"
-                borderColor="border.emphasized"
+                borderColor={tokens.panelBorder}
                 flexShrink={0}
             >
                 <Text {...MONO} fontSize="sm" fontWeight="semibold" color={tokens.title}>
@@ -273,8 +266,8 @@ const AssetInterface = ({ pair }: AssetInterfaceProps) => {
                 px="3"
                 py="3"
                 borderTopWidth="1px"
-                borderColor="border.emphasized"
-                bg="bg.subtle"
+                borderColor={tokens.panelBorder}
+                bg={tokens.panelBg}
             >
                 <Button
                     flex="1"

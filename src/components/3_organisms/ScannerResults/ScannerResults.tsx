@@ -27,6 +27,7 @@ import FootprintOrderflowTags from "@/components/2_molecules/FootprintOrderflowT
 import SetupHeaderTags from "@/components/2_molecules/SetupHeaderTags/SetupHeaderTags";
 import DaySetupChart from "@/components/3_organisms/DaySetupChart/DaySetupChart";
 import { useThemeColor, useThemeTokens, type ThemeTokens } from "@/components/ui/theme-color";
+import { themedPanelStyle } from "@/components/ui/themed-panel";
 import { usePageVisible } from "@/hooks/usePageVisible";
 import { expectsFootprintSymbol, fetchFootprintView, hasOrderflowData } from "@/services/footprintUtils";
 import { Box, Badge, Flex, Stack, Text } from "@chakra-ui/react";
@@ -219,13 +220,7 @@ function AiBlock({
 
 function BtcReadCard({ text, tokens }: { text: string; tokens: ThemeTokens }) {
     return (
-        <Box
-            borderWidth="1px"
-            borderColor={tokens.panelBorder}
-            bg={tokens.panelBg}
-            rounded="md"
-            p="3"
-        >
+        <Box rounded="md" p="3" {...themedPanelStyle(tokens, "default", "panel")}>
             <Text {...AI_TEXT} color={tokens.panelHeading} fontWeight="semibold" mb="2">
                 BTC read
             </Text>
@@ -263,17 +258,13 @@ function SetupCard({
 
     return (
         <Box
-            borderWidth="1px"
-            borderColor="border.emphasized"
-            bg="bg.subtle"
             rounded="md"
             p="3"
             w="100%"
             fontFamily="mono"
             fontSize="xs"
             lineHeight="1.7"
-            overflow="hidden"
-            boxShadow="0 0 22px rgba(255, 78, 205, 0.07)"
+            {...themedPanelStyle(tokens)}
         >
             <SetupHeaderTags setup={setup} tokens={tokens} />
             {profile === "day" && hasOrderflowData(footprintPair) && footprintPair ? (

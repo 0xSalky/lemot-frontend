@@ -1,6 +1,7 @@
 "use client";
 
 import { useThemeTokens } from "@/components/ui/theme-color";
+import { themedPanelStyle } from "@/components/ui/themed-panel";
 import { Box, Button, Flex, Portal, Stack, Text } from "@chakra-ui/react";
 import type { ReactNode } from "react";
 
@@ -59,11 +60,8 @@ export default function ConfirmDialog({
           maxW="22rem"
           p="4"
           rounded="md"
-          borderWidth="1px"
-          borderColor={tokens.panelBorder}
-          bg={tokens.panelBgUser}
-          boxShadow={`0 12px 40px ${tokens.panelBorder}`}
           onClick={(e) => e.stopPropagation()}
+          {...themedPanelStyle(tokens)}
         >
           <Stack gap="4">
             <Stack gap="2">

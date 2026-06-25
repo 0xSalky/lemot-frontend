@@ -2,6 +2,7 @@
 
 import FootprintPairChart from "@/components/3_organisms/FootprintPairChart/FootprintPairChart";
 import { useThemeColor, useThemeTokens } from "@/components/ui/theme-color";
+import { themedPanelStyle } from "@/components/ui/themed-panel";
 import {
   biasPalette,
   displaySignals,
@@ -57,13 +58,7 @@ function PairCard({
   const liqLine = formatFootprintLiqLine(summary, merged);
 
   return (
-    <Box
-      p="4"
-      rounded="lg"
-      borderWidth="1px"
-      borderColor={tokens.panelBorder}
-      bg={tokens.panelBgUser}
-    >
+    <Box p="4" rounded="lg" {...themedPanelStyle(tokens)}>
       <Flex justify="space-between" align="flex-start" gap="3" flexWrap="wrap" mb="3">
         <Stack gap="1">
           <Text fontFamily="mono" fontSize="md" fontWeight="semibold" color={tokens.title}>

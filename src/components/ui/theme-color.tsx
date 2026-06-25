@@ -17,6 +17,10 @@ export type ThemeTokens = {
     panelBg: string;
     panelBgUser: string;
     panelBorder: string;
+    /** Themed border glow for standard cards — softer than signals terminal. */
+    panelGlow: string;
+    /** Stronger glow (signals terminal and emphasis surfaces). */
+    panelGlowStrong: string;
     inlineStrong: string;
     inlineEm: string;
     inlineCode: string;
@@ -35,6 +39,13 @@ export type ThemeTokens = {
 
 export function accent(palette: ThemeColor, shade: string | number): string {
     return `${palette}.${shade}`;
+}
+
+function glowFromBorder(panelBorder: string): Pick<ThemeTokens, "panelGlow" | "panelGlowStrong"> {
+    return {
+        panelGlow: `0 0 26px color-mix(in srgb, ${panelBorder} 58%, transparent)`,
+        panelGlowStrong: `0 0 40px ${panelBorder}`,
+    };
 }
 
 function useTokyoTokens(): ThemeTokens {
@@ -65,6 +76,7 @@ function useTokyoTokens(): ThemeTokens {
         panelBg,
         panelBgUser,
         panelBorder,
+        ...glowFromBorder(panelBorder),
         inlineStrong,
         inlineEm,
         inlineCode,
@@ -130,6 +142,7 @@ function useVegasTokens(): ThemeTokens {
         panelBg,
         panelBgUser,
         panelBorder,
+        ...glowFromBorder(panelBorder),
         inlineStrong,
         inlineEm,
         inlineCode,
@@ -195,6 +208,7 @@ function useHackerTokens(): ThemeTokens {
         panelBg,
         panelBgUser,
         panelBorder,
+        ...glowFromBorder(panelBorder),
         inlineStrong,
         inlineEm,
         inlineCode,

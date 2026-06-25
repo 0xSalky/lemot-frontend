@@ -22,7 +22,7 @@ function toastSurface(
   const base = {
     bg: tokens.panelBgUser,
     borderColor: tokens.panelBorder,
-    boxShadow: `0 10px 28px ${tokens.panelBorder}`,
+    boxShadow: tokens.panelGlow,
   };
 
   switch (type) {
