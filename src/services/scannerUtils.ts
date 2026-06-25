@@ -75,13 +75,15 @@ export function scannerProfileLabel(profile: ScannerProfile): string {
 }
 
 /** @deprecated use scannerProfileLabel(profile) */
-export const SCANNER_PROFILE_LABEL = scannerProfileLabel(DEFAULT_SCANNER_PROFILE);
+export const SCANNER_PROFILE_LABEL = scannerProfileLabel(
+  DEFAULT_SCANNER_PROFILE,
+);
 
 export const SCANNER_PROFILE_CHART_TIMEFRAME: Record<
   ScannerProfile,
   ScannerChartTimeframe
 > = {
-  swing: "1h",
+  swing: "4h",
   day: "30m",
 };
 
@@ -233,7 +235,11 @@ export async function prefetchScannerCharts(
   for (const symbol of unique) {
     const payload = charts[symbol] ?? null;
     out[symbol] = payload;
-    if (payload && Array.isArray(payload.candles) && payload.candles.length > 0) {
+    if (
+      payload &&
+      Array.isArray(payload.candles) &&
+      payload.candles.length > 0
+    ) {
       chartPayloadCache.set(`${symbol}|${timeframe}`, {
         expiresAt: Date.now() + CHART_CLIENT_CACHE_TTL_MS,
         promise: Promise.resolve(payload),
@@ -274,7 +280,9 @@ export async function runScanner(
   } else if (options?.analyze === true) {
     params.set("analyze", "true");
   }
-  const res = await apiFetch(`/api/scanner/run?${params.toString()}`, { method: "POST" });
+  const res = await apiFetch(`/api/scanner/run?${params.toString()}`, {
+    method: "POST",
+  });
   const raw = await res.text();
   let data: unknown;
   try {
@@ -316,7 +324,9 @@ export async function runScannerAnalyze(
   if (batchId != null) {
     params.set("batch_id", String(batchId));
   }
-  const res = await apiFetch(`/api/scanner/analyze?${params.toString()}`, { method: "POST" });
+  const res = await apiFetch(`/api/scanner/analyze?${params.toString()}`, {
+    method: "POST",
+  });
   const raw = await res.text();
   let data: unknown;
   try {
@@ -452,9 +462,7 @@ export function isLevelAnchor(level: ScannerLevelRow): boolean {
   return ANCHOR_LEVEL_TYPES.has(level.level_type);
 }
 
-export function levelsHighToLow(
-  levels: ScannerLevelRow[],
-): ScannerLevelRow[] {
+export function levelsHighToLow(levels: ScannerLevelRow[]): ScannerLevelRow[] {
   return [...levels].sort((a, b) => b.level - a.level);
 }
 
