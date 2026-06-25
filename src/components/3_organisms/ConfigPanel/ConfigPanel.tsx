@@ -107,27 +107,28 @@ export default function ConfigPanel({ scannerLoading, onScannerRefresh }: Config
   const tokens = useThemeTokens();
   const { serverConfigured, signOut } = useTradingAccess();
   const [pendingScan, setPendingScan] = useState<PendingScan | null>(null);
-  const [startingScan, setStartingScan] = useState(false);
 
-  const runScannerJob = useCallback(async (profile: ScannerProfile, withAi: boolean) => {
+  const runScannerJob = useCallback((profile: ScannerProfile, withAi: boolean) => {
     const label = scannerProfileLabel(profile);
-    setStartingScan(true);
-    try {
-      await runScanner(profile, { analyze: withAi });
-      toaster.info({
-        title: withAi ? `${label} scan + AI started` : `${label} scan started`,
-        description: "Runs on the server. Tap Refresh when ready — may take several minutes.",
-      });
-      setPendingScan(null);
-    } catch (e) {
+    toaster.info({
+      title: withAi ? `${label} scan + AI started` : `${label} scan started`,
+      description: "Results will be ready in a few minutes. Tap Refresh when complete.",
+    });
+
+    void runScanner(profile, { analyze: withAi }).then((result) => {
+      if (!result.success) {
+        toaster.error({
+          title: "Scanner failed",
+          description: result.message,
+        });
+      }
+    }).catch((e) => {
       console.error(`[scanner run ${profile}]`, e);
       toaster.error({
         title: "Scanner failed to start",
         description: e instanceof Error ? e.message : "Request failed",
       });
-    } finally {
-      setStartingScan(false);
-    }
+    });
   }, []);
 
   const pendingLabel = pendingScan ? scannerProfileLabel(pendingScan.profile) : "";
@@ -162,14 +163,13 @@ export default function ConfigPanel({ scannerLoading, onScannerRefresh }: Config
           )
         }
         confirmLabel={pendingScan?.withAi ? "Run scan + AI" : "Run scan"}
-        confirmColorPalette={pendingScan?.withAi ? "blue" : palette}
-        loading={startingScan}
-        onCancel={() => {
-          if (!startingScan) setPendingScan(null);
-        }}
+        confirmColorPalette={palette}
+        onCancel={() => setPendingScan(null)}
         onConfirm={() => {
-          if (!pendingScan || startingScan) return;
-          void runScannerJob(pendingScan.profile, pendingScan.withAi);
+          if (!pendingScan) return;
+          const { profile, withAi } = pendingScan;
+          setPendingScan(null);
+          runScannerJob(profile, withAi);
         }}
       />
 
