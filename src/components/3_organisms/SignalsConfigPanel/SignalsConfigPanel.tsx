@@ -191,6 +191,18 @@ export default function SignalsConfigPanel({ tokens }: SignalsConfigPanelProps) 
         />
 
         <RuntimeSwitchRow
+          label="Day auto trade"
+          description="Execute on Bybit when day AI confirms ENTER (max 4% SL, min 1:2 RR)."
+          checked={controls.day_auto_trade_enabled}
+          disabled={dayOff || !controls.day_entry_advice_enabled}
+          colorPalette="green"
+          tokens={tokens}
+          onChange={(next) =>
+            void update({ day_auto_trade_enabled: next }, "day_auto_trade_enabled")
+          }
+        />
+
+        <RuntimeSwitchRow
           label="Swing signals"
           description="1h fractal band alerts from the swing scanner universe."
           checked={controls.swing_enabled}
@@ -209,6 +221,18 @@ export default function SignalsConfigPanel({ tokens }: SignalsConfigPanelProps) 
           tokens={tokens}
           onChange={(next) =>
             void update({ swing_entry_advice_enabled: next }, "swing_entry_advice_enabled")
+          }
+        />
+
+        <RuntimeSwitchRow
+          label="Swing auto trade"
+          description="Execute on Bybit when swing AI confirms ENTER (max 4% SL, min 1:2 RR)."
+          checked={controls.swing_auto_trade_enabled}
+          disabled={swingOff || !controls.swing_entry_advice_enabled}
+          colorPalette="green"
+          tokens={tokens}
+          onChange={(next) =>
+            void update({ swing_auto_trade_enabled: next }, "swing_auto_trade_enabled")
           }
         />
       </Stack>

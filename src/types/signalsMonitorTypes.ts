@@ -57,6 +57,8 @@ export interface SignalsMonitorHealth {
     swing_entry_advice_enabled: boolean;
     day_enabled: boolean;
     swing_enabled: boolean;
+    day_auto_trade_enabled: boolean;
+    swing_auto_trade_enabled: boolean;
     updated_at: string | null;
     summary: string;
     ready: boolean;
@@ -73,7 +75,10 @@ export type SignalEventType =
   | "advice_queued"
   | "advice_sent"
   | "advice_failed"
-  | "profile_error";
+  | "profile_error"
+  | "trade_auto_executed"
+  | "trade_auto_rejected"
+  | "trade_auto_failed";
 
 export interface SignalMonitorEvent {
   id: number;
@@ -138,6 +143,8 @@ export const EMPTY_SIGNALS_HEALTH: SignalsMonitorHealth = {
     swing_entry_advice_enabled: false,
     day_enabled: false,
     swing_enabled: false,
+    day_auto_trade_enabled: false,
+    swing_auto_trade_enabled: false,
     updated_at: null,
     summary: "Unavailable",
     ready: false,
@@ -246,6 +253,8 @@ export function normalizeSignalsHealth(raw: unknown): SignalsMonitorHealth {
       swing_entry_advice_enabled: Boolean(controlsRaw?.swing_entry_advice_enabled),
       day_enabled: Boolean(controlsRaw?.day_enabled),
       swing_enabled: Boolean(controlsRaw?.swing_enabled),
+      day_auto_trade_enabled: Boolean(controlsRaw?.day_auto_trade_enabled),
+      swing_auto_trade_enabled: Boolean(controlsRaw?.swing_auto_trade_enabled),
       updated_at:
         typeof controlsRaw?.updated_at === "string" ? controlsRaw.updated_at : null,
       summary:
