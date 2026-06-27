@@ -27,7 +27,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           w="100%"
           maxW="100%"
           px={{
-            base: "1rem",
+            base: "0.6rem",
             md: "1.5rem",
             lg: "2rem",
           }}
