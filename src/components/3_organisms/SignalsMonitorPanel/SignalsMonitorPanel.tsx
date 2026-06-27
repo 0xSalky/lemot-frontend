@@ -9,6 +9,7 @@ import {
   fetchSignalsHealth,
   fetchSignalsStats,
 } from "@/services/signalsMonitor";
+import ProfileCountdownCore from "./ProfileCountdownCore";
 import { SignalConditionDots } from "./SignalConditionDots";
 import { buildAlertConditions, buildBandWatchConditions, mergeHistoricSignalEvents } from "./signalConditions";
 import type {
@@ -23,19 +24,9 @@ import { Box, Flex, Spinner, Stack, Tabs, Text } from "@chakra-ui/react";
 import { keyframes } from "@emotion/react";
 import { useEffect, useMemo, useState } from "react";
 
-const TF_SECONDS: Record<string, number> = {
-  "30m": 1800,
-  "1h": 3600,
-};
-
 const pulse = keyframes`
   0%, 100% { opacity: 1; box-shadow: 0 0 8px currentColor; }
   50% { opacity: 0.45; box-shadow: 0 0 2px currentColor; }
-`;
-
-const scan = keyframes`
-  0% { transform: translateY(-100%); }
-  100% { transform: translateY(100%); }
 `;
 
 const blink = keyframes`
@@ -69,15 +60,8 @@ function statusColor(
   return tokens.warn;
 }
 
-function formatCountdown(totalSec: number): string {
-  const sec = Math.max(0, totalSec);
-  const h = Math.floor(sec / 3600);
-  const m = Math.floor((sec % 3600) / 60);
-  const s = sec % 60;
-  if (h > 0) {
-    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-  }
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+function profileAccent(tokens: ThemeTokens, profileKey: string): string {
+  return profileKey === "swing" ? tokens.tagBlue.color : tokens.panelLabel;
 }
 
 function formatAge(sec: number | null): string {
@@ -124,103 +108,6 @@ function truncateText(text: string, max = 96): string {
 function symbolBase(symbol: string | null): string {
   if (!symbol) return "SYS";
   return symbol.split("/")[0] ?? symbol;
-}
-
-function barCycleProgress(profile: SignalsProfileHealth): number {
-  const total = TF_SECONDS[profile.timeframe] ?? 1800;
-  const remaining = Math.max(0, profile.next_bar_close_in_sec);
-  return Math.min(1, Math.max(0, 1 - remaining / total));
-}
-
-function profileAccent(tokens: ThemeTokens, profileKey: string): string {
-  return profileKey === "swing" ? tokens.tagBlue.color : tokens.panelLabel;
-}
-
-function ProfilePulseCard({
-  profileKey,
-  profile,
-  countdownSec,
-  tokens,
-}: {
-  profileKey: string;
-  profile: SignalsProfileHealth;
-  countdownSec: number;
-  tokens: ThemeTokens;
-}) {
-  const accent = profileAccent(tokens, profileKey);
-  const progress = barCycleProgress({
-    ...profile,
-    next_bar_close_in_sec: countdownSec,
-  });
-
-  return (
-    <Box
-      flex="1"
-      minW={{ base: "100%", md: "14rem" }}
-      p="3"
-      borderWidth="1px"
-      borderColor={tokens.panelBorder}
-      bg={tokens.panelBgUser}
-      rounded="sm"
-      position="relative"
-      overflow="hidden"
-      boxShadow={tokens.panelGlow}
-    >
-      <Box
-        position="absolute"
-        inset="0"
-        opacity={0.08}
-        bg={`linear-gradient(90deg, transparent, ${accent}, transparent)`}
-        animation={`${scan} 4s linear infinite`}
-        pointerEvents="none"
-      />
-      <Stack gap="2" position="relative">
-        <Flex justify="space-between" align="center">
-          <Text
-            fontFamily="mono"
-            fontSize="xs"
-            fontWeight="bold"
-            color={accent}
-            letterSpacing="0.12em"
-          >
-            {profileKey.toUpperCase()}
-          </Text>
-          <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
-            {profile.timeframe} · {profile.fractal_timing}
-          </Text>
-        </Flex>
-
-        <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
-          next candle close
-        </Text>
-        <Text
-          fontFamily="mono"
-          fontSize="2xl"
-          fontWeight="bold"
-          color={tokens.title}
-          letterSpacing="0.06em"
-          lineHeight="1"
-        >
-          {formatCountdown(countdownSec)}
-        </Text>
-
-        <Box h="3px" bg={tokens.blockquoteBg} rounded="full" overflow="hidden">
-          <Box
-            h="100%"
-            w={`${Math.round(progress * 100)}%`}
-            bg={`linear-gradient(90deg, ${accent}, ${tokens.tagGreen.color})`}
-            transition="width 1s linear"
-          />
-        </Box>
-
-        <Flex gap="3" flexWrap="wrap" fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
-          <Text>watch {profile.symbols_watched}</Text>
-          <Text>near band {profile.near_band_count}</Text>
-          <Text>last bar {formatTime(profile.last_bar_processed_at)}</Text>
-        </Flex>
-      </Stack>
-    </Box>
-  );
 }
 
 function fmtPrice(value: unknown): string | null {
@@ -432,6 +319,7 @@ function BandWatchRow({
         conditions={watchConditions}
         tokens={tokens}
         variant="watch"
+        compact
       />
     </Stack>
   );
@@ -1066,7 +954,7 @@ export default function SignalsMonitorPanel({ active = true }: SignalsMonitorPan
             {profileEntries.map(([key, profile]) => {
               const countdown = Math.max(0, (countdownBase[key] ?? profile.next_bar_close_in_sec) - tick);
               return (
-                <ProfilePulseCard
+                <ProfileCountdownCore
                   key={key}
                   profileKey={key}
                   profile={profile}

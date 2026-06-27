@@ -1,14 +1,15 @@
 "use client";
 
-import { SignalConditionDots } from "@/components/3_organisms/SignalsMonitorPanel/SignalConditionDots";
-import type { SignalCondition } from "@/components/3_organisms/SignalsMonitorPanel/signalConditions";
+import CapacityGaugeCore from "@/components/3_organisms/RiskDeskPanel/CapacityGaugeCore";
+import ConditionMatrix from "@/components/2_molecules/ConditionMatrix/ConditionMatrix";
+import { riskGateToMatrixNode } from "@/components/2_molecules/ConditionMatrix/conditionMatrixTypes";
+import RPerformanceCore from "@/components/3_organisms/RiskDeskPanel/RPerformanceCore";
 import { useThemeColor, useThemeTokens, type ThemeTokens } from "@/components/ui/theme-color";
 import { usePageVisible } from "@/hooks/usePageVisible";
 import { fetchRiskDesk } from "@/services/riskDesk";
 import type {
   RiskDeskPayload,
   RiskDeskPosition,
-  RiskGate,
   RiskGatesSummary,
 } from "@/types/riskDeskTypes";
 import { Box, Flex, Spinner, Stack, Text } from "@chakra-ui/react";
@@ -62,16 +63,6 @@ function netSideColor(tokens: ThemeTokens, netSide: string): string {
   return tokens.panelMuted;
 }
 
-function gateToCondition(gate: RiskGate): SignalCondition {
-  return {
-    id: gate.id,
-    label: gate.label,
-    short: gate.short,
-    detail: gate.detail,
-    state: gate.status === "ok" ? "met" : gate.status === "block" ? "unmet" : "unknown",
-  };
-}
-
 function EventTag({
   label,
   tone,
@@ -97,128 +88,6 @@ function EventTag({
     >
       {label}
     </Box>
-  );
-}
-
-function CapacityGauge({
-  desk,
-  tokens,
-}: {
-  desk: RiskDeskPayload;
-  tokens: ThemeTokens;
-}) {
-  const max = desk.max_open_trades;
-  const slots = max > 0 ? max : Math.max(desk.slots_used, 3);
-
-  return (
-    <Stack gap="2">
-      <Flex gap="2" flexWrap="wrap">
-        {Array.from({ length: slots }).map((_, index) => {
-          const pos = desk.positions[index];
-          const filled = Boolean(pos);
-          const side = pos?.side?.toLowerCase();
-          const accent =
-            side === "long"
-              ? tokens.tagGreen.color
-              : side === "short"
-                ? tokens.tagRed.color
-                : tokens.tagAccent.color;
-          return (
-            <Box
-              key={`slot-${index}`}
-              flex="1"
-              minW="5rem"
-              p="2"
-              borderWidth="1px"
-              borderColor={filled ? accent : tokens.panelBorder}
-              borderStyle={filled ? "solid" : "dashed"}
-              bg={filled ? tokens.panelBgUser : tokens.blockquoteBg}
-              rounded="sm"
-              boxShadow={filled ? tokens.panelGlow : undefined}
-            >
-              {filled && pos ? (
-                <Stack gap="0.5">
-                  <Text fontFamily="mono" fontSize="xs" fontWeight="bold" color={accent}>
-                    {pos.symbol}
-                  </Text>
-                  <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
-                    {side?.toUpperCase() ?? "—"}
-                  </Text>
-                  <Text fontFamily="mono" fontSize="2xs" color={tokens.panelBody}>
-                    {formatR(pos.r_multiple)}
-                  </Text>
-                </Stack>
-              ) : (
-                <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted} letterSpacing="0.08em">
-                  EMPTY
-                </Text>
-              )}
-            </Box>
-          );
-        })}
-      </Flex>
-      {max > 0 ? (
-        <>
-          <Box h="4px" bg={tokens.blockquoteBg} rounded="full" overflow="hidden">
-            <Box
-              h="100%"
-              w={`${Math.min(100, Math.round(desk.fill_ratio * 100))}%`}
-              bg={`linear-gradient(90deg, ${tokens.tagAccent.color}, ${tokens.tagGreen.color})`}
-            />
-          </Box>
-          <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
-            {desk.slots_used} / {max} slots · {desk.slots_free ?? 0} free
-          </Text>
-        </>
-      ) : (
-        <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
-          max open trades unlimited · {desk.slots_used} open
-        </Text>
-      )}
-    </Stack>
-  );
-}
-
-function RScaleBar({
-  avgR,
-  limits,
-  tokens,
-}: {
-  avgR: number | null;
-  limits: RiskDeskPayload["limits"];
-  tokens: ThemeTokens;
-}) {
-  const hard = -limits.avg_down_hard_reject_r;
-  const min = -limits.worst_leg_hard_reject_r;
-  const max = 0.5;
-  const value = avgR ?? 0;
-  const span = max - min;
-  const pct = span > 0 ? Math.min(100, Math.max(0, ((value - min) / span) * 100)) : 50;
-
-  return (
-    <Stack gap="1">
-      <Flex justify="space-between" fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
-        <Text>{min}R</Text>
-        <Text>{hard}R</Text>
-        <Text>0R</Text>
-      </Flex>
-      <Box h="6px" bg={tokens.blockquoteBg} rounded="full" position="relative">
-        <Box
-          position="absolute"
-          top="-2px"
-          left={`${pct}%`}
-          w="10px"
-          h="10px"
-          rounded="full"
-          bg={value <= hard ? tokens.tagRed.color : value < 0 ? tokens.warn : tokens.tagGreen.color}
-          transform="translateX(-50%)"
-          boxShadow={tokens.panelGlow}
-        />
-      </Box>
-      <Text fontFamily="mono" fontSize="2xs" color={tokens.panelBody}>
-        book avg {formatR(avgR)} · hard block ≤ {hard}R
-      </Text>
-    </Stack>
   );
 }
 
@@ -291,8 +160,8 @@ export default function RiskDeskPanel({ active }: { active: boolean }) {
     };
   }, [active, pageVisible]);
 
-  const gateConditions = useMemo(
-    () => (desk?.gates ?? []).map(gateToCondition),
+  const gateNodes = useMemo(
+    () => (desk?.gates ?? []).map(riskGateToMatrixNode),
     [desk?.gates],
   );
 
@@ -390,35 +259,25 @@ export default function RiskDeskPanel({ active }: { active: boolean }) {
           </Flex>
         ) : desk ? (
           <Stack gap="0" position="relative">
-            <Box px="4" py="4" borderBottomWidth="1px" borderColor={tokens.panelBorder}>
-              <Text
-                fontFamily="mono"
-                fontSize="2xs"
-                color={tokens.panelLabel}
-                letterSpacing="0.12em"
-                mb="2"
-              >
-                CAPACITY
-              </Text>
-              <CapacityGauge desk={desk} tokens={tokens} />
+            <Box px="4" pt="4" pb="0">
+              <RPerformanceCore desk={desk} tokens={tokens} />
             </Box>
 
-            <Flex
-              direction={{ base: "column", md: "row" }}
-              borderBottomWidth="1px"
-              borderColor={tokens.panelBorder}
-            >
-              <Box flex="1" px="4" py="4" borderRightWidth={{ md: "1px" }} borderColor={tokens.panelBorder}>
+            <Box px="4" py="4" borderBottomWidth="1px" borderColor={tokens.panelBorder}>
+              <CapacityGaugeCore desk={desk} tokens={tokens} />
+            </Box>
+
+            <Box px="4" py="4" borderBottomWidth="1px" borderColor={tokens.panelBorder}>
+              <Flex align="center" justify="space-between" flexWrap="wrap" gap="3" mb="3">
                 <Text
                   fontFamily="mono"
                   fontSize="2xs"
                   color={tokens.panelLabel}
                   letterSpacing="0.12em"
-                  mb="2"
                 >
-                  BOOK EXPOSURE
+                  GATE MATRIX
                 </Text>
-                <Flex align="center" gap="3" mb="3" flexWrap="wrap">
+                <Flex gap="2" flexWrap="wrap">
                   <EventTag
                     label={`NET ${desk.net_side.toUpperCase()}`}
                     tone={{
@@ -428,10 +287,7 @@ export default function RiskDeskPanel({ active }: { active: boolean }) {
                     }}
                   />
                   {desk.book_state ? (
-                    <EventTag
-                      label={desk.book_state.toUpperCase()}
-                      tone={tokens.tagNeutral}
-                    />
+                    <EventTag label={desk.book_state.toUpperCase()} tone={tokens.tagNeutral} />
                   ) : null}
                   <EventTag
                     label={`GATES ${summaryLabel}`}
@@ -442,27 +298,9 @@ export default function RiskDeskPanel({ active }: { active: boolean }) {
                     }}
                   />
                 </Flex>
-                <RScaleBar avgR={desk.same_side.avg_r} limits={desk.limits} tokens={tokens} />
-                <Flex gap="4" mt="3" fontFamily="mono" fontSize="2xs" color={tokens.panelMuted} flexWrap="wrap">
-                  <Text>avg {formatR(desk.same_side.avg_r)}</Text>
-                  <Text>worst {formatR(desk.same_side.worst_r)}</Text>
-                  <Text>best {formatR(desk.same_side.best_r)}</Text>
-                </Flex>
-              </Box>
-
-              <Box flex="1" px="4" py="4">
-                <Text
-                  fontFamily="mono"
-                  fontSize="2xs"
-                  color={tokens.panelLabel}
-                  letterSpacing="0.12em"
-                  mb="2"
-                >
-                  GATE MATRIX
-                </Text>
-                <SignalConditionDots conditions={gateConditions} tokens={tokens} variant="watch" />
-              </Box>
-            </Flex>
+              </Flex>
+              <ConditionMatrix nodes={gateNodes} tokens={tokens} variant="gate" showTitle={false} />
+            </Box>
 
             {desk.positions.length > 0 ? (
               <Box borderBottomWidth="1px" borderColor={tokens.panelBorder}>
