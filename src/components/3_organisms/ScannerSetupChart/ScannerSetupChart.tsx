@@ -230,7 +230,9 @@ function ScannerSetupChart({
 
     const zoomScale = zoomScaleFromStep(zoomStep);
     const candles = chart.candles;
-    const spotPrice = candles[candles.length - 1]?.close ?? price;
+    const lastClose = candles[candles.length - 1]?.close;
+    const spotPrice =
+      price > 0 && Number.isFinite(price) ? price : (lastClose ?? 0);
     const visibleCandles = visibleCandlesForZoom(candles, zoomScale);
     const [baseMin, baseMax] = computeChartBounds(visibleCandles, spotPrice);
     const [minPrice, maxPrice] = applyZoomBounds(baseMin, baseMax, zoomScale, spotPrice);
@@ -467,17 +469,6 @@ function ScannerSetupChart({
                 role="img"
                 aria-label={`${timeframe} price chart for ${symbol} with HTF bands`}
               >
-                <line
-                  x1={PAD_X}
-                  x2={chartWidth - PAD_X}
-                  y1={plot.spotY}
-                  y2={plot.spotY}
-                  stroke="currentColor"
-                  strokeWidth="0.75"
-                  strokeDasharray="3 4"
-                  opacity={0.45}
-                />
-
                 <polyline
                   points={plot.closePoints}
                   fill="none"
@@ -488,11 +479,23 @@ function ScannerSetupChart({
                   opacity={0.95}
                 />
 
+                <line
+                  x1={PAD_X}
+                  x2={chartWidth - PAD_X}
+                  y1={plot.spotY}
+                  y2={plot.spotY}
+                  stroke="currentColor"
+                  strokeWidth={0.5}
+                  strokeDasharray="4 4"
+                  opacity={0.5}
+                />
+
                 <circle
                   cx={plot.lastX}
                   cy={plot.lastY}
-                  r="2.5"
+                  r="2"
                   fill="currentColor"
+                  opacity={0.5}
                 />
               </svg>
             </Box>

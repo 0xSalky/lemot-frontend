@@ -44,6 +44,8 @@ type FootprintPairChartProps = {
   bands?: ScannerBandRow[];
   embedded?: boolean;
   symbol?: string;
+  /** Live mark from scanner; drawn as dashed line when it differs from last bar close. */
+  livePrice?: number;
 };
 
 function toneColor(tone: "buy" | "sell" | "neutral", tokens: ThemeTokens) {
@@ -132,6 +134,7 @@ export default function FootprintPairChart({
   bands = [],
   embedded = false,
   symbol,
+  livePrice,
 }: FootprintPairChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const clipUid = useId().replace(/:/g, "");
@@ -169,7 +172,9 @@ export default function FootprintPairChart({
 
     const zoomScale = zoomScaleFromStep(zoomStep);
     const visible = visibleBarsForZoom(allVisible, zoomScale);
-    const spotPrice = visible[visible.length - 1]?.close ?? 0;
+    const lastClose = visible[visible.length - 1]?.close ?? 0;
+    const spotPrice =
+      livePrice != null && Number.isFinite(livePrice) && livePrice > 0 ? livePrice : lastClose;
     const closes = visible.map((b) => b.close);
     const [baseMin, baseMax] = computePriceBounds(closes, spotPrice);
     const [minPrice, maxPrice] = applyZoomBounds(baseMin, baseMax, zoomScale, spotPrice);
@@ -310,7 +315,7 @@ export default function FootprintPairChart({
         liq: `${clipUid}-liq`,
       },
     };
-  }, [bands, bars, clipUid, width, zoomStep]);
+  }, [bands, bars, clipUid, livePrice, width, zoomStep]);
 
   const hoverBar = hoverIndex != null && plot ? plot.visible[hoverIndex] : null;
   const tooltipPlacement =
@@ -565,6 +570,24 @@ export default function FootprintPairChart({
                   stroke={tokens.panelHeading}
                   strokeWidth={1.5}
                   points={plot.closePoints}
+                />
+
+                <line
+                  x1={PAD_X}
+                  x2={plot.chartWidth - PAD_X}
+                  y1={plot.spotY}
+                  y2={plot.spotY}
+                  stroke={tokens.panelHeading}
+                  strokeWidth={0.5}
+                  strokeDasharray="4 4"
+                  opacity={0.5}
+                />
+                <circle
+                  cx={plot.lastX}
+                  cy={plot.spotY}
+                  r={2}
+                  fill={tokens.panelHeading}
+                  opacity={0.5}
                 />
               </g>
 

@@ -140,6 +140,7 @@ export default function DaySetupChart({
           bands={bands}
           embedded
           symbol={symbol}
+          livePrice={price}
         />
       </DayChartBleed>
     );
