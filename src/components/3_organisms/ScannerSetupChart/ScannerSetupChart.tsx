@@ -247,8 +247,14 @@ function ScannerSetupChart({
     const yAt = (level: number) =>
       PAD_TOP + ((maxPrice - level) / priceSpan) * innerH;
 
+    const lastX = xAt(visibleCandles.length - 1);
     const closePoints = visibleCandles
       .map((candle, i) => `${xAt(i).toFixed(1)},${yAt(candle.close).toFixed(1)}`)
+      .concat(
+        Math.abs(spotPrice - (lastClose ?? 0)) > 1e-9
+          ? [`${lastX.toFixed(1)},${yAt(spotPrice).toFixed(1)}`]
+          : [],
+      )
       .join(" ");
 
     const bandRects = bands.flatMap((band, i) => {
@@ -269,7 +275,6 @@ function ScannerSetupChart({
     });
 
     const spotY = yAt(spotPrice);
-    const lastX = xAt(visibleCandles.length - 1);
     const lastY = yAt(spotPrice);
 
     return {

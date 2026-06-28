@@ -245,6 +245,11 @@ export default function FootprintPairChart({
 
     const closePoints = visible
       .map((bar, i) => `${xAt(i).toFixed(1)},${clampYPrice(bar.close).toFixed(1)}`)
+      .concat(
+        Math.abs(spotPrice - lastClose) > 1e-9
+          ? [`${xAt(visible.length - 1).toFixed(1)},${clampYPrice(spotPrice).toFixed(1)}`]
+          : [],
+      )
       .join(" ");
 
     const cvdPoints = visible
