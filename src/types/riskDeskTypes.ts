@@ -64,6 +64,29 @@ export interface TradeMgmtProposal {
   action_label: string;
 }
 
+export interface TradeMgmtMilestone {
+  id: string;
+  label: string;
+  r: number;
+  pct: number;
+  reached: boolean;
+  kind: "tp" | "lock";
+  lock_r?: number;
+}
+
+export interface TradeMgmtProgress {
+  scale_max_r: number;
+  target_tp_rr: number | null;
+  current_r: number | null;
+  current_pct: number;
+  pct_to_target_tp: number | null;
+  r_to_target_tp: number | null;
+  next_lock_trigger_r: number | null;
+  next_lock_bank_r: number | null;
+  milestones: TradeMgmtMilestone[];
+  phase: "winner" | "loser" | "flat";
+}
+
 export interface TradeMgmtPosition {
   symbol: string;
   ccxt_symbol: string;
@@ -76,6 +99,8 @@ export interface TradeMgmtPosition {
   stop: number | null;
   take_profit: number | null;
   r_multiple: number | null;
+  target_tp_rr: number | null;
+  progress: TradeMgmtProgress | null;
   wait_detail: string;
   proposals: TradeMgmtProposal[];
 }
@@ -85,6 +110,9 @@ export interface TradeMgmtDesk {
   auto_enabled: boolean;
   poll_seconds: number;
   profile: string;
+  entry_tp_rr_levels: number[];
+  lock_bank_offset_r: number;
+  scale_max_r: number;
   extend_min_r: number;
   extend_min_rr: number;
   lock_ladder: TradeMgmtLadderRung[];
@@ -262,6 +290,38 @@ export function normalizeRiskDesk(body: unknown): RiskDeskPayload {
   };
 }
 
+function normalizeTradeMgmtProgress(raw: Record<string, unknown> | null): TradeMgmtProgress | null {
+  if (!raw) return null;
+  const milestones = Array.isArray(raw.milestones)
+    ? raw.milestones.map((m) => {
+        const row = m as Record<string, unknown>;
+        const kind = str(row.kind);
+        return {
+          id: str(row.id) ?? "m",
+          label: str(row.label) ?? "",
+          r: num(row.r) ?? 0,
+          pct: num(row.pct) ?? 0,
+          reached: Boolean(row.reached),
+          kind: (kind === "tp" ? "tp" : "lock") as TradeMgmtMilestone["kind"],
+          lock_r: num(row.lock_r) ?? undefined,
+        };
+      })
+    : [];
+  const phase = str(raw.phase);
+  return {
+    scale_max_r: num(raw.scale_max_r) ?? 3,
+    target_tp_rr: num(raw.target_tp_rr),
+    current_r: num(raw.current_r),
+    current_pct: num(raw.current_pct) ?? 0,
+    pct_to_target_tp: num(raw.pct_to_target_tp),
+    r_to_target_tp: num(raw.r_to_target_tp),
+    next_lock_trigger_r: num(raw.next_lock_trigger_r),
+    next_lock_bank_r: num(raw.next_lock_bank_r),
+    milestones,
+    phase: phase === "winner" || phase === "loser" ? phase : "flat",
+  };
+}
+
 function normalizeTradeMgmtDesk(raw: Record<string, unknown>): TradeMgmtDesk {
   const ladder = Array.isArray(raw.lock_ladder)
     ? raw.lock_ladder.map((rung) => {
@@ -304,6 +364,10 @@ function normalizeTradeMgmtDesk(raw: Record<string, unknown>): TradeMgmtDesk {
           stop: num(row.stop),
           take_profit: num(row.take_profit),
           r_multiple: num(row.r_multiple),
+          target_tp_rr: num(row.target_tp_rr),
+          progress: normalizeTradeMgmtProgress(
+            (row.progress as Record<string, unknown>) ?? null,
+          ),
           wait_detail: str(row.wait_detail) ?? "",
           proposals,
         };
@@ -315,7 +379,12 @@ function normalizeTradeMgmtDesk(raw: Record<string, unknown>): TradeMgmtDesk {
     auto_enabled: Boolean(raw.auto_enabled),
     poll_seconds: num(raw.poll_seconds) ?? 300,
     profile: str(raw.profile) ?? "day",
-    extend_min_r: num(raw.extend_min_r) ?? 1.5,
+    entry_tp_rr_levels: Array.isArray(raw.entry_tp_rr_levels)
+      ? raw.entry_tp_rr_levels.map((v) => num(v) ?? 0).filter((v) => v > 0)
+      : [],
+    lock_bank_offset_r: num(raw.lock_bank_offset_r) ?? 1,
+    scale_max_r: num(raw.scale_max_r) ?? 3,
+    extend_min_r: num(raw.extend_min_r) ?? 2,
     extend_min_rr: num(raw.extend_min_rr) ?? 2,
     lock_ladder: ladder,
     status: str(raw.status) ?? "unknown",
