@@ -319,6 +319,14 @@ function PositionMgmtCard({
         <ExitChip label="ENTRY" value={formatPrice(pos.entry)} color={alien} tokens={tokens} />
         <ExitChip label="MARK" value={formatPrice(pos.mark)} color={tokens.panelBody} tokens={tokens} />
         <ExitChip label="SL" value={formatPrice(pos.stop)} color={tokens.tagRed.color} tokens={tokens} />
+        {pos.applied_lock_r != null && pos.applied_lock_r > 0.05 ? (
+          <ExitChip
+            label="BANKED"
+            value={`+${pos.applied_lock_r.toFixed(1)}R`}
+            color={tokens.tagGreen.color}
+            tokens={tokens}
+          />
+        ) : null}
         <ExitChip label="TP" value={formatPrice(pos.take_profit)} color={tokens.tagGreen.color} tokens={tokens} />
         {pos.target_tp_rr != null ? (
           <ExitChip

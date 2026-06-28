@@ -78,6 +78,9 @@ export interface TradeMgmtProgress {
   scale_max_r: number;
   target_tp_rr: number | null;
   current_r: number | null;
+  applied_lock_r: number | null;
+  active_lock_trigger_r: number | null;
+  active_lock_bank_r: number | null;
   current_pct: number;
   pct_to_target_tp: number | null;
   r_to_target_tp: number | null;
@@ -100,6 +103,7 @@ export interface TradeMgmtPosition {
   take_profit: number | null;
   r_multiple: number | null;
   target_tp_rr: number | null;
+  applied_lock_r: number | null;
   progress: TradeMgmtProgress | null;
   wait_detail: string;
   proposals: TradeMgmtProposal[];
@@ -312,6 +316,9 @@ function normalizeTradeMgmtProgress(raw: Record<string, unknown> | null): TradeM
     scale_max_r: num(raw.scale_max_r) ?? 3,
     target_tp_rr: num(raw.target_tp_rr),
     current_r: num(raw.current_r),
+    applied_lock_r: num(raw.applied_lock_r),
+    active_lock_trigger_r: num(raw.active_lock_trigger_r),
+    active_lock_bank_r: num(raw.active_lock_bank_r),
     current_pct: num(raw.current_pct) ?? 0,
     pct_to_target_tp: num(raw.pct_to_target_tp),
     r_to_target_tp: num(raw.r_to_target_tp),
@@ -365,6 +372,7 @@ function normalizeTradeMgmtDesk(raw: Record<string, unknown>): TradeMgmtDesk {
           take_profit: num(row.take_profit),
           r_multiple: num(row.r_multiple),
           target_tp_rr: num(row.target_tp_rr),
+          applied_lock_r: num(row.applied_lock_r),
           progress: normalizeTradeMgmtProgress(
             (row.progress as Record<string, unknown>) ?? null,
           ),
