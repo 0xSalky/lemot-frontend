@@ -48,6 +48,51 @@ export interface RiskDeskEvent {
   created_at: string | null;
 }
 
+export interface TradeMgmtLadderRung {
+  trigger_r: number;
+  lock_r: number;
+}
+
+export interface TradeMgmtProposal {
+  kind: "sl" | "tp";
+  price: number;
+  price_display: string;
+  reason: string;
+  lock_r: number | null;
+  would_notify: boolean;
+  notify_skip_reason: string | null;
+  action_label: string;
+}
+
+export interface TradeMgmtPosition {
+  symbol: string;
+  ccxt_symbol: string;
+  side: string;
+  size: number;
+  unrealized_pnl_usd?: number;
+  on_watchlist: boolean;
+  entry: number | null;
+  mark: number | null;
+  stop: number | null;
+  take_profit: number | null;
+  r_multiple: number | null;
+  wait_detail: string;
+  proposals: TradeMgmtProposal[];
+}
+
+export interface TradeMgmtDesk {
+  enabled: boolean;
+  auto_enabled: boolean;
+  poll_seconds: number;
+  profile: string;
+  extend_min_r: number;
+  extend_min_rr: number;
+  lock_ladder: TradeMgmtLadderRung[];
+  status: string;
+  status_detail: string;
+  positions: TradeMgmtPosition[];
+}
+
 export interface RiskDeskPayload {
   ready: boolean;
   fetched_at: string | null;
@@ -73,6 +118,7 @@ export interface RiskDeskPayload {
   positions: RiskDeskPosition[];
   next_same_side_preview: RiskNextPreview | null;
   recent_events: RiskDeskEvent[];
+  trade_mgmt: TradeMgmtDesk | null;
 }
 
 export const EMPTY_RISK_DESK: RiskDeskPayload = {
@@ -97,6 +143,7 @@ export const EMPTY_RISK_DESK: RiskDeskPayload = {
   positions: [],
   next_same_side_preview: null,
   recent_events: [],
+  trade_mgmt: null,
 };
 
 function num(value: unknown): number | null {
@@ -146,6 +193,7 @@ export function normalizeRiskDesk(body: unknown): RiskDeskPayload {
   const sameRaw = (raw.same_side ?? {}) as Record<string, unknown>;
   const limitsRaw = (raw.limits ?? {}) as Record<string, unknown>;
   const previewRaw = raw.next_same_side_preview as Record<string, unknown> | null;
+  const tradeMgmtRaw = raw.trade_mgmt as Record<string, unknown> | null;
 
   const events = Array.isArray(raw.recent_events)
     ? raw.recent_events.map((e) => {
@@ -210,5 +258,68 @@ export function normalizeRiskDesk(body: unknown): RiskDeskPayload {
         }
       : null,
     recent_events: events,
+    trade_mgmt: tradeMgmtRaw ? normalizeTradeMgmtDesk(tradeMgmtRaw) : null,
+  };
+}
+
+function normalizeTradeMgmtDesk(raw: Record<string, unknown>): TradeMgmtDesk {
+  const ladder = Array.isArray(raw.lock_ladder)
+    ? raw.lock_ladder.map((rung) => {
+        const row = rung as Record<string, unknown>;
+        return {
+          trigger_r: num(row.trigger_r) ?? 0,
+          lock_r: num(row.lock_r) ?? 0,
+        };
+      })
+    : [];
+
+  const positions = Array.isArray(raw.positions)
+    ? raw.positions.map((p) => {
+        const row = p as Record<string, unknown>;
+        const proposals = Array.isArray(row.proposals)
+          ? row.proposals.map((prop) => {
+              const pr = prop as Record<string, unknown>;
+              const kind = str(pr.kind);
+              return {
+                kind: (kind === "tp" ? "tp" : "sl") as TradeMgmtProposal["kind"],
+                price: num(pr.price) ?? 0,
+                price_display: str(pr.price_display) ?? "—",
+                reason: str(pr.reason) ?? "",
+                lock_r: num(pr.lock_r),
+                would_notify: Boolean(pr.would_notify),
+                notify_skip_reason: str(pr.notify_skip_reason),
+                action_label: str(pr.action_label) ?? "",
+              };
+            })
+          : [];
+        return {
+          symbol: str(row.symbol) ?? "?",
+          ccxt_symbol: str(row.ccxt_symbol) ?? "",
+          side: str(row.side) ?? "unknown",
+          size: num(row.size) ?? 0,
+          unrealized_pnl_usd: num(row.unrealized_pnl_usd) ?? undefined,
+          on_watchlist: Boolean(row.on_watchlist),
+          entry: num(row.entry),
+          mark: num(row.mark),
+          stop: num(row.stop),
+          take_profit: num(row.take_profit),
+          r_multiple: num(row.r_multiple),
+          wait_detail: str(row.wait_detail) ?? "",
+          proposals,
+        };
+      })
+    : [];
+
+  return {
+    enabled: Boolean(raw.enabled),
+    auto_enabled: Boolean(raw.auto_enabled),
+    poll_seconds: num(raw.poll_seconds) ?? 300,
+    profile: str(raw.profile) ?? "day",
+    extend_min_r: num(raw.extend_min_r) ?? 1.5,
+    extend_min_rr: num(raw.extend_min_rr) ?? 2,
+    lock_ladder: ladder,
+    status: str(raw.status) ?? "unknown",
+    status_detail: str(raw.status_detail) ?? "",
+    positions,
   };
 }

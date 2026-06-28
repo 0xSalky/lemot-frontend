@@ -1,6 +1,7 @@
 "use client";
 
 import CapacityGaugeCore from "@/components/3_organisms/RiskDeskPanel/CapacityGaugeCore";
+import TradeMgmtCore from "@/components/3_organisms/RiskDeskPanel/TradeMgmtCore";
 import ConditionMatrix from "@/components/2_molecules/ConditionMatrix/ConditionMatrix";
 import { riskGateToMatrixNode } from "@/components/2_molecules/ConditionMatrix/conditionMatrixTypes";
 import RPerformanceCore from "@/components/3_organisms/RiskDeskPanel/RPerformanceCore";
@@ -266,6 +267,12 @@ export default function RiskDeskPanel({ active }: { active: boolean }) {
             <Box px="4" py="4" borderBottomWidth="1px" borderColor={tokens.panelBorder}>
               <CapacityGaugeCore desk={desk} tokens={tokens} />
             </Box>
+
+            {desk.trade_mgmt ? (
+              <Box px="4" py="4" borderBottomWidth="1px" borderColor={tokens.panelBorder}>
+                <TradeMgmtCore tradeMgmt={desk.trade_mgmt} tokens={tokens} />
+              </Box>
+            ) : null}
 
             <Box px="4" py="4" borderBottomWidth="1px" borderColor={tokens.panelBorder}>
               <Flex align="center" justify="space-between" flexWrap="wrap" gap="3" mb="3">
