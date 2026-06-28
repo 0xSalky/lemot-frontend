@@ -21,12 +21,6 @@ const flow = keyframes`
   to { background-position: 200% 0; }
 `;
 
-const sweep = keyframes`
-  0% { transform: translateX(-120%) skewX(-14deg); opacity: 0; }
-  20% { opacity: 0.5; }
-  100% { transform: translateX(220%) skewX(-14deg); opacity: 0; }
-`;
-
 function stateColor(tokens: ThemeTokens, state: MatrixNodeState): string {
   if (state === "pass") return tokens.tagGreen.color;
   if (state === "fail") return tokens.tagRed.color;
@@ -264,13 +258,6 @@ export default function ConditionMatrix({
             opacity={0.06}
             backgroundImage={`linear-gradient(${alien}33 1px, transparent 1px), linear-gradient(90deg, ${alien}33 1px, transparent 1px)`}
             backgroundSize="16px 16px"
-          />
-          <Box
-            position="absolute"
-            inset="0"
-            pointerEvents="none"
-            bg={`linear-gradient(105deg, transparent 44%, ${alien}33 50%, transparent 56%)`}
-            animation={`${sweep} 6s ease-in-out infinite`}
           />
         </>
       ) : null}

@@ -10,12 +10,6 @@ const TF_SECONDS: Record<string, number> = {
   "1h": 3600,
 };
 
-const sweep = keyframes`
-  0% { transform: translateX(-120%) skewX(-14deg); opacity: 0; }
-  20% { opacity: 0.45; }
-  100% { transform: translateX(220%) skewX(-14deg); opacity: 0; }
-`;
-
 const flicker = keyframes`
   0%, 94%, 100% { opacity: 1; }
   95% { opacity: 0.5; }
@@ -157,13 +151,6 @@ export default function ProfileCountdownCore({
         opacity={0.07}
         backgroundImage={`linear-gradient(${alien}33 1px, transparent 1px), linear-gradient(90deg, ${alien}33 1px, transparent 1px)`}
         backgroundSize="16px 16px"
-      />
-      <Box
-        position="absolute"
-        inset="0"
-        pointerEvents="none"
-        bg={`linear-gradient(105deg, transparent 44%, ${alien}33 50%, transparent 56%)`}
-        animation={`${sweep} 5.5s ease-in-out infinite`}
       />
 
       <Stack gap="2.5" position="relative" zIndex={1}>

@@ -6,12 +6,6 @@ import { Box, Flex, Stack, Text } from "@chakra-ui/react";
 import { keyframes } from "@emotion/react";
 import { useMemo } from "react";
 
-const sweep = keyframes`
-  0% { transform: translateX(-120%) skewX(-12deg); opacity: 0; }
-  15% { opacity: 0.85; }
-  100% { transform: translateX(220%) skewX(-12deg); opacity: 0; }
-`;
-
 const breathe = keyframes`
   0%, 100% { opacity: 0.35; filter: blur(0px); }
   50% { opacity: 0.9; filter: blur(1px); }
@@ -135,13 +129,6 @@ export default function RPerformanceCore({
         rounded="full"
         animation={`${rotateSlow} 48s linear infinite`}
         pointerEvents="none"
-      />
-      <Box
-        position="absolute"
-        inset="0"
-        pointerEvents="none"
-        bg={`linear-gradient(105deg, transparent 40%, ${alien}55 50%, transparent 60%)`}
-        animation={`${sweep} 4.5s ease-in-out infinite`}
       />
 
       <Stack gap="4" position="relative" zIndex={1}>

@@ -3,13 +3,6 @@
 import type { ThemeTokens } from "@/components/ui/theme-color";
 import type { RiskDeskPayload } from "@/types/riskDeskTypes";
 import { Box, Flex, Stack, Text } from "@chakra-ui/react";
-import { keyframes } from "@emotion/react";
-
-const sweep = keyframes`
-  0% { transform: translateX(-120%) skewX(-14deg); opacity: 0; }
-  20% { opacity: 0.35; }
-  100% { transform: translateX(220%) skewX(-14deg); opacity: 0; }
-`;
 
 function formatR(value: number | null | undefined): string {
   if (value == null || !Number.isFinite(value)) return "—";
@@ -57,13 +50,6 @@ export default function CapacityGaugeCore({
         opacity={0.05}
         backgroundImage={`linear-gradient(${alien}33 1px, transparent 1px), linear-gradient(90deg, ${alien}33 1px, transparent 1px)`}
         backgroundSize="18px 18px"
-      />
-      <Box
-        position="absolute"
-        inset="0"
-        pointerEvents="none"
-        bg={`linear-gradient(105deg, transparent 44%, ${alien}22 50%, transparent 56%)`}
-        animation={`${sweep} 7s ease-in-out infinite`}
       />
 
       <Stack gap="3" position="relative" zIndex={1}>
