@@ -203,6 +203,28 @@ export default function SignalsConfigPanel({ tokens }: SignalsConfigPanelProps) 
         />
 
         <RuntimeSwitchRow
+          label="Trade management"
+          description="Adjust SL/TP on open positions (scanner watchlist only). Live Bybit entry + PnL."
+          checked={controls.trade_mgmt_enabled}
+          disabled={panelDisabled || masterOff}
+          colorPalette="purple"
+          tokens={tokens}
+          onChange={(next) => void update({ trade_mgmt_enabled: next }, "trade_mgmt_enabled")}
+        />
+
+        <RuntimeSwitchRow
+          label="Trade mgmt auto"
+          description="Apply SL/TP moves on Bybit without Telegram confirm."
+          checked={controls.trade_mgmt_auto_enabled}
+          disabled={panelDisabled || masterOff || !controls.trade_mgmt_enabled}
+          colorPalette="green"
+          tokens={tokens}
+          onChange={(next) =>
+            void update({ trade_mgmt_auto_enabled: next }, "trade_mgmt_auto_enabled")
+          }
+        />
+
+        <RuntimeSwitchRow
           label="Swing signals"
           description="1h fractal band alerts from the swing scanner universe."
           checked={controls.swing_enabled}

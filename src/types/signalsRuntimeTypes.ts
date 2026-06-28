@@ -6,6 +6,8 @@ export interface SignalsRuntimeControls {
   swing_enabled: boolean;
   day_auto_trade_enabled: boolean;
   swing_auto_trade_enabled: boolean;
+  trade_mgmt_enabled: boolean;
+  trade_mgmt_auto_enabled: boolean;
   updated_at: string | null;
   summary: string;
   ready: boolean;
@@ -19,6 +21,8 @@ export interface SignalsRuntimeUpdate {
   swing_enabled?: boolean;
   day_auto_trade_enabled?: boolean;
   swing_auto_trade_enabled?: boolean;
+  trade_mgmt_enabled?: boolean;
+  trade_mgmt_auto_enabled?: boolean;
   notify_telegram?: boolean;
 }
 
@@ -35,6 +39,8 @@ export const UNAVAILABLE_SIGNALS_RUNTIME: SignalsRuntimeControls = {
   swing_enabled: false,
   day_auto_trade_enabled: false,
   swing_auto_trade_enabled: false,
+  trade_mgmt_enabled: false,
+  trade_mgmt_auto_enabled: false,
   updated_at: null,
   summary: "Unavailable",
   ready: false,
@@ -61,6 +67,8 @@ export function normalizeSignalsRuntime(raw: unknown): SignalsRuntimeControls {
     swing_enabled: Boolean(data.swing_enabled),
     day_auto_trade_enabled: Boolean(data.day_auto_trade_enabled),
     swing_auto_trade_enabled: Boolean(data.swing_auto_trade_enabled),
+    trade_mgmt_enabled: Boolean(data.trade_mgmt_enabled),
+    trade_mgmt_auto_enabled: Boolean(data.trade_mgmt_auto_enabled),
     updated_at: typeof data.updated_at === "string" ? data.updated_at : null,
     summary:
       typeof data.summary === "string" ? data.summary : "Signals active",

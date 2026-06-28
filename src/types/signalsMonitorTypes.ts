@@ -59,6 +59,8 @@ export interface SignalsMonitorHealth {
     swing_enabled: boolean;
     day_auto_trade_enabled: boolean;
     swing_auto_trade_enabled: boolean;
+    trade_mgmt_enabled: boolean;
+    trade_mgmt_auto_enabled: boolean;
     updated_at: string | null;
     summary: string;
     ready: boolean;
@@ -145,6 +147,8 @@ export const EMPTY_SIGNALS_HEALTH: SignalsMonitorHealth = {
     swing_enabled: false,
     day_auto_trade_enabled: false,
     swing_auto_trade_enabled: false,
+    trade_mgmt_enabled: false,
+    trade_mgmt_auto_enabled: false,
     updated_at: null,
     summary: "Unavailable",
     ready: false,
@@ -255,6 +259,8 @@ export function normalizeSignalsHealth(raw: unknown): SignalsMonitorHealth {
       swing_enabled: Boolean(controlsRaw?.swing_enabled),
       day_auto_trade_enabled: Boolean(controlsRaw?.day_auto_trade_enabled),
       swing_auto_trade_enabled: Boolean(controlsRaw?.swing_auto_trade_enabled),
+      trade_mgmt_enabled: Boolean(controlsRaw?.trade_mgmt_enabled),
+      trade_mgmt_auto_enabled: Boolean(controlsRaw?.trade_mgmt_auto_enabled),
       updated_at:
         typeof controlsRaw?.updated_at === "string" ? controlsRaw.updated_at : null,
       summary:
