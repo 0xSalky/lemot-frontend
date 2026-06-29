@@ -459,7 +459,6 @@ const ANCHOR_LEVEL_TYPES = new Set([
 export function isLevelAnchor(level: ScannerLevelRow): boolean {
   if (level.is_anchor === true) return true;
   if (level.is_anchor === false) return false;
-  if (/^ema_\d+$/.test(level.level_type)) return true;
   return ANCHOR_LEVEL_TYPES.has(level.level_type);
 }
 
