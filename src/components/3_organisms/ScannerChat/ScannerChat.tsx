@@ -27,6 +27,8 @@ import {
     Button,
     Collapsible,
     Flex,
+    Menu,
+    Portal,
     Stack,
     Text,
     Textarea,
@@ -207,46 +209,132 @@ function MessageBubble({
     );
 }
 
-function ThreadRow({
-    thread,
-    active,
-    onClick,
+function ChatHistoryMenu({
+    threads,
+    threadId,
+    bootLoading,
     tokens,
+    onNewChat,
+    onSelectThread,
 }: {
-    thread: ScannerChatThreadRow;
-    active: boolean;
-    onClick: () => void;
+    threads: ScannerChatThreadRow[];
+    threadId: number | null;
+    bootLoading: boolean;
     tokens: ReturnType<typeof useThemeTokens>;
+    onNewChat: () => void;
+    onSelectThread: (thread: ScannerChatThreadRow) => void;
 }) {
+    const activeThread = threads.find((thread) => thread.id === threadId);
+    const triggerLabel = bootLoading
+        ? "Loading chats…"
+        : activeThread?.title?.trim() || (threadId ? `Chat #${threadId}` : "New chat");
+
     return (
-        <Button
-            justifyContent="flex-start"
-            alignItems="flex-start"
-            h="auto"
-            py="2"
-            px="2.5"
-            w="100%"
-            variant={active ? "subtle" : "ghost"}
-            onClick={onClick}
-            whiteSpace="normal"
-            textAlign="left"
-        >
-            <Stack gap="0.5" align="flex-start" w="100%">
-                <Text fontFamily="mono" fontSize="xs" fontWeight="medium" lineClamp={2}>
-                    {thread.title?.trim() || `Chat #${thread.id}`}
-                </Text>
-                <Flex gap="2" align="center">
-                    {thread.profile === "day" || thread.profile === "swing" ? (
-                        <Badge size="sm" variant="outline" fontFamily="mono" fontSize="2xs">
-                            {scannerProfileLabel(thread.profile)}
-                        </Badge>
-                    ) : null}
-                    <Text fontFamily="mono" fontSize="2xs" color="fg.muted">
-                        {formatRelativeTime(thread.updated_at)}
-                    </Text>
-                </Flex>
-            </Stack>
-        </Button>
+        <Menu.Root positioning={{ placement: "bottom-start", gutter: 6 }}>
+            <Menu.Trigger asChild>
+                <Button
+                    size="sm"
+                    variant="outline"
+                    flex="1"
+                    minW="0"
+                    maxW={{ base: "100%", md: "320px" }}
+                    borderColor={tokens.panelBorder}
+                    fontFamily="mono"
+                    fontWeight="normal"
+                >
+                    <Flex align="center" gap="2" w="100%" minW="0">
+                        <Text truncate flex="1" textAlign="left" fontSize="xs">
+                            {triggerLabel}
+                        </Text>
+                        <Text fontSize="2xs" color="fg.muted" flexShrink={0} aria-hidden>
+                            ▾
+                        </Text>
+                    </Flex>
+                </Button>
+            </Menu.Trigger>
+            <Portal>
+                <Menu.Positioner>
+                    <Menu.Content
+                        minW={{ base: "min(100vw - 1.5rem, 360px)", sm: "320px" }}
+                        maxW="420px"
+                        maxH="min(65vh, 440px)"
+                        overflowY="auto"
+                        zIndex="popover"
+                        p="1"
+                        borderColor={tokens.panelBorder}
+                        bg={tokens.panelBg}
+                    >
+                        <Menu.Item
+                            value="new-chat"
+                            onSelect={onNewChat}
+                            rounded="md"
+                            py="2.5"
+                            px="3"
+                            fontFamily="mono"
+                            fontSize="xs"
+                            fontWeight="semibold"
+                            color={tokens.panelHeading}
+                        >
+                            <Menu.ItemText>+ New chat</Menu.ItemText>
+                        </Menu.Item>
+
+                        {threads.length > 0 ? <Menu.Separator my="1" /> : null}
+
+                        {threads.length === 0 && !bootLoading ? (
+                            <Box px="3" py="2">
+                                <Text fontFamily="mono" fontSize="2xs" color="fg.muted">
+                                    No previous chats
+                                </Text>
+                            </Box>
+                        ) : null}
+
+                        {threads.slice(0, 40).map((thread) => {
+                            const active = threadId === thread.id;
+                            const title = thread.title?.trim() || `Chat #${thread.id}`;
+                            return (
+                                <Menu.Item
+                                    key={thread.id}
+                                    value={String(thread.id)}
+                                    onSelect={() => onSelectThread(thread)}
+                                    rounded="md"
+                                    py="2.5"
+                                    px="3"
+                                    bg={active ? tokens.panelBgUser : undefined}
+                                >
+                                    <Flex align="flex-start" gap="2" w="100%" minW="0">
+                                        {active ? (
+                                            <Menu.ItemIndicator color={tokens.panelHeading} mt="0.5" />
+                                        ) : (
+                                            <Box w="4" flexShrink={0} />
+                                        )}
+                                        <Stack gap="1" flex="1" minW="0">
+                                            <Menu.ItemText truncate fontFamily="mono" fontSize="xs">
+                                                {title}
+                                            </Menu.ItemText>
+                                            <Flex gap="2" align="center" flexWrap="wrap">
+                                                {thread.profile === "day" || thread.profile === "swing" ? (
+                                                    <Badge
+                                                        size="sm"
+                                                        variant="outline"
+                                                        fontFamily="mono"
+                                                        fontSize="2xs"
+                                                    >
+                                                        {scannerProfileLabel(thread.profile)}
+                                                    </Badge>
+                                                ) : null}
+                                                <Text fontFamily="mono" fontSize="2xs" color="fg.muted">
+                                                    {formatRelativeTime(thread.updated_at)}
+                                                </Text>
+                                            </Flex>
+                                        </Stack>
+                                    </Flex>
+                                </Menu.Item>
+                            );
+                        })}
+                    </Menu.Content>
+                </Menu.Positioner>
+            </Portal>
+        </Menu.Root>
     );
 }
 
@@ -488,117 +576,114 @@ const ScannerChat = () => {
             w="100%"
             h="calc(100vh - 6.5rem)"
             minH="520px"
+            direction="column"
             rounded="lg"
             {...themedPanelStyle(tokens)}
             overflow="hidden"
         >
             <Box
-                w={{ base: "0", md: "240px" }}
-                display={{ base: "none", md: "block" }}
-                borderRightWidth="1px"
+                px={{ base: "3", md: "5" }}
+                py="3"
+                borderBottomWidth="1px"
                 borderColor={tokens.panelBorder}
-                bg={tokens.panelBg}
                 flexShrink={0}
             >
-                <Stack gap="2" p="3" h="100%">
-                    <Button size="sm" colorPalette={palette} onClick={startNewChat}>
-                        New chat
-                    </Button>
-                    <Box flex="1" overflowY="auto">
-                        {bootLoading ? (
-                            <Text fontFamily="mono" fontSize="xs" color="fg.muted" px="1">
-                                Loading…
-                            </Text>
-                        ) : threads.length === 0 ? (
-                            <Text fontFamily="mono" fontSize="xs" color="fg.muted" px="1">
-                                No chats yet
-                            </Text>
-                        ) : (
-                            <Stack gap="1">
-                                {threads.slice(0, 30).map((thread) => (
-                                    <ThreadRow
-                                        key={thread.id}
-                                        thread={thread}
-                                        active={threadId === thread.id}
-                                        onClick={() => selectThread(thread)}
-                                        tokens={tokens}
-                                    />
-                                ))}
-                            </Stack>
-                        )}
-                    </Box>
-                </Stack>
+                <Flex
+                    direction={{ base: "column", sm: "row" }}
+                    align={{ base: "stretch", sm: "center" }}
+                    justify="space-between"
+                    gap="3"
+                >
+                    <Stack gap="0.5" minW="0">
+                        <Text
+                            fontFamily="mono"
+                            fontSize="sm"
+                            fontWeight="semibold"
+                            color={tokens.panelHeading}
+                        >
+                            Lemot copilot
+                        </Text>
+                        <Text fontSize="xs" color="fg.muted" display={{ base: "none", sm: "block" }}>
+                            Read-only assistant — scanner, signals, risk desk, footprint
+                        </Text>
+                    </Stack>
+
+                    <Flex gap="2" align="center" w={{ base: "100%", sm: "auto" }} minW="0">
+                        <ChatHistoryMenu
+                            threads={threads}
+                            threadId={threadId}
+                            bootLoading={bootLoading}
+                            tokens={tokens}
+                            onNewChat={startNewChat}
+                            onSelectThread={selectThread}
+                        />
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            colorPalette={palette}
+                            onClick={startNewChat}
+                            flexShrink={0}
+                            aria-label="New chat"
+                            px="3"
+                        >
+                            +
+                        </Button>
+                    </Flex>
+                </Flex>
             </Box>
 
-            <Flex direction="column" flex="1" minW="0">
-                <Box
-                    px={{ base: "3", md: "5" }}
-                    py="3"
-                    borderBottomWidth="1px"
-                    borderColor={tokens.panelBorder}
-                    flexShrink={0}
-                >
-                    <Text fontFamily="mono" fontSize="sm" fontWeight="semibold" color={tokens.panelHeading}>
-                        Lemot copilot
-                    </Text>
-                    <Text fontSize="xs" color="fg.muted" mt="0.5">
-                        Read-only system assistant — scanner, signals, risk desk, footprint
-                    </Text>
-                </Box>
+            <Box flex="1" minH="0" overflowY="auto" px={{ base: "3", md: "5" }} py="4">
+                {messages.length === 0 && !loading ? (
+                    <Stack gap="3" maxW="640px">
+                        <Text fontSize="sm" color="fg.muted">
+                            Ask about open trades, why a signal was skipped, HTF bands, or orderflow.
+                            Mention <Text as="span" fontFamily="mono">$SOL</Text> when you want a fresh pair scan.
+                        </Text>
+                    </Stack>
+                ) : (
+                    <Stack gap="6" maxW="900px">
+                        {messages.map((msg) => (
+                            <MessageBubble key={msg.id} message={msg} tokens={tokens} />
+                        ))}
+                        {loading ? (
+                            <Stack gap="2">
+                                {progressText ? (
+                                    <Text fontFamily="mono" fontSize="xs" color={tokens.panelLabel}>
+                                        {progressText}
+                                    </Text>
+                                ) : null}
+                                {streamReply ? (
+                                    <MessageBubble
+                                        message={{
+                                            id: -1,
+                                            thread_id: threadId ?? 0,
+                                            role: "assistant",
+                                            content: "",
+                                            profile: activeProfile,
+                                            context: { model: selectedModel },
+                                            created_at: new Date().toISOString(),
+                                        }}
+                                        tokens={tokens}
+                                        streamingText={streamReply}
+                                    />
+                                ) : null}
+                            </Stack>
+                        ) : null}
+                        <Box ref={bottomRef} />
+                    </Stack>
+                )}
+            </Box>
 
-                <Box flex="1" minH="0" overflowY="auto" px={{ base: "3", md: "5" }} py="4">
-                    {messages.length === 0 && !loading ? (
-                        <Stack gap="3" maxW="640px">
-                            <Text fontSize="sm" color="fg.muted">
-                                Ask about open trades, why a signal was skipped, HTF bands, or orderflow.
-                                Mention <Text as="span" fontFamily="mono">$SOL</Text> when you want a fresh pair scan.
-                            </Text>
-                        </Stack>
-                    ) : (
-                        <Stack gap="6" maxW="900px">
-                            {messages.map((msg) => (
-                                <MessageBubble key={msg.id} message={msg} tokens={tokens} />
-                            ))}
-                            {loading ? (
-                                <Stack gap="2">
-                                    {progressText ? (
-                                        <Text fontFamily="mono" fontSize="xs" color={tokens.panelLabel}>
-                                            {progressText}
-                                        </Text>
-                                    ) : null}
-                                    {streamReply ? (
-                                        <MessageBubble
-                                            message={{
-                                                id: -1,
-                                                thread_id: threadId ?? 0,
-                                                role: "assistant",
-                                                content: "",
-                                                profile: activeProfile,
-                                                context: { model: selectedModel },
-                                                created_at: new Date().toISOString(),
-                                            }}
-                                            tokens={tokens}
-                                            streamingText={streamReply}
-                                        />
-                                    ) : null}
-                                </Stack>
-                            ) : null}
-                            <Box ref={bottomRef} />
-                        </Stack>
-                    )}
-                </Box>
-
-                <Box
-                    flexShrink={0}
-                    borderTopWidth="1px"
-                    borderColor={tokens.panelBorder}
-                    bg={tokens.panelBg}
-                    px={{ base: "3", md: "5" }}
-                    py="4"
-                >
-                    {composer}
-                </Box>
-            </Flex>
+            <Box
+                flexShrink={0}
+                borderTopWidth="1px"
+                borderColor={tokens.panelBorder}
+                bg={tokens.panelBg}
+                px={{ base: "3", md: "5" }}
+                py="4"
+            >
+                {composer}
+            </Box>
         </Flex>
     );
 };
