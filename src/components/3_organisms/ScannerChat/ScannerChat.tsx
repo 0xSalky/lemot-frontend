@@ -302,15 +302,21 @@ function ChatHistoryMenu({
                                     bg={active ? tokens.panelBgUser : undefined}
                                 >
                                     <Flex align="flex-start" gap="2" w="100%" minW="0">
-                                        {active ? (
-                                            <Menu.ItemIndicator color={tokens.panelHeading} mt="0.5" />
-                                        ) : (
-                                            <Box w="4" flexShrink={0} />
-                                        )}
+                                        <Box
+                                            w="3.5"
+                                            flexShrink={0}
+                                            mt="0.5"
+                                            textAlign="center"
+                                            fontSize="xs"
+                                            color={tokens.panelHeading}
+                                            aria-hidden
+                                        >
+                                            {active ? "✓" : ""}
+                                        </Box>
                                         <Stack gap="1" flex="1" minW="0">
-                                            <Menu.ItemText truncate fontFamily="mono" fontSize="xs">
+                                            <Text truncate fontFamily="mono" fontSize="xs">
                                                 {title}
-                                            </Menu.ItemText>
+                                            </Text>
                                             <Flex gap="2" align="center" flexWrap="wrap">
                                                 {thread.profile === "day" || thread.profile === "swing" ? (
                                                     <Badge
