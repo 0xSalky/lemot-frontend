@@ -117,6 +117,8 @@ export interface ScannerChartCandle {
 export interface ScannerChartPayload {
   symbol: string;
   timeframe: string;
+  /** Latest mark from Bybit ticker when chart was fetched. */
+  last?: number;
   candles: ScannerChartCandle[];
 }
 

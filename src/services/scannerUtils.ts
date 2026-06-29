@@ -122,6 +122,21 @@ const chartPayloadCache = new Map<
   { expiresAt: number; promise: Promise<ScannerChartPayload | null> }
 >();
 
+/** Prefer fresh chart mark/close over stale scanner-batch setup price. */
+export function chartSpotPrice(
+  chart: ScannerChartPayload | null | undefined,
+  fallbackPrice?: number,
+): number {
+  const mark = chart?.last;
+  if (mark != null && Number.isFinite(mark) && mark > 0) return mark;
+  const close = chart?.candles?.at(-1)?.close;
+  if (close != null && Number.isFinite(close) && close > 0) return close;
+  if (fallbackPrice != null && Number.isFinite(fallbackPrice) && fallbackPrice > 0) {
+    return fallbackPrice;
+  }
+  return 0;
+}
+
 export async function fetchScannerChart(
   symbol: string,
   timeframe: ScannerChartTimeframe = "1h",
@@ -162,6 +177,7 @@ export async function fetchScannerChart(
     return {
       symbol: payload.symbol ?? symbol.trim(),
       timeframe: payload.timeframe ?? timeframe,
+      last: typeof payload.last === "number" ? payload.last : undefined,
       candles: payload.candles,
     };
   })();

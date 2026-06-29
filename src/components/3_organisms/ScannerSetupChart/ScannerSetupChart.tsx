@@ -6,7 +6,7 @@ import {
   type ScannerChartPayload,
   type ScannerChartTimeframe,
 } from "@/types/scannerTypes";
-import { fetchScannerChart, formatLevelPrice, formatRefreshCountdown, SCANNER_CHART_REFRESH_MS } from "@/services/scannerUtils";
+import { fetchScannerChart, chartSpotPrice, formatLevelPrice, formatRefreshCountdown, SCANNER_CHART_REFRESH_MS } from "@/services/scannerUtils";
 import { usePageVisible } from "@/hooks/usePageVisible";
 import type { ThemeTokens } from "@/components/ui/theme-color";
 import { Box, Flex, NativeSelect, Text } from "@chakra-ui/react";
@@ -205,7 +205,7 @@ function ScannerSetupChart({
 
     const refreshId = window.setInterval(() => {
       if (document.visibilityState !== "visible") return;
-      loadChart(false);
+      loadChart(true);
     }, CHART_REFRESH_MS);
 
     const tickId = window.setInterval(() => {
@@ -231,8 +231,7 @@ function ScannerSetupChart({
     const zoomScale = zoomScaleFromStep(zoomStep);
     const candles = chart.candles;
     const lastClose = candles[candles.length - 1]?.close;
-    const spotPrice =
-      price > 0 && Number.isFinite(price) ? price : (lastClose ?? 0);
+    const spotPrice = chartSpotPrice(chart, price > 0 ? price : lastClose);
     const visibleCandles = visibleCandlesForZoom(candles, zoomScale);
     const [baseMin, baseMax] = computeChartBounds(visibleCandles, spotPrice);
     const [minPrice, maxPrice] = applyZoomBounds(baseMin, baseMax, zoomScale, spotPrice);

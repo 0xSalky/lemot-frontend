@@ -508,7 +508,7 @@ const ScannerResults = ({ profile, latestBatch, loading = false, active = true }
         setManagedChartsLoading(true);
 
         const loadCharts = (initial: boolean) => {
-            void prefetchScannerCharts(symbols, defaultChartTimeframe)
+            void prefetchScannerCharts(symbols, defaultChartTimeframe, { bustCache: !initial })
                 .then((charts) => {
                     if (!cancelled) {
                         setManagedCharts(charts);

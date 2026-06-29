@@ -12,7 +12,7 @@ import {
   fetchFootprintView,
   hasOrderflowData,
 } from "@/services/footprintUtils";
-import { scannerSymbolToBase } from "@/services/scannerUtils";
+import { scannerSymbolToBase, chartSpotPrice } from "@/services/scannerUtils";
 import type { FootprintPairView, FootprintTimeframe } from "@/types/footprintTypes";
 import type { ScannerBandRow, ScannerChartPayload, ScannerChartTimeframe } from "@/types/scannerTypes";
 import { Box, Text } from "@chakra-ui/react";
@@ -122,6 +122,9 @@ export default function DaySetupChart({
   const pairForDisplay = fpTimeframe === "30m" ? footprintPair : altTimeframePair;
   const showOrderflow = hasOrderflowData(pairForDisplay);
   const showFootprintLoading = expectsFootprint && footprintLoading && !showOrderflow;
+  const footprintSpotPrice =
+    pairForDisplay?.merged?.at(-1)?.close ?? price;
+  const restSpotPrice = chartSpotPrice(managedChart, price);
 
   if (showFootprintLoading) {
     return <FootprintChartLoading tokens={tokens} />;
@@ -140,7 +143,7 @@ export default function DaySetupChart({
           bands={bands}
           embedded
           symbol={symbol}
-          livePrice={price}
+          livePrice={footprintSpotPrice}
         />
       </DayChartBleed>
     );
@@ -150,7 +153,7 @@ export default function DaySetupChart({
     <DayChartBleed tokens={tokens} minHeight={SIMPLE_CHART_HEIGHT}>
       <ScannerSetupChart
         symbol={symbol}
-        price={price}
+        price={restSpotPrice}
         bands={bands}
         tokens={tokens}
         defaultTimeframe={defaultChartTimeframe}

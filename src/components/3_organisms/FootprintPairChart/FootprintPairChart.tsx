@@ -174,7 +174,11 @@ export default function FootprintPairChart({
     const visible = visibleBarsForZoom(allVisible, zoomScale);
     const lastClose = visible[visible.length - 1]?.close ?? 0;
     const spotPrice =
-      livePrice != null && Number.isFinite(livePrice) && livePrice > 0 ? livePrice : lastClose;
+      lastClose > 0
+        ? lastClose
+        : livePrice != null && Number.isFinite(livePrice) && livePrice > 0
+          ? livePrice
+          : 0;
     const closes = visible.map((b) => b.close);
     const [baseMin, baseMax] = computePriceBounds(closes, spotPrice);
     const [minPrice, maxPrice] = applyZoomBounds(baseMin, baseMax, zoomScale, spotPrice);
