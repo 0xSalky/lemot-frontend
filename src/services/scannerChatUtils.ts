@@ -13,6 +13,10 @@ const PROFILE_TAG = /#(swing|day)\b/gi;
 
 const CHAT_MODEL_STORAGE_KEY = "lemot.chat.model";
 
+export function scannerChatDefaultProfile(): ScannerProfile {
+  return "day";
+}
+
 export function loadChatModelPreference(): ScannerChatModel {
   if (typeof window === "undefined") return "haiku";
   const stored = window.localStorage.getItem(CHAT_MODEL_STORAGE_KEY);
@@ -170,7 +174,7 @@ export async function sendScannerChatMessageStream(
     body: JSON.stringify({
       message,
       thread_id: threadId ?? undefined,
-      profile: options.profile,
+      profile: options.profile ?? scannerChatDefaultProfile(),
       model: options.model ?? "haiku",
       display_timezone: scannerChatDisplayTimezone(),
     }),

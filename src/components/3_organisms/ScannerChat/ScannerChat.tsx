@@ -344,7 +344,7 @@ const ScannerChat = () => {
     const [threads, setThreads] = useState<ScannerChatThreadRow[]>([]);
     const [threadId, setThreadId] = useState<number | null>(null);
     const [lockedProfile, setLockedProfile] = useState<ScannerProfile | null>(null);
-    const [selectedProfile, setSelectedProfile] = useState<ScannerProfile>("swing");
+    const [selectedProfile, setSelectedProfile] = useState<ScannerProfile>("day");
     const [selectedModel, setSelectedModel] = useState<ScannerChatModel>(() =>
         loadChatModelPreference(),
     );
@@ -514,17 +514,17 @@ const ScannerChat = () => {
             <Flex align="center" justify="space-between" gap="3" flexWrap="wrap">
                 <Flex gap="2" align="center" flexWrap="wrap">
                     <ProfileChip
-                        label="Swing"
-                        active={activeProfile === "swing"}
-                        disabled={Boolean(lockedProfile && lockedProfile !== "swing")}
-                        onClick={() => setSelectedProfile("swing")}
-                        tokens={tokens}
-                    />
-                    <ProfileChip
                         label="Day"
                         active={activeProfile === "day"}
                         disabled={Boolean(lockedProfile && lockedProfile !== "day")}
                         onClick={() => setSelectedProfile("day")}
+                        tokens={tokens}
+                    />
+                    <ProfileChip
+                        label="Swing"
+                        active={activeProfile === "swing"}
+                        disabled={Boolean(lockedProfile && lockedProfile !== "swing")}
+                        onClick={() => setSelectedProfile("swing")}
                         tokens={tokens}
                     />
                     <Box w="1px" h="5" bg={tokens.panelBorder} />
