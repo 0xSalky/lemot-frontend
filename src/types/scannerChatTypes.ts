@@ -2,6 +2,8 @@
 
 import type { ScannerProfile } from "@/services/scannerUtils";
 
+export type ScannerChatModel = "haiku" | "sonnet";
+
 export interface ScannerChatThreadRow {
   id: number;
   created_at: string;
@@ -49,6 +51,9 @@ export interface ScannerChatMessageRow {
   symbols?: string[] | null;
   profile?: ScannerProfile | null;
   context?: {
+    agent?: boolean;
+    model?: ScannerChatModel;
+    tools_used?: string[];
     scan_summaries?: ScannerChatScanSummary[];
     structured?: ScannerChatStructuredBlock | null;
     [key: string]: unknown;
@@ -71,6 +76,8 @@ export interface ScannerChatSendResult {
   reply: string;
   symbols: string[];
   profile?: ScannerProfile;
+  model?: ScannerChatModel;
+  tools_used?: string[];
   scanned_at?: string;
   scan_summaries?: ScannerChatScanSummary[];
   structured?: ScannerChatStructuredBlock | null;
@@ -86,9 +93,15 @@ export type ScannerChatProgressStage =
   | "validating"
   | "scanning"
   | "fetching_funding"
-  | "thinking";
+  | "thinking"
+  | "tool";
 
 export interface ScannerChatStreamHandlers {
   onProgress?: (stage: ScannerChatProgressStage, data: Record<string, unknown>) => void;
   onDelta?: (text: string) => void;
+}
+
+export interface ScannerChatSendOptions {
+  profile?: ScannerProfile;
+  model?: ScannerChatModel;
 }

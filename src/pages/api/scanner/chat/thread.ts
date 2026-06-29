@@ -24,8 +24,14 @@ export default async function handler(
     return;
   }
 
+  const profile = req.query.profile;
+  const params = new URLSearchParams();
+  if (profile != null && String(profile).trim()) {
+    params.set("profile", String(profile).trim());
+  }
+  const qs = params.toString();
   const upstream = await fetch(
-    `${creds.baseUrl}/scanner/chat/threads/${encodeURIComponent(String(threadId))}`,
+    `${creds.baseUrl}/scanner/chat/threads/${encodeURIComponent(String(threadId))}${qs ? `?${qs}` : ""}`,
     {
       method: "GET",
       headers: { "X-API-Key": creds.apiKey },

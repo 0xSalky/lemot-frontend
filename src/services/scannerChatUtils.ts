@@ -1,17 +1,27 @@
 import { apiFetch } from "@/services/apiFetch";
 import type { ScannerProfile } from "@/services/scannerUtils";
 import type {
+  ScannerChatModel,
+  ScannerChatSendOptions,
   ScannerChatSendResult,
   ScannerChatStreamHandlers,
   ScannerChatThreadPayload,
   ScannerChatThreadsPayload,
 } from "@/types/scannerChatTypes";
 
-const DOLLAR_TICKER = /\$[A-Za-z0-9]+/;
 const PROFILE_TAG = /#(swing|day)\b/gi;
 
-export function messageHasDollarTicker(message: string): boolean {
-  return DOLLAR_TICKER.test(message);
+const CHAT_MODEL_STORAGE_KEY = "lemot.chat.model";
+
+export function loadChatModelPreference(): ScannerChatModel {
+  if (typeof window === "undefined") return "sonnet";
+  const stored = window.localStorage.getItem(CHAT_MODEL_STORAGE_KEY);
+  return stored === "haiku" ? "haiku" : "sonnet";
+}
+
+export function saveChatModelPreference(model: ScannerChatModel): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(CHAT_MODEL_STORAGE_KEY, model);
 }
 
 export function parseProfileTags(message: string): ScannerProfile[] {
@@ -42,7 +52,7 @@ export function threadProfileConflict(
   const tags = parseProfileTags(message);
   if (!lockedProfile || tags.length === 0) return null;
   if (tags[0] !== lockedProfile) {
-    return `This thread is locked to #${lockedProfile}. Start a new chat to use #${tags[0]}.`;
+    return `This thread is locked to ${lockedProfile}. Start a new chat to switch profile.`;
   }
   return null;
 }
@@ -50,10 +60,20 @@ export function threadProfileConflict(
 export function draftValidationError(
   message: string,
   lockedProfile?: ScannerProfile | null,
+  selectedProfile?: ScannerProfile | null,
 ): string | null {
-  return (
-    profileTagConflict(message) ?? threadProfileConflict(message, lockedProfile)
-  );
+  const tagConflict = profileTagConflict(message);
+  if (tagConflict) return tagConflict;
+  const threadConflict = threadProfileConflict(message, lockedProfile);
+  if (threadConflict) return threadConflict;
+  if (
+    lockedProfile &&
+    selectedProfile &&
+    lockedProfile !== selectedProfile
+  ) {
+    return `This thread is locked to ${lockedProfile}. Start a new chat to switch profile.`;
+  }
+  return null;
 }
 
 function apiErrorMessage(data: unknown, status: number): string {
@@ -79,11 +99,13 @@ export async function fetchScannerChatThreads(): Promise<ScannerChatThreadsPaylo
 
 export async function fetchScannerChatThread(
   threadId: number,
+  profile?: ScannerProfile | null,
 ): Promise<ScannerChatThreadPayload> {
-  const res = await apiFetch(
-    `/api/scanner/chat/thread?thread_id=${encodeURIComponent(String(threadId))}`,
-    { cache: "no-store" },
-  );
+  const params = new URLSearchParams({ thread_id: String(threadId) });
+  if (profile) params.set("profile", profile);
+  const res = await apiFetch(`/api/scanner/chat/thread?${params.toString()}`, {
+    cache: "no-store",
+  });
   const data: unknown = await res.json();
   if (!res.ok) {
     throw new Error(apiErrorMessage(data, res.status));
@@ -140,6 +162,7 @@ export async function sendScannerChatMessageStream(
   message: string,
   threadId?: number | null,
   handlers: ScannerChatStreamHandlers = {},
+  options: ScannerChatSendOptions = {},
 ): Promise<ScannerChatSendResult> {
   const res = await apiFetch("/api/scanner/chat/stream", {
     method: "POST",
@@ -147,6 +170,8 @@ export async function sendScannerChatMessageStream(
     body: JSON.stringify({
       message,
       thread_id: threadId ?? undefined,
+      profile: options.profile,
+      model: options.model ?? "sonnet",
       display_timezone: scannerChatDisplayTimezone(),
     }),
   });
@@ -198,20 +223,44 @@ export async function sendScannerChatMessageStream(
 export async function sendScannerChatMessage(
   message: string,
   threadId?: number | null,
+  options: ScannerChatSendOptions = {},
 ): Promise<ScannerChatSendResult> {
-  return sendScannerChatMessageStream(message, threadId);
+  return sendScannerChatMessageStream(message, threadId, {}, options);
 }
 
 export function progressLabel(
   stage: string,
   data: Record<string, unknown>,
 ): string {
-  if (stage === "validating") return "Validating pairs…";
+  if (stage === "tool") {
+    const label = data.label ?? data.name;
+    return label ? `Reading ${String(label)}…` : "Reading system data…";
+  }
   if (stage === "scanning") {
     const base = data.base ?? data.symbol;
     return base ? `Scanning $${String(base).replace(/^\$/, "")}…` : "Scanning…";
   }
-  if (stage === "fetching_funding") return "Fetching funding & OI…";
   if (stage === "thinking") return "Thinking…";
   return "Working…";
+}
+
+export function formatRelativeTime(iso: string): string {
+  const ts = Date.parse(iso);
+  if (Number.isNaN(ts)) return iso;
+  const diffMs = Date.now() - ts;
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+export function chatModelLabel(model: ScannerChatModel): string {
+  return model === "haiku" ? "Haiku" : "Sonnet";
+}
+
+export function toolLabel(name: string): string {
+  return name.replace(/^get_/, "").replaceAll("_", " ");
 }
