@@ -20,7 +20,8 @@ export function scannerChatDefaultProfile(): ScannerProfile {
 export function loadChatModelPreference(): ScannerChatModel {
   if (typeof window === "undefined") return "haiku";
   const stored = window.localStorage.getItem(CHAT_MODEL_STORAGE_KEY);
-  return stored === "sonnet" ? "sonnet" : "haiku";
+  if (stored === "sonnet" || stored === "claude-sonnet-5") return "sonnet";
+  return "haiku";
 }
 
 export function saveChatModelPreference(model: ScannerChatModel): void {

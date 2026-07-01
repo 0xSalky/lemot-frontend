@@ -135,7 +135,9 @@ function MessageBubble({
     const model =
         message.context?.model === "haiku" || message.context?.model === "sonnet"
             ? message.context.model
-            : null;
+            : message.context?.model === "claude-sonnet-5"
+              ? "sonnet"
+              : null;
 
     return (
         <Flex direction="column" align={isUser ? "flex-end" : "flex-start"} w="100%">
