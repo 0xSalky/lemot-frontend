@@ -171,7 +171,7 @@ export const FOOTPRINT_PROFILE_DEFAULTS: Record<
   FootprintProfile,
   { label: string; defaultTimeframe: FootprintTimeframe }
 > = {
-  swing: { label: "Swing", defaultTimeframe: "2h" },
+  swing: { label: "Swing", defaultTimeframe: "4h" },
   day: { label: "Day", defaultTimeframe: "30m" },
 };
 

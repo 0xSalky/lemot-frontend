@@ -12,17 +12,22 @@ import {
   fetchFootprintView,
   hasOrderflowData,
 } from "@/services/footprintUtils";
-import { scannerSymbolToBase, chartSpotPrice } from "@/services/scannerUtils";
-import type { FootprintPairView, FootprintTimeframe } from "@/types/footprintTypes";
+import { scannerSymbolToBase, chartSpotPrice, type ScannerProfile } from "@/services/scannerUtils";
+import {
+  FOOTPRINT_PROFILE_DEFAULTS,
+  type FootprintPairView,
+  type FootprintTimeframe,
+} from "@/types/footprintTypes";
 import type { ScannerBandRow, ScannerChartPayload, ScannerChartTimeframe } from "@/types/scannerTypes";
 import { Box, Text } from "@chakra-ui/react";
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 type DaySetupChartProps = {
   symbol: string;
   price: number;
   bands: ScannerBandRow[];
   tokens: ThemeTokens;
+  profile?: ScannerProfile;
   footprintPair?: FootprintPairView | null;
   footprintLoading?: boolean;
   defaultChartTimeframe?: ScannerChartTimeframe;
@@ -82,6 +87,7 @@ export default function DaySetupChart({
   price,
   bands,
   tokens,
+  profile = "day",
   footprintPair,
   footprintLoading = false,
   defaultChartTimeframe = "30m",
@@ -93,19 +99,25 @@ export default function DaySetupChart({
 }: DaySetupChartProps) {
   const base = scannerSymbolToBase(symbol);
   const expectsFootprint = footprintEnabled && expectsFootprintSymbol(base);
-  const [fpTimeframe, setFpTimeframe] = useState<FootprintTimeframe>("30m");
+  const defaultFootprintTimeframe = FOOTPRINT_PROFILE_DEFAULTS[profile].defaultTimeframe;
+  const [fpTimeframe, setFpTimeframe] = useState<FootprintTimeframe>(defaultFootprintTimeframe);
   const [altTimeframePair, setAltTimeframePair] = useState<FootprintPairView | null>(null);
   const [fpLoading, setFpLoading] = useState(false);
+
+  useEffect(() => {
+    setFpTimeframe(defaultFootprintTimeframe);
+    setAltTimeframePair(null);
+  }, [defaultFootprintTimeframe, symbol]);
 
   const handleFootprintTimeframeChange = useCallback(
     (next: FootprintTimeframe) => {
       setFpTimeframe(next);
-      if (next === "30m") {
+      if (next === defaultFootprintTimeframe) {
         setAltTimeframePair(null);
         return;
       }
       setFpLoading(true);
-      void fetchFootprintView([base], { profile: "day", timeframe: next })
+      void fetchFootprintView([base], { profile, timeframe: next })
         .then((data) => {
           setAltTimeframePair(data.pairs[base] ?? null);
         })
@@ -116,10 +128,11 @@ export default function DaySetupChart({
           setFpLoading(false);
         });
     },
-    [base],
+    [base, defaultFootprintTimeframe, profile],
   );
 
-  const pairForDisplay = fpTimeframe === "30m" ? footprintPair : altTimeframePair;
+  const pairForDisplay =
+    fpTimeframe === defaultFootprintTimeframe ? footprintPair : altTimeframePair;
   const showOrderflow = hasOrderflowData(pairForDisplay);
   const showFootprintLoading = expectsFootprint && footprintLoading && !showOrderflow;
   const footprintSpotPrice =

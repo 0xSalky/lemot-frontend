@@ -276,6 +276,7 @@ function SetupCard({
                 price={setup.price}
                 bands={bands}
                 tokens={tokens}
+                profile={profile}
                 footprintPair={footprintPair}
                 footprintLoading={footprintLoading}
                 footprintEnabled={expectsFootprintSymbol(scannerSymbolToBase(setup.symbol))}
