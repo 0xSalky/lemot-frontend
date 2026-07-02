@@ -4,7 +4,7 @@ import type { ThemeTokens } from "@/components/ui/theme-color";
 import { Text } from "@chakra-ui/react";
 import type { ReactNode } from "react";
 
-const TOKEN_RE = /(\$[A-Za-z0-9]+|#(?:swing|day)\b)/gi;
+const TOKEN_RE = /(\$[A-Za-z0-9]+|#(?:b|a)\b)/gi;
 
 type ChatMessageTextProps = {
   content: string;

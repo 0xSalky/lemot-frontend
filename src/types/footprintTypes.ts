@@ -4,7 +4,7 @@ export type FootprintSymbol = (typeof FOOTPRINT_SYMBOLS)[number];
 export const FOOTPRINT_TIMEFRAMES = ["5m", "15m", "30m", "1h", "2h", "4h"] as const;
 export type FootprintTimeframe = (typeof FOOTPRINT_TIMEFRAMES)[number];
 
-export type FootprintProfile = "swing" | "day";
+export type FootprintProfile = "b" | "a";
 
 export type FootprintSignalSeverity = "high" | "medium" | "low";
 
@@ -171,8 +171,8 @@ export const FOOTPRINT_PROFILE_DEFAULTS: Record<
   FootprintProfile,
   { label: string; defaultTimeframe: FootprintTimeframe }
 > = {
-  swing: { label: "Swing", defaultTimeframe: "4h" },
-  day: { label: "Day", defaultTimeframe: "30m" },
+  b: { label: "B", defaultTimeframe: "4h" },
+  a: { label: "A", defaultTimeframe: "30m" },
 };
 
 export const FOOTPRINT_SIGNAL_SEVERITY_ORDER: Record<FootprintSignalSeverity, number> = {

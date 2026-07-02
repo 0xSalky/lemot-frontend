@@ -87,7 +87,7 @@ export default function DaySetupChart({
   price,
   bands,
   tokens,
-  profile = "day",
+  profile = "a",
   footprintPair,
   footprintLoading = false,
   defaultChartTimeframe = "30m",

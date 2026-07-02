@@ -62,16 +62,16 @@ function apiErrorMessage(data: unknown, status: number): string {
 }
 
 /** Scanner profiles supported by the backend. */
-export const SCANNER_PROFILES = ["swing", "day"] as const;
+export const SCANNER_PROFILES = ["b", "a"] as const;
 export type ScannerProfile = (typeof SCANNER_PROFILES)[number];
 
-export const DEFAULT_SCANNER_PROFILE: ScannerProfile = "swing";
+export const DEFAULT_SCANNER_PROFILE: ScannerProfile = "b";
 
 /** @deprecated use DEFAULT_SCANNER_PROFILE or pass profile explicitly */
 export const SCANNER_PROFILE = DEFAULT_SCANNER_PROFILE;
 
 export function scannerProfileLabel(profile: ScannerProfile): string {
-  return profile === "day" ? "Day" : "Swing";
+  return profile === "a" ? "A" : "B";
 }
 
 /** @deprecated use scannerProfileLabel(profile) */
@@ -83,8 +83,8 @@ export const SCANNER_PROFILE_CHART_TIMEFRAME: Record<
   ScannerProfile,
   ScannerChartTimeframe
 > = {
-  swing: "4h",
-  day: "30m",
+  b: "4h",
+  a: "30m",
 };
 
 export async function fetchLatestScannerBatch(

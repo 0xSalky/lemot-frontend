@@ -320,7 +320,7 @@ function ChatHistoryMenu({
                                                 {title}
                                             </Text>
                                             <Flex gap="2" align="center" flexWrap="wrap">
-                                                {thread.profile === "day" || thread.profile === "swing" ? (
+                                                {thread.profile === "a" || thread.profile === "b" ? (
                                                     <Badge
                                                         size="sm"
                                                         variant="outline"
@@ -352,7 +352,7 @@ const ScannerChat = () => {
     const [threads, setThreads] = useState<ScannerChatThreadRow[]>([]);
     const [threadId, setThreadId] = useState<number | null>(null);
     const [lockedProfile, setLockedProfile] = useState<ScannerProfile | null>(null);
-    const [selectedProfile, setSelectedProfile] = useState<ScannerProfile>("day");
+    const [selectedProfile, setSelectedProfile] = useState<ScannerProfile>("a");
     const [selectedModel, setSelectedModel] = useState<ScannerChatModel>(() =>
         loadChatModelPreference(),
     );
@@ -382,7 +382,7 @@ const ScannerChat = () => {
         setThreadId(id);
         setMessages(payload.messages);
         const resolved = payload.thread.profile;
-        if (resolved === "day" || resolved === "swing") {
+        if (resolved === "a" || resolved === "b") {
             setLockedProfile(resolved);
             setSelectedProfile(resolved);
         }
@@ -479,7 +479,7 @@ const ScannerChat = () => {
                 setThreadId(result.thread_id);
                 setMessages(result.messages);
                 const profile = result.profile ?? result.thread.profile;
-                if (profile === "day" || profile === "swing") {
+                if (profile === "a" || profile === "b") {
                     setLockedProfile(profile);
                     setSelectedProfile(profile);
                 }
@@ -522,17 +522,17 @@ const ScannerChat = () => {
             <Flex align="center" justify="space-between" gap="3" flexWrap="wrap">
                 <Flex gap="2" align="center" flexWrap="wrap">
                     <ProfileChip
-                        label="Day"
-                        active={activeProfile === "day"}
-                        disabled={Boolean(lockedProfile && lockedProfile !== "day")}
-                        onClick={() => setSelectedProfile("day")}
+                        label="A"
+                        active={activeProfile === "a"}
+                        disabled={Boolean(lockedProfile && lockedProfile !== "a")}
+                        onClick={() => setSelectedProfile("a")}
                         tokens={tokens}
                     />
                     <ProfileChip
-                        label="Swing"
-                        active={activeProfile === "swing"}
-                        disabled={Boolean(lockedProfile && lockedProfile !== "swing")}
-                        onClick={() => setSelectedProfile("swing")}
+                        label="B"
+                        active={activeProfile === "b"}
+                        disabled={Boolean(lockedProfile && lockedProfile !== "b")}
+                        onClick={() => setSelectedProfile("b")}
                         tokens={tokens}
                     />
                     <Box w="1px" h="5" bg={tokens.panelBorder} />

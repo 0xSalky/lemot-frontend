@@ -62,7 +62,7 @@ function ScannerConfigPanel({
     <Stack gap="3">
       <Text fontSize="xs" fontFamily="mono" color={tokens.panelMuted}>
         Profile: {profile}
-        {profile === "day" ? " · watchlist scan" : " · high-volume scan"}
+        {profile === "a" ? " · watchlist scan" : " · high-volume scan"}
       </Text>
       <Stack direction="row" gap="2" flexWrap="wrap">
         <Button
@@ -200,25 +200,25 @@ export default function ConfigPanel({ scannerLoading, onScannerRefresh }: Config
 
           <Separator borderColor={tokens.panelBorder} />
 
-          <ConfigSection title="Day scanner">
+          <ConfigSection title="Profile A">
             <ScannerConfigPanel
-              profile="day"
-              loading={scannerLoading.day}
-              onRefresh={() => onScannerRefresh("day")}
-              onRequestScan={() => setPendingScan({ profile: "day", withAi: false })}
-              onRequestScanWithAi={() => setPendingScan({ profile: "day", withAi: true })}
+              profile="a"
+              loading={scannerLoading.a}
+              onRefresh={() => onScannerRefresh("a")}
+              onRequestScan={() => setPendingScan({ profile: "a", withAi: false })}
+              onRequestScanWithAi={() => setPendingScan({ profile: "a", withAi: true })}
             />
           </ConfigSection>
 
           <Separator borderColor={tokens.panelBorder} />
 
-          <ConfigSection title="Swing scanner">
+          <ConfigSection title="Profile B">
             <ScannerConfigPanel
-              profile="swing"
-              loading={scannerLoading.swing}
-              onRefresh={() => onScannerRefresh("swing")}
-              onRequestScan={() => setPendingScan({ profile: "swing", withAi: false })}
-              onRequestScanWithAi={() => setPendingScan({ profile: "swing", withAi: true })}
+              profile="b"
+              loading={scannerLoading.b}
+              onRefresh={() => onScannerRefresh("b")}
+              onRequestScan={() => setPendingScan({ profile: "b", withAi: false })}
+              onRequestScanWithAi={() => setPendingScan({ profile: "b", withAi: true })}
             />
           </ConfigSection>
 

@@ -61,7 +61,7 @@ function statusColor(
 }
 
 function profileAccent(tokens: ThemeTokens, profileKey: string): string {
-  return profileKey === "swing" ? tokens.tagBlue.color : tokens.panelLabel;
+  return profileKey === "b" ? tokens.tagBlue.color : tokens.panelLabel;
 }
 
 function formatAge(sec: number | null): string {
@@ -467,7 +467,7 @@ function TerminalLine({
     (meta?.ai_message != null || meta?.verdict != null);
   const showAiHint = hasAiTooltip(meta);
   const profileLabel = (event.profile ?? "—").toUpperCase();
-  const tf = event.timeframe ?? (event.profile === "day" ? "30m" : event.profile === "swing" ? "1h" : null);
+  const tf = event.timeframe ?? (event.profile === "a" ? "30m" : event.profile === "b" ? "4h" : null);
   const detail = buildDetailLine(event, meta);
   const detailShort = detail ? truncateText(detail, 110) : null;
   const alertConditions =
@@ -894,25 +894,25 @@ export default function SignalsMonitorPanel({ active = true }: SignalsMonitorPan
               </Box>
             </Text>
             <Text>
-              AI day{" "}
+              AI A{" "}
               <Box
                 as="span"
                 color={
-                  health?.day_entry_advice_enabled ? tokens.tagAccent.color : tokens.panelMuted
+                  health?.a_entry_advice_enabled ? tokens.tagAccent.color : tokens.panelMuted
                 }
               >
-                {health?.day_entry_advice_enabled ? "on" : "off"}
+                {health?.a_entry_advice_enabled ? "on" : "off"}
               </Box>
-              {" · "}swing{" "}
+              {" · "}B{" "}
               <Box
                 as="span"
                 color={
-                  health?.swing_entry_advice_enabled
+                  health?.b_entry_advice_enabled
                     ? tokens.tagAccent.color
                     : tokens.panelMuted
                 }
               >
-                {health?.swing_entry_advice_enabled ? "on" : "off"}
+                {health?.b_entry_advice_enabled ? "on" : "off"}
               </Box>
             </Text>
             <Text animation={`${blink} 1.2s step-end infinite`} color={tokens.title}>
@@ -944,7 +944,7 @@ export default function SignalsMonitorPanel({ active = true }: SignalsMonitorPan
             borderColor={tokens.panelBorder}
           >
             <Text fontFamily="mono" fontSize="xs" color={tokens.panelMuted}>
-              {"// no active profiles — enable day or swing in Config"}
+              {"// no active profiles — enable A or B in Config"}
             </Text>
           </Box>
         ) : null}
@@ -1021,7 +1021,7 @@ export default function SignalsMonitorPanel({ active = true }: SignalsMonitorPan
               </>
             ) : (
               <Text p="4" fontFamily="mono" fontSize="xs" color={tokens.panelMuted} lineHeight="1.6">
-                {`// no symbols in watchlist — run scanner and enable day or swing.`}
+                {`// no symbols in watchlist — run scanner and enable profile A or B.`}
               </Text>
             )}
           </Tabs.Content>

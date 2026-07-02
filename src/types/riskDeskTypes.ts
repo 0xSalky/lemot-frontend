@@ -386,7 +386,7 @@ function normalizeTradeMgmtDesk(raw: Record<string, unknown>): TradeMgmtDesk {
     enabled: Boolean(raw.enabled),
     auto_enabled: Boolean(raw.auto_enabled),
     poll_seconds: num(raw.poll_seconds) ?? 300,
-    profile: str(raw.profile) ?? "day",
+    profile: str(raw.profile) ?? "a",
     entry_tp_rr_levels: Array.isArray(raw.entry_tp_rr_levels)
       ? raw.entry_tp_rr_levels.map((v) => num(v) ?? 0).filter((v) => v > 0)
       : [],

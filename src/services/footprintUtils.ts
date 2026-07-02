@@ -20,7 +20,7 @@ export async function fetchFootprintView(
   },
 ): Promise<FootprintViewPayload> {
   const key = [
-    options?.profile ?? "day",
+    options?.profile ?? "a",
     options?.timeframe ?? "30m",
     [...symbols].sort().join(","),
   ].join("|");

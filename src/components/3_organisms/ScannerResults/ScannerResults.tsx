@@ -151,7 +151,7 @@ function AiBlock({
 }) {
     const action = ai.ai_action ?? "unknown";
     const opportunityTitle =
-        profile === "day" ? "── orderflow read" : "── opportunity  (funding · OI)";
+        profile === "a" ? "── orderflow read" : "── opportunity  (funding · OI)";
 
     return (
         <Box

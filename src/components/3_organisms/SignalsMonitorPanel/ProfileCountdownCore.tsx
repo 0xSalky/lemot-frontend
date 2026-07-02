@@ -52,7 +52,7 @@ function barCycleProgress(profile: SignalsProfileHealth, countdownSec: number): 
 }
 
 function profileAccent(tokens: ThemeTokens, profileKey: string): string {
-  return profileKey === "swing" ? tokens.tagBlue.color : tokens.tagAccent.color;
+  return profileKey === "b" ? tokens.tagBlue.color : tokens.tagAccent.color;
 }
 
 function CountdownDigits({ value, accent }: { value: string; accent: string }) {

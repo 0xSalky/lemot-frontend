@@ -176,9 +176,9 @@ function pairSignalRank(data: FootprintPairView): number {
 export default function FootprintPanel() {
   const { palette } = useThemeColor();
   const tokens = useThemeTokens(palette);
-  const [profile, setProfile] = useState<FootprintProfile>("day");
+  const [profile, setProfile] = useState<FootprintProfile>("a");
   const [timeframe, setTimeframe] = useState<FootprintTimeframe>(
-    FOOTPRINT_PROFILE_DEFAULTS.day.defaultTimeframe,
+    FOOTPRINT_PROFILE_DEFAULTS.a.defaultTimeframe,
   );
   const [payload, setPayload] = useState<FootprintViewPayload | null>(null);
   const [loading, setLoading] = useState(false);
@@ -232,7 +232,7 @@ export default function FootprintPanel() {
             {profile}.yaml
           </Text>
           <Flex gap="2" flexWrap="wrap">
-            {(["day", "swing"] as FootprintProfile[]).map((p) => (
+            {(["a", "b"] as FootprintProfile[]).map((p) => (
               <Button
                 key={p}
                 size="xs"

@@ -9,12 +9,12 @@ import type {
   ScannerChatThreadsPayload,
 } from "@/types/scannerChatTypes";
 
-const PROFILE_TAG = /#(swing|day)\b/gi;
+const PROFILE_TAG = /#(b|a)\b/gi;
 
 const CHAT_MODEL_STORAGE_KEY = "lemot.chat.model";
 
 export function scannerChatDefaultProfile(): ScannerProfile {
-  return "day";
+  return "a";
 }
 
 export function loadChatModelPreference(): ScannerChatModel {
@@ -34,7 +34,7 @@ export function parseProfileTags(message: string): ScannerProfile[] {
   const out: ScannerProfile[] = [];
   for (const match of message.matchAll(PROFILE_TAG)) {
     const tag = match[1]?.toLowerCase();
-    if ((tag === "swing" || tag === "day") && !seen.has(tag)) {
+    if ((tag === "b" || tag === "a") && !seen.has(tag)) {
       seen.add(tag);
       out.push(tag);
     }
@@ -45,7 +45,7 @@ export function parseProfileTags(message: string): ScannerProfile[] {
 export function profileTagConflict(message: string): string | null {
   const tags = parseProfileTags(message);
   if (tags.length > 1) {
-    return "Use only one profile tag per message (#day or #swing, not both).";
+    return "Use only one profile tag per message (#a or #b, not both).";
   }
   return null;
 }

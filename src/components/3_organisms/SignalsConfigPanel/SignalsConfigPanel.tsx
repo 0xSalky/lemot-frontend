@@ -133,8 +133,8 @@ export default function SignalsConfigPanel({ tokens }: SignalsConfigPanelProps) 
   const masterOff = !unavailable && !controls.signals_enabled;
   const busy = savingKey != null;
   const panelDisabled = unavailable || busy;
-  const dayOff = panelDisabled || masterOff || !controls.day_enabled;
-  const swingOff = panelDisabled || masterOff || !controls.swing_enabled;
+  const dayOff = panelDisabled || masterOff || !controls.a_enabled;
+  const bOff = panelDisabled || masterOff || !controls.b_enabled;
 
   return (
     <Stack gap="3">
@@ -169,36 +169,36 @@ export default function SignalsConfigPanel({ tokens }: SignalsConfigPanelProps) 
         />
 
         <RuntimeSwitchRow
-          label="Day signals"
-          description="30m fractal band alerts from the day scanner watchlist."
-          checked={controls.day_enabled}
+          label="Profile A signals"
+          description="30m fractal band alerts from profile A scanner watchlist."
+          checked={controls.a_enabled}
           disabled={panelDisabled || masterOff}
           colorPalette="orange"
           tokens={tokens}
-          onChange={(next) => void update({ day_enabled: next }, "day_enabled")}
+          onChange={(next) => void update({ a_enabled: next }, "a_enabled")}
         />
 
         <RuntimeSwitchRow
-          label="Day AI entry advice"
-          description="Sonnet follow-up after day alerts only — independent from swing."
-          checked={controls.day_entry_advice_enabled}
+          label="Profile A AI entry advice"
+          description="Sonnet follow-up after profile A alerts only — independent from B."
+          checked={controls.a_entry_advice_enabled}
           disabled={dayOff}
           colorPalette="blue"
           tokens={tokens}
           onChange={(next) =>
-            void update({ day_entry_advice_enabled: next }, "day_entry_advice_enabled")
+            void update({ a_entry_advice_enabled: next }, "a_entry_advice_enabled")
           }
         />
 
         <RuntimeSwitchRow
-          label="Day auto trade"
-          description="Execute on Bybit when day AI confirms ENTER (max 4% SL, min 1:2 RR)."
-          checked={controls.day_auto_trade_enabled}
-          disabled={dayOff || !controls.day_entry_advice_enabled}
+          label="Profile A auto trade"
+          description="Execute on Bybit when profile A AI confirms ENTER (max 4% SL, min 1:2 RR)."
+          checked={controls.a_auto_trade_enabled}
+          disabled={dayOff || !controls.a_entry_advice_enabled}
           colorPalette="green"
           tokens={tokens}
           onChange={(next) =>
-            void update({ day_auto_trade_enabled: next }, "day_auto_trade_enabled")
+            void update({ a_auto_trade_enabled: next }, "a_auto_trade_enabled")
           }
         />
 
@@ -225,36 +225,36 @@ export default function SignalsConfigPanel({ tokens }: SignalsConfigPanelProps) 
         />
 
         <RuntimeSwitchRow
-          label="Swing signals"
-          description="1h fractal band alerts from the swing scanner universe."
-          checked={controls.swing_enabled}
+          label="Profile B signals"
+          description="4h fractal band alerts from the profile B scanner universe."
+          checked={controls.b_enabled}
           disabled={panelDisabled || masterOff}
           colorPalette="orange"
           tokens={tokens}
-          onChange={(next) => void update({ swing_enabled: next }, "swing_enabled")}
+          onChange={(next) => void update({ b_enabled: next }, "b_enabled")}
         />
 
         <RuntimeSwitchRow
-          label="Swing AI entry advice"
-          description="Sonnet follow-up after swing alerts only — independent from day."
-          checked={controls.swing_entry_advice_enabled}
-          disabled={swingOff}
+          label="Profile B AI entry advice"
+          description="Sonnet follow-up after profile B alerts only — independent from A."
+          checked={controls.b_entry_advice_enabled}
+          disabled={bOff}
           colorPalette="blue"
           tokens={tokens}
           onChange={(next) =>
-            void update({ swing_entry_advice_enabled: next }, "swing_entry_advice_enabled")
+            void update({ b_entry_advice_enabled: next }, "b_entry_advice_enabled")
           }
         />
 
         <RuntimeSwitchRow
-          label="Swing auto trade"
-          description="Execute on Bybit when swing AI confirms ENTER (max 4% SL, min 1:2 RR)."
-          checked={controls.swing_auto_trade_enabled}
-          disabled={swingOff || !controls.swing_entry_advice_enabled}
+          label="Profile B auto trade"
+          description="Execute on Bybit when profile B AI confirms ENTER (max 4% SL, min 1:2 RR)."
+          checked={controls.b_auto_trade_enabled}
+          disabled={bOff || !controls.b_entry_advice_enabled}
           colorPalette="green"
           tokens={tokens}
           onChange={(next) =>
-            void update({ swing_auto_trade_enabled: next }, "swing_auto_trade_enabled")
+            void update({ b_auto_trade_enabled: next }, "b_auto_trade_enabled")
           }
         />
       </Stack>

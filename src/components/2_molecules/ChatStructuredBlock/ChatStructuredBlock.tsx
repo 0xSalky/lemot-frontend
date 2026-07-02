@@ -14,14 +14,14 @@ const MONO = {
 type ChatStructuredBlockProps = {
   structured: ScannerChatStructuredBlock | null | undefined;
   tokens: ThemeTokens;
-  profile?: "day" | "swing" | null;
+  profile?: "a" | "b" | null;
 };
 
 const ChatStructuredBlock = ({ structured, tokens, profile }: ChatStructuredBlockProps) => {
   const setups = structured?.setups;
   if (!Array.isArray(setups) || setups.length === 0) return null;
 
-  const edgeLabel = profile === "day" ? "Orderflow read" : "Funding edge";
+  const edgeLabel = profile === "a" ? "Orderflow read" : "Funding edge";
 
   return (
     <Stack gap="2" mb="3">

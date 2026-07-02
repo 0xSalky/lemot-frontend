@@ -41,8 +41,8 @@ export interface SignalsMonitorHealth {
   ready: boolean;
   service_status: SignalsServiceStatus;
   signals_enabled: boolean;
-  day_entry_advice_enabled: boolean;
-  swing_entry_advice_enabled: boolean;
+  a_entry_advice_enabled: boolean;
+  b_entry_advice_enabled: boolean;
   poll_interval_sec: number;
   monitor_near_band_max_dist_pct: number;
   last_poll_at: string | null;
@@ -53,12 +53,12 @@ export interface SignalsMonitorHealth {
   profiles: Record<string, SignalsProfileHealth>;
   controls: {
     signals_enabled: boolean;
-    day_entry_advice_enabled: boolean;
-    swing_entry_advice_enabled: boolean;
-    day_enabled: boolean;
-    swing_enabled: boolean;
-    day_auto_trade_enabled: boolean;
-    swing_auto_trade_enabled: boolean;
+    a_entry_advice_enabled: boolean;
+    b_entry_advice_enabled: boolean;
+    a_enabled: boolean;
+    b_enabled: boolean;
+    a_auto_trade_enabled: boolean;
+    b_auto_trade_enabled: boolean;
     trade_mgmt_enabled: boolean;
     trade_mgmt_auto_enabled: boolean;
     updated_at: string | null;
@@ -129,8 +129,8 @@ export const EMPTY_SIGNALS_HEALTH: SignalsMonitorHealth = {
   ready: false,
   service_status: "down",
   signals_enabled: false,
-  day_entry_advice_enabled: false,
-  swing_entry_advice_enabled: false,
+  a_entry_advice_enabled: false,
+  b_entry_advice_enabled: false,
   poll_interval_sec: 30,
   monitor_near_band_max_dist_pct: 2,
   last_poll_at: null,
@@ -141,12 +141,12 @@ export const EMPTY_SIGNALS_HEALTH: SignalsMonitorHealth = {
   profiles: {},
   controls: {
     signals_enabled: false,
-    day_entry_advice_enabled: false,
-    swing_entry_advice_enabled: false,
-    day_enabled: false,
-    swing_enabled: false,
-    day_auto_trade_enabled: false,
-    swing_auto_trade_enabled: false,
+    a_entry_advice_enabled: false,
+    b_entry_advice_enabled: false,
+    a_enabled: false,
+    b_enabled: false,
+    a_auto_trade_enabled: false,
+    b_auto_trade_enabled: false,
     trade_mgmt_enabled: false,
     trade_mgmt_auto_enabled: false,
     updated_at: null,
@@ -239,8 +239,8 @@ export function normalizeSignalsHealth(raw: unknown): SignalsMonitorHealth {
     ready: Boolean(data.ready),
     service_status: serviceStatus,
     signals_enabled: Boolean(data.signals_enabled),
-    day_entry_advice_enabled: Boolean(data.day_entry_advice_enabled),
-    swing_entry_advice_enabled: Boolean(data.swing_entry_advice_enabled),
+    a_entry_advice_enabled: Boolean(data.a_entry_advice_enabled),
+    b_entry_advice_enabled: Boolean(data.b_entry_advice_enabled),
     poll_interval_sec: Number(data.poll_interval_sec ?? 30),
     monitor_near_band_max_dist_pct: Number(data.monitor_near_band_max_dist_pct ?? 2),
     last_poll_at: typeof data.last_poll_at === "string" ? data.last_poll_at : null,
@@ -253,12 +253,12 @@ export function normalizeSignalsHealth(raw: unknown): SignalsMonitorHealth {
     profiles,
     controls: {
       signals_enabled: Boolean(controlsRaw?.signals_enabled),
-      day_entry_advice_enabled: Boolean(controlsRaw?.day_entry_advice_enabled),
-      swing_entry_advice_enabled: Boolean(controlsRaw?.swing_entry_advice_enabled),
-      day_enabled: Boolean(controlsRaw?.day_enabled),
-      swing_enabled: Boolean(controlsRaw?.swing_enabled),
-      day_auto_trade_enabled: Boolean(controlsRaw?.day_auto_trade_enabled),
-      swing_auto_trade_enabled: Boolean(controlsRaw?.swing_auto_trade_enabled),
+      a_entry_advice_enabled: Boolean(controlsRaw?.a_entry_advice_enabled),
+      b_entry_advice_enabled: Boolean(controlsRaw?.b_entry_advice_enabled),
+      a_enabled: Boolean(controlsRaw?.a_enabled),
+      b_enabled: Boolean(controlsRaw?.b_enabled),
+      a_auto_trade_enabled: Boolean(controlsRaw?.a_auto_trade_enabled),
+      b_auto_trade_enabled: Boolean(controlsRaw?.b_auto_trade_enabled),
       trade_mgmt_enabled: Boolean(controlsRaw?.trade_mgmt_enabled),
       trade_mgmt_auto_enabled: Boolean(controlsRaw?.trade_mgmt_auto_enabled),
       updated_at:

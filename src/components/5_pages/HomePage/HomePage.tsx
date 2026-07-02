@@ -19,8 +19,8 @@ import { Stack, Tabs } from "@chakra-ui/react";
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 
 const INITIAL_SCANNER_LOADING: Record<ScannerProfile, boolean> = {
-    swing: true,
-    day: true,
+    b: true,
+    a: true,
 };
 
 function runScannerBatchFetch(
@@ -47,11 +47,11 @@ const HomePage = () => {
     const { palette } = useThemeColor();
     const tokens = useThemeTokens(palette);
     const [batches, setBatches] = useState<Record<ScannerProfile, ScannerLatestBatchFetchResult | null>>({
-        swing: null,
-        day: null,
+        b: null,
+        a: null,
     });
     const [loading, setLoading] = useState<Record<ScannerProfile, boolean>>(INITIAL_SCANNER_LOADING);
-    const loadIdRef = useRef<Record<ScannerProfile, number>>({ swing: 0, day: 0 });
+    const loadIdRef = useRef<Record<ScannerProfile, number>>({ b: 0, a: 0 });
     const [activeTab, setActiveTab] = useState("pairs");
 
     const loadScanner = useCallback((profile: ScannerProfile) => {
@@ -108,8 +108,8 @@ const HomePage = () => {
                     pb="1"
                 >
                     <ThemeTabTrigger value="pairs">Pairs</ThemeTabTrigger>
-                    <ThemeTabTrigger value="scanner-day">Day scan</ThemeTabTrigger>
-                    <ThemeTabTrigger value="scanner-swing">Swing scan</ThemeTabTrigger>
+                    <ThemeTabTrigger value="scanner-a">Profile A</ThemeTabTrigger>
+                    <ThemeTabTrigger value="scanner-b">Profile B</ThemeTabTrigger>
                     <ThemeTabTrigger value="scanner-chat">AI Chat</ThemeTabTrigger>
                     <ThemeTabTrigger value="signals">Signals</ThemeTabTrigger>
                     <ThemeTabTrigger value="risk">Risk desk</ThemeTabTrigger>
@@ -124,23 +124,23 @@ const HomePage = () => {
                     </ResponsiveCardGrid>
                 </Tabs.Content>
 
-                <Tabs.Content value="scanner-day">
-                    {activeTab === "scanner-day" ? (
+                <Tabs.Content value="scanner-a">
+                    {activeTab === "scanner-a" ? (
                         <ScannerResults
-                            profile="day"
-                            latestBatch={batches.day}
-                            loading={loading.day}
+                            profile="a"
+                            latestBatch={batches.a}
+                            loading={loading.a}
                             active
                         />
                     ) : null}
                 </Tabs.Content>
 
-                <Tabs.Content value="scanner-swing">
-                    {activeTab === "scanner-swing" ? (
+                <Tabs.Content value="scanner-b">
+                    {activeTab === "scanner-b" ? (
                         <ScannerResults
-                            profile="swing"
-                            latestBatch={batches.swing}
-                            loading={loading.swing}
+                            profile="b"
+                            latestBatch={batches.b}
+                            loading={loading.b}
                             active
                         />
                     ) : null}
