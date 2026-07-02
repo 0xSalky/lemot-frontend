@@ -30,6 +30,7 @@ import { useThemeColor, useThemeTokens, type ThemeTokens } from "@/components/ui
 import { themedPanelStyle } from "@/components/ui/themed-panel";
 import { usePageVisible } from "@/hooks/usePageVisible";
 import { expectsFootprintSymbol, fetchFootprintView, hasOrderflowData } from "@/services/footprintUtils";
+import { FOOTPRINT_PROFILE_DEFAULTS } from "@/types/footprintTypes";
 import { Box, Badge, Flex, Stack, Text } from "@chakra-ui/react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -267,7 +268,7 @@ function SetupCard({
             {...themedPanelStyle(tokens)}
         >
             <SetupHeaderTags setup={setup} tokens={tokens} />
-            {profile === "day" && hasOrderflowData(footprintPair) && footprintPair ? (
+            {hasOrderflowData(footprintPair) && footprintPair ? (
                 <FootprintOrderflowTags summary={footprintPair.summary} tokens={tokens} />
             ) : null}
             <DaySetupChart
@@ -275,9 +276,9 @@ function SetupCard({
                 price={setup.price}
                 bands={bands}
                 tokens={tokens}
-                footprintPair={profile === "day" ? footprintPair : null}
-                footprintLoading={profile === "day" ? footprintLoading : false}
-                footprintEnabled={profile === "day"}
+                footprintPair={footprintPair}
+                footprintLoading={footprintLoading}
+                footprintEnabled={expectsFootprintSymbol(scannerSymbolToBase(setup.symbol))}
                 footprintRefreshCountdownSec={footprintRefreshCountdownSec}
                 defaultChartTimeframe={defaultChartTimeframe}
                 managedChart={managedChart}
@@ -401,15 +402,15 @@ const ScannerResults = ({ profile, latestBatch, loading = false, active = true }
             .join(",");
     }, [latestBatch]);
 
-    const activeFootprintKey = profile === "day" ? footprintSymbolsKey : "";
+    const activeFootprintKey = footprintSymbolsKey;
     const [prevFootprintKey, setPrevFootprintKey] = useState<string | null>(null);
 
     const restChartSymbols = useMemo(() => {
         if (!pollingEnabled || setups.length === 0) return [];
-        if (profile === "swing") {
+        if (!activeFootprintKey) {
             return setups.map((setup) => setup.symbol);
         }
-        if (profile === "day" && !footprintLoading) {
+        if (!footprintLoading) {
             return setups
                 .filter((setup) => {
                     const base = scannerSymbolToBase(setup.symbol);
@@ -420,7 +421,7 @@ const ScannerResults = ({ profile, latestBatch, loading = false, active = true }
                 .map((setup) => setup.symbol);
         }
         return [];
-    }, [footprintLoading, footprintPayload, pollingEnabled, profile, setups]);
+    }, [activeFootprintKey, footprintLoading, footprintPayload, pollingEnabled, setups]);
 
     const restChartSymbolsKey = useMemo(
         () => restChartSymbols.slice().sort().join(","),
@@ -454,7 +455,10 @@ const ScannerResults = ({ profile, latestBatch, loading = false, active = true }
         const loadFootprint = (initial: boolean) => {
             if (footprintLoadInFlight.current) return;
             footprintLoadInFlight.current = true;
-            void fetchFootprintView(symbols, { profile: "day", timeframe: "30m" })
+            void fetchFootprintView(symbols, {
+                profile,
+                timeframe: FOOTPRINT_PROFILE_DEFAULTS[profile].defaultTimeframe,
+            })
                 .then((data) => {
                     if (!cancelled) {
                         setFootprintPayload(data);
@@ -490,7 +494,7 @@ const ScannerResults = ({ profile, latestBatch, loading = false, active = true }
             window.clearInterval(refreshId);
             window.clearInterval(tickId);
         };
-    }, [activeFootprintKey, pollingEnabled]);
+    }, [activeFootprintKey, pollingEnabled, profile]);
 
     useEffect(() => {
         if (!restChartSymbolsKey || !pollingEnabled) return;
@@ -587,7 +591,7 @@ const ScannerResults = ({ profile, latestBatch, loading = false, active = true }
                                 ? ` · ai ${formatUtcIsoLocal(batchMetaLine.ai_generated_at)}`
                                 : ""}
                         </Text>
-                        {profile === "day" ? (
+                        {activeFootprintKey ? (
                             footprintLoading ? (
                                 <Badge
                                     colorPalette="blue"
@@ -616,13 +620,10 @@ const ScannerResults = ({ profile, latestBatch, loading = false, active = true }
             ) : null}
             <ResponsiveCardGrid>
                 {setups.map((setup) => {
+                    const base = scannerSymbolToBase(setup.symbol);
+                    const footprintPair = footprintPayload?.pairs[base] ?? null;
                     const usesManagedChart =
-                        profile === "swing" ||
-                        (profile === "day" &&
-                            (!expectsFootprintSymbol(scannerSymbolToBase(setup.symbol)) ||
-                                !hasOrderflowData(
-                                    footprintPayload?.pairs[scannerSymbolToBase(setup.symbol)],
-                                )));
+                        !expectsFootprintSymbol(base) || !hasOrderflowData(footprintPair);
 
                     return (
                     <SetupCard
@@ -631,15 +632,9 @@ const ScannerResults = ({ profile, latestBatch, loading = false, active = true }
                         tokens={tokens}
                         profile={profile}
                         defaultChartTimeframe={defaultChartTimeframe}
-                        footprintPair={
-                            profile === "day"
-                                ? footprintPayload?.pairs[scannerSymbolToBase(setup.symbol)] ?? null
-                                : null
-                        }
-                        footprintLoading={profile === "day" ? footprintLoading : false}
-                        footprintRefreshCountdownSec={
-                            profile === "day" ? footprintRefreshCountdownSec : undefined
-                        }
+                        footprintPair={footprintPair}
+                        footprintLoading={footprintLoading}
+                        footprintRefreshCountdownSec={footprintRefreshCountdownSec}
                         managedChart={usesManagedChart ? managedCharts[setup.symbol] ?? null : undefined}
                         managedChartLoading={usesManagedChart ? managedChartsLoading : false}
                         managedRefreshCountdownSec={

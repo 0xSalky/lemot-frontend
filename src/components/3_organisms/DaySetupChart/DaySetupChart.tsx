@@ -26,7 +26,7 @@ type DaySetupChartProps = {
   footprintPair?: FootprintPairView | null;
   footprintLoading?: boolean;
   defaultChartTimeframe?: ScannerChartTimeframe;
-  /** Day scan only — swing always uses the simple REST chart layout. */
+  /** When true, try footprint/orderflow chart first for tracked symbols (day + swing). */
   footprintEnabled?: boolean;
   footprintRefreshCountdownSec?: number;
   managedChart?: ScannerChartPayload | null;
