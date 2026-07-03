@@ -170,7 +170,7 @@ export default function SignalsConfigPanel({ tokens }: SignalsConfigPanelProps) 
 
         <RuntimeSwitchRow
           label="Profile A signals"
-          description="30m fractal band alerts from profile A scanner watchlist."
+          description="30m fractal band alerts — day-trade profile A scanner watchlist."
           checked={controls.a_enabled}
           disabled={panelDisabled || masterOff}
           colorPalette="orange"
@@ -203,30 +203,32 @@ export default function SignalsConfigPanel({ tokens }: SignalsConfigPanelProps) 
         />
 
         <RuntimeSwitchRow
-          label="Trade management"
-          description="Adjust SL/TP on open positions (scanner watchlist only). Live Bybit entry + PnL."
-          checked={controls.trade_mgmt_enabled}
-          disabled={panelDisabled || masterOff}
+          label="Profile A trade management"
+          description="Adjust SL/TP on open A-profile positions (day trade, 30m fractals)."
+          checked={controls.a_trade_mgmt_enabled}
+          disabled={dayOff}
           colorPalette="purple"
           tokens={tokens}
-          onChange={(next) => void update({ trade_mgmt_enabled: next }, "trade_mgmt_enabled")}
+          onChange={(next) =>
+            void update({ a_trade_mgmt_enabled: next }, "a_trade_mgmt_enabled")
+          }
         />
 
         <RuntimeSwitchRow
-          label="Trade mgmt auto"
-          description="Apply SL/TP moves on Bybit without Telegram confirm."
-          checked={controls.trade_mgmt_auto_enabled}
-          disabled={panelDisabled || masterOff || !controls.trade_mgmt_enabled}
+          label="Profile A trade mgmt auto"
+          description="Apply A-profile SL/TP moves on Bybit without Telegram confirm."
+          checked={controls.a_trade_mgmt_auto_enabled}
+          disabled={dayOff || !controls.a_trade_mgmt_enabled}
           colorPalette="green"
           tokens={tokens}
           onChange={(next) =>
-            void update({ trade_mgmt_auto_enabled: next }, "trade_mgmt_auto_enabled")
+            void update({ a_trade_mgmt_auto_enabled: next }, "a_trade_mgmt_auto_enabled")
           }
         />
 
         <RuntimeSwitchRow
           label="Profile B signals"
-          description="4h fractal band alerts from the profile B scanner universe."
+          description="5m fractal band alerts from the profile B scanner universe (scalping)."
           checked={controls.b_enabled}
           disabled={panelDisabled || masterOff}
           colorPalette="orange"
@@ -255,6 +257,30 @@ export default function SignalsConfigPanel({ tokens }: SignalsConfigPanelProps) 
           tokens={tokens}
           onChange={(next) =>
             void update({ b_auto_trade_enabled: next }, "b_auto_trade_enabled")
+          }
+        />
+
+        <RuntimeSwitchRow
+          label="Profile B trade management"
+          description="Adjust SL/TP on open B-profile positions (scalping, 5m fractals)."
+          checked={controls.b_trade_mgmt_enabled}
+          disabled={bOff}
+          colorPalette="purple"
+          tokens={tokens}
+          onChange={(next) =>
+            void update({ b_trade_mgmt_enabled: next }, "b_trade_mgmt_enabled")
+          }
+        />
+
+        <RuntimeSwitchRow
+          label="Profile B trade mgmt auto"
+          description="Apply B-profile SL/TP moves on Bybit without Telegram confirm."
+          checked={controls.b_trade_mgmt_auto_enabled}
+          disabled={bOff || !controls.b_trade_mgmt_enabled}
+          colorPalette="green"
+          tokens={tokens}
+          onChange={(next) =>
+            void update({ b_trade_mgmt_auto_enabled: next }, "b_trade_mgmt_auto_enabled")
           }
         />
       </Stack>

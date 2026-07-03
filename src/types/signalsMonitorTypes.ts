@@ -59,8 +59,10 @@ export interface SignalsMonitorHealth {
     b_enabled: boolean;
     a_auto_trade_enabled: boolean;
     b_auto_trade_enabled: boolean;
-    trade_mgmt_enabled: boolean;
-    trade_mgmt_auto_enabled: boolean;
+    a_trade_mgmt_enabled: boolean;
+    b_trade_mgmt_enabled: boolean;
+    a_trade_mgmt_auto_enabled: boolean;
+    b_trade_mgmt_auto_enabled: boolean;
     updated_at: string | null;
     summary: string;
     ready: boolean;
@@ -147,8 +149,10 @@ export const EMPTY_SIGNALS_HEALTH: SignalsMonitorHealth = {
     b_enabled: false,
     a_auto_trade_enabled: false,
     b_auto_trade_enabled: false,
-    trade_mgmt_enabled: false,
-    trade_mgmt_auto_enabled: false,
+    a_trade_mgmt_enabled: false,
+    b_trade_mgmt_enabled: false,
+    a_trade_mgmt_auto_enabled: false,
+    b_trade_mgmt_auto_enabled: false,
     updated_at: null,
     summary: "Unavailable",
     ready: false,
@@ -259,8 +263,10 @@ export function normalizeSignalsHealth(raw: unknown): SignalsMonitorHealth {
       b_enabled: Boolean(controlsRaw?.b_enabled),
       a_auto_trade_enabled: Boolean(controlsRaw?.a_auto_trade_enabled),
       b_auto_trade_enabled: Boolean(controlsRaw?.b_auto_trade_enabled),
-      trade_mgmt_enabled: Boolean(controlsRaw?.trade_mgmt_enabled),
-      trade_mgmt_auto_enabled: Boolean(controlsRaw?.trade_mgmt_auto_enabled),
+      a_trade_mgmt_enabled: Boolean(controlsRaw?.a_trade_mgmt_enabled),
+      b_trade_mgmt_enabled: Boolean(controlsRaw?.b_trade_mgmt_enabled),
+      a_trade_mgmt_auto_enabled: Boolean(controlsRaw?.a_trade_mgmt_auto_enabled),
+      b_trade_mgmt_auto_enabled: Boolean(controlsRaw?.b_trade_mgmt_auto_enabled),
       updated_at:
         typeof controlsRaw?.updated_at === "string" ? controlsRaw.updated_at : null,
       summary:

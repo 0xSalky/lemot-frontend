@@ -6,8 +6,10 @@ export interface SignalsRuntimeControls {
   b_enabled: boolean;
   a_auto_trade_enabled: boolean;
   b_auto_trade_enabled: boolean;
-  trade_mgmt_enabled: boolean;
-  trade_mgmt_auto_enabled: boolean;
+  a_trade_mgmt_enabled: boolean;
+  b_trade_mgmt_enabled: boolean;
+  a_trade_mgmt_auto_enabled: boolean;
+  b_trade_mgmt_auto_enabled: boolean;
   updated_at: string | null;
   summary: string;
   ready: boolean;
@@ -21,8 +23,10 @@ export interface SignalsRuntimeUpdate {
   b_enabled?: boolean;
   a_auto_trade_enabled?: boolean;
   b_auto_trade_enabled?: boolean;
-  trade_mgmt_enabled?: boolean;
-  trade_mgmt_auto_enabled?: boolean;
+  a_trade_mgmt_enabled?: boolean;
+  b_trade_mgmt_enabled?: boolean;
+  a_trade_mgmt_auto_enabled?: boolean;
+  b_trade_mgmt_auto_enabled?: boolean;
   notify_telegram?: boolean;
 }
 
@@ -39,8 +43,10 @@ export const UNAVAILABLE_SIGNALS_RUNTIME: SignalsRuntimeControls = {
   b_enabled: false,
   a_auto_trade_enabled: false,
   b_auto_trade_enabled: false,
-  trade_mgmt_enabled: false,
-  trade_mgmt_auto_enabled: false,
+  a_trade_mgmt_enabled: false,
+  b_trade_mgmt_enabled: false,
+  a_trade_mgmt_auto_enabled: false,
+  b_trade_mgmt_auto_enabled: false,
   updated_at: null,
   summary: "Unavailable",
   ready: false,
@@ -67,8 +73,10 @@ export function normalizeSignalsRuntime(raw: unknown): SignalsRuntimeControls {
     b_enabled: Boolean(data.b_enabled),
     a_auto_trade_enabled: Boolean(data.a_auto_trade_enabled),
     b_auto_trade_enabled: Boolean(data.b_auto_trade_enabled),
-    trade_mgmt_enabled: Boolean(data.trade_mgmt_enabled),
-    trade_mgmt_auto_enabled: Boolean(data.trade_mgmt_auto_enabled),
+    a_trade_mgmt_enabled: Boolean(data.a_trade_mgmt_enabled),
+    b_trade_mgmt_enabled: Boolean(data.b_trade_mgmt_enabled),
+    a_trade_mgmt_auto_enabled: Boolean(data.a_trade_mgmt_auto_enabled),
+    b_trade_mgmt_auto_enabled: Boolean(data.b_trade_mgmt_auto_enabled),
     updated_at: typeof data.updated_at === "string" ? data.updated_at : null,
     summary:
       typeof data.summary === "string" ? data.summary : "Signals active",
