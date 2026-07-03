@@ -200,7 +200,7 @@ export default function ConfigPanel({ scannerLoading, onScannerRefresh }: Config
 
           <Separator borderColor={tokens.panelBorder} />
 
-          <ConfigSection title="Profile A">
+          <ConfigSection title="Day">
             <ScannerConfigPanel
               profile="a"
               loading={scannerLoading.a}
@@ -212,7 +212,7 @@ export default function ConfigPanel({ scannerLoading, onScannerRefresh }: Config
 
           <Separator borderColor={tokens.panelBorder} />
 
-          <ConfigSection title="Profile B">
+          <ConfigSection title="Scalper">
             <ScannerConfigPanel
               profile="b"
               loading={scannerLoading.b}

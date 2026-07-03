@@ -108,8 +108,8 @@ const HomePage = () => {
                     pb="1"
                 >
                     <ThemeTabTrigger value="pairs">Pairs</ThemeTabTrigger>
-                    <ThemeTabTrigger value="scanner-a">Profile A</ThemeTabTrigger>
-                    <ThemeTabTrigger value="scanner-b">Profile B</ThemeTabTrigger>
+                    <ThemeTabTrigger value="scanner-a">Day</ThemeTabTrigger>
+                    <ThemeTabTrigger value="scanner-b">Scalper</ThemeTabTrigger>
                     <ThemeTabTrigger value="scanner-chat">AI Chat</ThemeTabTrigger>
                     <ThemeTabTrigger value="signals">Signals</ThemeTabTrigger>
                     <ThemeTabTrigger value="risk">Risk desk</ThemeTabTrigger>
