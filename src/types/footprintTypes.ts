@@ -1,3 +1,5 @@
+import { SCANNER_PROFILE_CHART_TIMEFRAME } from "@/services/scannerUtils";
+
 export const FOOTPRINT_SYMBOLS = ["BTC", "ETH", "SOL", "HYPE"] as const;
 export type FootprintSymbol = (typeof FOOTPRINT_SYMBOLS)[number];
 
@@ -171,8 +173,14 @@ export const FOOTPRINT_PROFILE_DEFAULTS: Record<
   FootprintProfile,
   { label: string; defaultTimeframe: FootprintTimeframe }
 > = {
-  b: { label: "B", defaultTimeframe: "4h" },
-  a: { label: "A", defaultTimeframe: "30m" },
+  b: {
+    label: "B",
+    defaultTimeframe: SCANNER_PROFILE_CHART_TIMEFRAME.b as FootprintTimeframe,
+  },
+  a: {
+    label: "A",
+    defaultTimeframe: SCANNER_PROFILE_CHART_TIMEFRAME.a as FootprintTimeframe,
+  },
 };
 
 export const FOOTPRINT_SIGNAL_SEVERITY_ORDER: Record<FootprintSignalSeverity, number> = {
