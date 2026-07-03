@@ -83,7 +83,7 @@ export const SCANNER_PROFILE_CHART_TIMEFRAME: Record<
   ScannerProfile,
   ScannerChartTimeframe
 > = {
-  b: "4h",
+  b: "5m",
   a: "30m",
 };
 
