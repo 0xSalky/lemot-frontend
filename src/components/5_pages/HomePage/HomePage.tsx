@@ -65,6 +65,17 @@ const HomePage = () => {
         }
     }, []);
 
+    useEffect(() => {
+        const profile: ScannerProfile | null =
+            activeTab === "scanner-a" ? "a" : activeTab === "scanner-b" ? "b" : null;
+        if (!profile) return;
+
+        const frameId = requestAnimationFrame(() => {
+            loadScanner(profile);
+        });
+        return () => cancelAnimationFrame(frameId);
+    }, [activeTab, loadScanner]);
+
     const scannerPairs = useMemo(() => {
         const bases: string[] = [];
         for (const profile of SCANNER_PROFILES) {
