@@ -1,6 +1,7 @@
 "use client";
 
 import CapacityGaugeCore from "@/components/3_organisms/RiskDeskPanel/CapacityGaugeCore";
+import { ProfileBadge } from "@/components/3_organisms/TradeJournalPanel/profileBadge";
 import TradeMgmtCore from "@/components/3_organisms/RiskDeskPanel/TradeMgmtCore";
 import ConditionMatrix from "@/components/2_molecules/ConditionMatrix/ConditionMatrix";
 import { riskGateToMatrixNode } from "@/components/2_molecules/ConditionMatrix/conditionMatrixTypes";
@@ -125,19 +126,7 @@ function PositionRow({
           {side.toUpperCase()}
         </Text>
         {pos.profile ? (
-          <Box
-            as="span"
-            px="1.5"
-            py="0.5"
-            fontSize="2xs"
-            borderWidth="1px"
-            borderColor={tokens.tagBlue.border}
-            bg={tokens.tagBlue.bg}
-            color={tokens.tagBlue.color}
-            rounded="sm"
-          >
-            {pos.profile.toUpperCase()}
-          </Box>
+          <ProfileBadge profile={pos.profile} tokens={tokens} />
         ) : null}
         <Text color={tokens.panelBody}>{formatR(pos.r_multiple)}</Text>
         <Text color={tokens.panelMuted}>{formatUsd(pos.unrealized_pnl_usd)}</Text>

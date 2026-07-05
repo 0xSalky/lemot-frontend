@@ -24,6 +24,14 @@ export type TradeJournalStats = {
   worst_r: number | null;
 };
 
+export type TradeJournalBandLevel = {
+  timeframe: string | null;
+  level_type: string | null;
+  price: number;
+  weight?: number | null;
+  is_anchor?: boolean;
+};
+
 export type TradeJournalRow = {
   journal_id: number | null;
   profile: string | null;
@@ -47,6 +55,7 @@ export type TradeJournalRow = {
   band_high: number | null;
   band_side: string | null;
   band_range: string | null;
+  band_levels: TradeJournalBandLevel[];
   stop_preset: string | null;
   tp_strategy_id: string | null;
   main_order_id: string | null;
@@ -183,6 +192,22 @@ function normalizeTrade(raw: unknown): TradeJournalRow | null {
     band_high: num(row.band_high),
     band_side: str(row.band_side),
     band_range: str(row.band_range),
+    band_levels: Array.isArray(row.band_levels)
+      ? row.band_levels
+          .map((lvl) => {
+            const level = lvl as Record<string, unknown>;
+            const price = num(level.price) ?? num(level.level);
+            if (price == null) return null;
+            return {
+              timeframe: str(level.timeframe),
+              level_type: str(level.level_type),
+              price,
+              weight: num(level.weight),
+              is_anchor: Boolean(level.is_anchor),
+            } as TradeJournalBandLevel;
+          })
+          .filter((lvl): lvl is TradeJournalBandLevel => lvl != null)
+      : [],
     stop_preset: str(row.stop_preset),
     tp_strategy_id: str(row.tp_strategy_id),
     main_order_id: str(row.main_order_id),

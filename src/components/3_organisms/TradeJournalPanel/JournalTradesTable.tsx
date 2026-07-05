@@ -1,51 +1,28 @@
 "use client";
 
+import BandLevelsTip, { BandLevelsInline } from "@/components/3_organisms/TradeJournalPanel/BandLevelsTip";
 import { tradeOutcome } from "@/components/3_organisms/TradeJournalPanel/journalClosedStats";
+import {
+  formatPresetLabel,
+  formatPrice,
+  formatR,
+  formatShortDate,
+  formatShortDateTime,
+} from "@/components/3_organisms/TradeJournalPanel/journalFormat";
+import { ProfileLetter } from "@/components/3_organisms/TradeJournalPanel/profileBadge";
 import type { ThemeTokens } from "@/components/ui/theme-color";
 import type { TradeJournalRow } from "@/types/tradeJournalTypes";
-import { Box, Flex, Stack, Text } from "@chakra-ui/react";
+import { Box, Flex, Grid, Stack, Text } from "@chakra-ui/react";
 import { keyframes } from "@emotion/react";
+import { useMemo, useState } from "react";
 
-const rowReveal = keyframes`
-  from { opacity: 0; transform: translateX(-6px); }
-  to { opacity: 1; transform: translateX(0); }
+const scanLine = keyframes`
+  0% { transform: translateX(-100%); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translateX(200%); opacity: 0; }
 `;
 
-function formatR(value: number | null | undefined): string {
-  if (value == null || !Number.isFinite(value)) return "—";
-  const sign = value > 0 ? "+" : "";
-  return `${sign}${value.toFixed(2)}R`;
-}
-
-function formatTime(iso: string | null): string {
-  if (!iso) return "—";
-  try {
-    return new Date(iso).toLocaleString(undefined, {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return iso;
-  }
-}
-
-function outcomeTone(
-  outcome: ReturnType<typeof tradeOutcome>,
-  tokens: ThemeTokens,
-): { bg: string; color: string; border: string; label: string } {
-  if (outcome === "win") {
-    return { ...tokens.tagGreen, label: "WIN" };
-  }
-  if (outcome === "loss") {
-    return { ...tokens.tagRed, label: "LOSS" };
-  }
-  if (outcome === "breakeven") {
-    return { ...tokens.tagNeutral, label: "BE" };
-  }
-  return { ...tokens.tagBlue, label: "?" };
-}
+type SortKey = "date" | "r" | "symbol";
 
 function rColor(tokens: ThemeTokens, value: number | null | undefined): string {
   if (value == null || !Number.isFinite(value)) return tokens.panelMuted;
@@ -54,125 +31,316 @@ function rColor(tokens: ThemeTokens, value: number | null | undefined): string {
   return tokens.panelBody;
 }
 
-function matchColor(method: string, tokens: ThemeTokens): string {
-  if (method === "order_id") return tokens.tagGreen.color;
-  if (method === "exchange_only") return tokens.panelLabel;
-  if (method === "price_time") return tokens.tagBlue.color;
-  return tokens.panelMuted;
+function outcomeStyle(
+  outcome: ReturnType<typeof tradeOutcome>,
+  tokens: ThemeTokens,
+): { bg: string; color: string; border: string; label: string } {
+  if (outcome === "win") return { ...tokens.tagGreen, label: "WIN" };
+  if (outcome === "loss") return { ...tokens.tagRed, label: "LOSS" };
+  if (outcome === "breakeven") return { ...tokens.tagNeutral, label: "BE" };
+  return { ...tokens.tagBlue, label: "—" };
 }
 
-function TradeRow({
+function TradeCard({
   trade,
   index,
   tokens,
+  expanded,
+  onToggle,
 }: {
   trade: TradeJournalRow;
   index: number;
   tokens: ThemeTokens;
+  expanded: boolean;
+  onToggle: () => void;
 }) {
   const side = trade.side.toLowerCase();
   const sideColor = side === "long" ? tokens.tagGreen.color : tokens.tagRed.color;
-  const stripe = index % 2 === 1 ? tokens.blockquoteBg : "transparent";
-  const outcome = outcomeTone(tradeOutcome(trade), tokens);
+  const outcome = outcomeStyle(tradeOutcome(trade), tokens);
+  const rVal = trade.r_multiple;
+  const alien = tokens.tagAccent.color;
 
   return (
     <Box
-      px="3"
-      py="2.5"
-      borderLeftWidth="2px"
-      borderLeftColor={sideColor}
-      bg={stripe}
-      fontFamily="mono"
-      fontSize="xs"
-      animation={`${rowReveal} 0.45s ease-out both`}
-      style={{ animationDelay: `${Math.min(index, 12) * 40}ms` }}
-      _hover={{
-        bg: tokens.blockquoteBg,
-        boxShadow: `inset 0 0 24px ${tokens.tagAccent.color}11`,
+      role="button"
+      tabIndex={0}
+      onClick={onToggle}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onToggle();
+        }
       }}
-      transition="background 0.2s, box-shadow 0.2s"
+      position="relative"
+      overflow="hidden"
+      borderWidth="1px"
+      borderColor={expanded ? `${outcome.color}88` : tokens.panelBorder}
+      bg={index % 2 === 0 ? "transparent" : tokens.blockquoteBg}
+      rounded="sm"
+      cursor="pointer"
+      transition="border-color 0.2s, box-shadow 0.2s"
+      _hover={{
+        borderColor: `${alien}66`,
+        boxShadow: `inset 0 0 32px ${alien}0a`,
+      }}
     >
-      <Flex gap="2" flexWrap="wrap" align="center" mb="1.5">
-        <Text color={tokens.title} fontWeight="bold" minW="3rem" letterSpacing="0.06em">
-          {trade.base}
-        </Text>
-        <Text color={sideColor} textTransform="uppercase" letterSpacing="0.1em">
-          {side}
-        </Text>
+      {expanded ? (
         <Box
-          as="span"
-          px="1.5"
-          py="0.5"
-          fontSize="2xs"
-          borderWidth="1px"
-          borderColor={tokens.tagBlue.border}
-          bg={tokens.tagBlue.bg}
-          color={tokens.tagBlue.color}
-          rounded="sm"
-        >
-          {trade.profile?.toUpperCase() ?? "EXCH"}
+          position="absolute"
+          top="0"
+          left="0"
+          w="50%"
+          h="1px"
+          bg={`linear-gradient(90deg, transparent, ${alien}, transparent)`}
+          animation={`${scanLine} 2.5s ease-in-out infinite`}
+          pointerEvents="none"
+        />
+      ) : null}
+
+      <Grid
+        templateColumns={{
+          base: "1fr auto",
+          md: "minmax(1.75rem,0.2fr) minmax(4.5rem,0.6fr) minmax(3.5rem,0.45fr) minmax(4.5rem,0.55fr) 1fr minmax(3.5rem,0.5fr) minmax(4rem,0.45fr)",
+        }}
+        gap={{ base: 2, md: 3 }}
+        alignItems="center"
+        px={{ base: 3, md: 4 }}
+        py={3}
+        borderLeftWidth="3px"
+        borderLeftColor={sideColor}
+      >
+        {/* Profile */}
+        <Box display={{ base: "none", md: "block" }} textAlign="center">
+          <ProfileLetter profile={trade.profile} tokens={tokens} />
         </Box>
-        <Box
-          as="span"
-          px="1.5"
-          py="0.5"
-          fontSize="2xs"
-          borderWidth="1px"
-          borderColor={outcome.border}
-          bg={outcome.bg}
-          color={outcome.color}
-          rounded="sm"
-        >
-          {outcome.label}
-        </Box>
-        {trade.setup_grade ? (
-          <Text color={tokens.tagAccent.color} fontSize="2xs">
-            grade {trade.setup_grade}
+
+        {/* Pair */}
+        <Stack gap="0" minW="0">
+          <Flex align="center" gap="2" display={{ base: "flex", md: "none" }}>
+            <ProfileLetter profile={trade.profile} tokens={tokens} size="xs" />
+            <Text
+              fontFamily="mono"
+              fontSize="sm"
+              fontWeight="bold"
+              color={tokens.title}
+              letterSpacing="0.04em"
+              lineHeight="1.2"
+            >
+              {trade.base}
+            </Text>
+          </Flex>
+          <Text
+            display={{ base: "none", md: "block" }}
+            fontFamily="mono"
+            fontSize="sm"
+            fontWeight="bold"
+            color={tokens.title}
+            letterSpacing="0.04em"
+            lineHeight="1.2"
+          >
+            {trade.base}
           </Text>
-        ) : null}
+          <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted} display={{ base: "block", md: "none" }}>
+            {formatShortDate(trade.closed_at ?? trade.executed_at)}
+          </Text>
+        </Stack>
+
+        {/* Side — desktop */}
         <Text
-          color={matchColor(trade.match_method, tokens)}
+          display={{ base: "none", md: "block" }}
+          fontFamily="mono"
           fontSize="2xs"
-          letterSpacing="0.08em"
+          fontWeight="bold"
+          color={sideColor}
+          letterSpacing="0.12em"
         >
-          {trade.match_method.replace(/_/g, " ")}
+          {side.toUpperCase()}
         </Text>
-      </Flex>
 
-      <Flex gap="4" flexWrap="wrap" color={tokens.panelBody} mb="1">
-        <Text>
-          entry <Box as="span" color={tokens.panelHeading}>{trade.entry_price ?? "—"}</Box>
-        </Text>
-        <Text>
-          stop <Box as="span">{trade.stop_loss_price ?? "—"}</Box>
-        </Text>
-        {trade.exit_price != null ? (
-          <Text>
-            exit <Box as="span">{trade.exit_price}</Box>
-          </Text>
-        ) : null}
-        <Text color={rColor(tokens, trade.r_multiple)} fontWeight="bold" fontSize="sm">
-          {formatR(trade.r_multiple)}
-        </Text>
-      </Flex>
+        {/* Outcome pill — desktop */}
+        <Box display={{ base: "none", md: "block" }}>
+          <Box
+            as="span"
+            display="inline-block"
+            px="2"
+            py="0.5"
+            fontFamily="mono"
+            fontSize="2xs"
+            fontWeight="bold"
+            letterSpacing="0.1em"
+            borderWidth="1px"
+            borderColor={outcome.border}
+            bg={outcome.bg}
+            color={outcome.color}
+            rounded="sm"
+          >
+            {outcome.label}
+          </Box>
+        </Box>
 
-      <Flex gap="4" flexWrap="wrap" color={tokens.panelMuted} fontSize="2xs">
-        <Text>
-          band {trade.band_side ?? "—"} {trade.band_range ?? "—"}
-        </Text>
-        {trade.fractal_level != null ? <Text>fractal {trade.fractal_level}</Text> : null}
-        <Text>
-          {trade.stop_preset ?? "—"} / {trade.tp_strategy_id ?? "—"}
-        </Text>
-        <Text>opened {formatTime(trade.executed_at)}</Text>
-        {trade.closed_at ? <Text>closed {formatTime(trade.closed_at)}</Text> : null}
-        <Text>{trade.source ?? "—"} · {trade.timeframe ?? "—"}</Text>
-        {trade.matched_order_id ? (
-          <Text title={trade.matched_order_id} color={tokens.tagGreen.color}>
-            linked …{trade.matched_order_id.slice(-6)}
+        {/* Price journey */}
+        <Stack gap="0.5" minW="0">
+          <Flex align="center" gap="2" flexWrap="wrap">
+            <Text
+              display={{ base: "inline", md: "none" }}
+              fontFamily="mono"
+              fontSize="2xs"
+              color={sideColor}
+              fontWeight="bold"
+            >
+              {side.toUpperCase()}
+            </Text>
+            <Text fontFamily="mono" fontSize="xs" color={tokens.panelBody}>
+              {formatPrice(trade.entry_price)}
+            </Text>
+            <Text color={tokens.panelMuted} fontSize="2xs">
+              →
+            </Text>
+            <Text fontFamily="mono" fontSize="xs" color={tokens.panelHeading} fontWeight="semibold">
+              {formatPrice(trade.exit_price)}
+            </Text>
+          </Flex>
+          {trade.band_range ? (
+            <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
+              <Box as="span" color={alien} fontWeight="semibold">
+                {trade.band_side ?? "—"}
+              </Box>{" "}
+              {trade.band_range}
+            </Text>
+          ) : null}
+        </Stack>
+
+        {/* R hero */}
+        <Stack align={{ base: "flex-end", md: "center" }} gap="0.5" minW="3.5rem">
+          <Text
+            fontFamily="mono"
+            fontSize={{ base: "xs", md: "sm" }}
+            fontWeight="semibold"
+            color={rColor(tokens, rVal)}
+            lineHeight="1"
+          >
+            {formatR(rVal)}
           </Text>
-        ) : null}
-      </Flex>
+          <Box
+            display={{ base: "inline-block", md: "none" }}
+            px="1.5"
+            py="0.5"
+            fontFamily="mono"
+            fontSize="2xs"
+            fontWeight="bold"
+            borderWidth="1px"
+            borderColor={outcome.border}
+            color={outcome.color}
+            bg={outcome.bg}
+            rounded="sm"
+          >
+            {outcome.label}
+          </Box>
+        </Stack>
+
+        {/* Date — desktop */}
+        <Text
+          display={{ base: "none", md: "block" }}
+          fontFamily="mono"
+          fontSize="2xs"
+          color={tokens.panelMuted}
+          textAlign="right"
+          whiteSpace="nowrap"
+        >
+          {formatShortDate(trade.closed_at ?? trade.executed_at)}
+        </Text>
+      </Grid>
+
+      {expanded ? (
+        <Box
+          px="4"
+          pb="3"
+          pt="0"
+          borderTopWidth="1px"
+          borderColor={`${tokens.panelBorder}`}
+          mt="0"
+          ml="3"
+          fontFamily="mono"
+          fontSize="2xs"
+          color={tokens.panelMuted}
+        >
+          <Grid
+            templateColumns={{ base: "1fr 1fr", md: "repeat(4, 1fr)" }}
+            gap="3"
+            py="2"
+          >
+            <Stack gap="0">
+              <Text color={tokens.panelLabel} letterSpacing="0.08em">STOP</Text>
+              <Text color={tokens.panelBody}>{formatPrice(trade.stop_loss_price)}</Text>
+            </Stack>
+            <Stack gap="0">
+              <Text color={tokens.panelLabel} letterSpacing="0.08em">BAND</Text>
+              <BandLevelsTip
+                levels={trade.band_levels}
+                bandSide={trade.band_side}
+                bandRange={trade.band_range}
+                tokens={tokens}
+              >
+                <Text color={tokens.panelBody}>
+                  {trade.band_side ?? "—"} {trade.band_range ?? "—"}
+                </Text>
+              </BandLevelsTip>
+            </Stack>
+            <Stack gap="0">
+              <Text color={tokens.panelLabel} letterSpacing="0.08em">PLAN</Text>
+              <Text color={tokens.panelBody}>
+                {formatPresetLabel(trade.stop_preset)} / {formatPresetLabel(trade.tp_strategy_id)}
+              </Text>
+            </Stack>
+            <Stack gap="0">
+              <Text color={tokens.panelLabel} letterSpacing="0.08em">MATCH</Text>
+              <Text
+                color={
+                  trade.match_method === "order_id"
+                    ? tokens.tagGreen.color
+                    : tokens.panelBody
+                }
+              >
+                {trade.match_method.replace(/_/g, " ")}
+              </Text>
+            </Stack>
+            {trade.setup_grade ? (
+              <Stack gap="0">
+                <Text color={tokens.panelLabel} letterSpacing="0.08em">GRADE</Text>
+                <Text color={alien}>{trade.setup_grade}</Text>
+              </Stack>
+            ) : null}
+            {trade.fractal_level != null ? (
+              <Stack gap="0">
+                <Text color={tokens.panelLabel} letterSpacing="0.08em">FRACTAL</Text>
+                <Text color={tokens.panelBody}>{formatPrice(trade.fractal_level)}</Text>
+              </Stack>
+            ) : null}
+            <Stack gap="0">
+              <Text color={tokens.panelLabel} letterSpacing="0.08em">OPENED</Text>
+              <Text color={tokens.panelBody}>{formatShortDateTime(trade.executed_at)}</Text>
+            </Stack>
+            <Stack gap="0">
+              <Text color={tokens.panelLabel} letterSpacing="0.08em">CLOSED</Text>
+              <Text color={tokens.panelBody}>{formatShortDateTime(trade.closed_at)}</Text>
+            </Stack>
+          </Grid>
+          {trade.band_levels?.length ? (
+            <Box mt="2">
+              <Text
+                fontFamily="mono"
+                fontSize="2xs"
+                color={tokens.panelLabel}
+                letterSpacing="0.1em"
+                mb="1.5"
+              >
+                BAND LEVELS
+              </Text>
+              <BandLevelsInline levels={trade.band_levels} tokens={tokens} />
+            </Box>
+          ) : null}
+        </Box>
+      ) : null}
     </Box>
   );
 }
@@ -186,35 +354,125 @@ export default function JournalTradesTable({
   pendingCount?: number;
   tokens: ThemeTokens;
 }) {
+  const [sort, setSort] = useState<SortKey>("date");
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
+  const alien = tokens.tagAccent.color;
+
+  const sorted = useMemo(() => {
+    const rows = [...trades];
+    if (sort === "r") {
+      rows.sort((a, b) => (b.r_multiple ?? -999) - (a.r_multiple ?? -999));
+    } else if (sort === "symbol") {
+      rows.sort((a, b) => a.base.localeCompare(b.base));
+    } else {
+      rows.sort((a, b) => {
+        const ta = new Date(a.closed_at ?? a.executed_at ?? 0).getTime();
+        const tb = new Date(b.closed_at ?? b.executed_at ?? 0).getTime();
+        return tb - ta;
+      });
+    }
+    return rows;
+  }, [trades, sort]);
+
   if (trades.length === 0) {
     return (
-      <Text fontFamily="mono" fontSize="sm" color={tokens.panelMuted} py="6" textAlign="center">
-        {pendingCount > 0
-          ? `No closed matches yet — ${pendingCount} open or pending entries are on Risk Desk.`
-          : "No closed trades yet — finished positions will appear here."}
-      </Text>
+      <Flex py="10" justify="center" direction="column" align="center" gap="2">
+        <Text fontFamily="mono" fontSize="sm" color={tokens.panelMuted}>
+          {pendingCount > 0
+            ? `No closed trades yet — ${pendingCount} open on Risk Desk.`
+            : "No closed trades in journal."}
+        </Text>
+      </Flex>
     );
   }
 
+  const sortBtn = (key: SortKey, label: string) => (
+    <Box
+      as="button"
+      fontFamily="mono"
+      fontSize="2xs"
+      letterSpacing="0.1em"
+      color={sort === key ? alien : tokens.panelMuted}
+      borderBottomWidth={sort === key ? "1px" : "0"}
+      borderColor={alien}
+      pb="0.5"
+      cursor="pointer"
+      bg="transparent"
+      borderTop="none"
+      borderLeft="none"
+      borderRight="none"
+      onClick={() => setSort(key)}
+      _hover={{ color: tokens.panelBody }}
+    >
+      {label}
+    </Box>
+  );
+
   return (
-    <Stack gap="0">
+    <Stack gap="0" position="relative">
       <Flex
-        px="3"
+        px="4"
+        py="3"
+        borderBottomWidth="1px"
+        borderColor={tokens.panelBorder}
+        align="center"
+        justify="space-between"
+        flexWrap="wrap"
+        gap="3"
+        bg={tokens.tableHeaderBg}
+      >
+        <Text fontFamily="mono" fontSize="2xs" color={alien} letterSpacing="0.16em">
+          ◈ TRADE LOG
+        </Text>
+        <Flex gap="4">
+          {sortBtn("date", "RECENT")}
+          {sortBtn("r", "BY R")}
+          {sortBtn("symbol", "A→Z")}
+        </Flex>
+        <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
+          {trades.length} closed · tap row for detail
+        </Text>
+      </Flex>
+
+      <Grid
+        display={{ base: "none", md: "grid" }}
+        templateColumns="minmax(1.75rem,0.2fr) minmax(4.5rem,0.6fr) minmax(3.5rem,0.45fr) minmax(4.5rem,0.55fr) 1fr minmax(3.5rem,0.5fr) minmax(4rem,0.45fr)"
+        gap="3"
+        px="4"
         py="2"
         borderBottomWidth="1px"
         borderColor={tokens.panelBorder}
         fontFamily="mono"
         fontSize="2xs"
-        color={tokens.tagAccent.color}
-        letterSpacing="0.14em"
-        justify="space-between"
+        color={tokens.tableHeaderColor}
+        letterSpacing="0.12em"
       >
-        <Text>◈ CLOSED LOG</Text>
-        <Text color={tokens.panelMuted}>{trades.length} rows</Text>
-      </Flex>
-      {trades.map((trade, index) => (
-        <TradeRow key={trade.journal_id ?? index} trade={trade} index={index} tokens={tokens} />
-      ))}
+        <Text textAlign="center"></Text>
+        <Text>PAIR</Text>
+        <Text>SIDE</Text>
+        <Text>RESULT</Text>
+        <Text>ENTRY → EXIT</Text>
+        <Text textAlign="center">R</Text>
+        <Text textAlign="right">DATE</Text>
+      </Grid>
+
+      <Stack gap="1" px="2" py="2">
+        {sorted.map((trade, index) => {
+          const rowKey = `${trade.journal_id ?? "x"}-${trade.base}-${trade.closed_at ?? index}`;
+          return (
+            <TradeCard
+              key={rowKey}
+              trade={trade}
+              index={index}
+              tokens={tokens}
+              expanded={expandedKey === rowKey}
+              onToggle={() =>
+                setExpandedKey((prev) => (prev === rowKey ? null : rowKey))
+              }
+            />
+          );
+        })}
+      </Stack>
     </Stack>
   );
 }

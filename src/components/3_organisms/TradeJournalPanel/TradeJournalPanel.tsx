@@ -130,7 +130,7 @@ export default function TradeJournalPanel({ active = true }: TradeJournalPanelPr
               ◈ TRADE_JOURNAL
             </Text>
             <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted} letterSpacing="0.1em">
-              closed history · Bybit match · poll 15s
+              closed log · Bybit match · tap row for detail
             </Text>
           </Stack>
         </Flex>
@@ -178,7 +178,7 @@ export default function TradeJournalPanel({ active = true }: TradeJournalPanelPr
               tokens={tokens}
             />
           </Box>
-          <Box px="2" py="2">
+          <Box px="0" py="0">
             <JournalTradesTable
               trades={closedTrades}
               pendingCount={openCount}

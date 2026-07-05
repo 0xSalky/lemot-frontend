@@ -1,5 +1,6 @@
 "use client";
 
+import { ProfileBadge } from "@/components/3_organisms/TradeJournalPanel/profileBadge";
 import type { ThemeTokens } from "@/components/ui/theme-color";
 import type {
   TradeMgmtDesk,
@@ -284,16 +285,19 @@ function PositionMgmtCard({
       />
 
       <Flex justify="space-between" align="flex-start" flexWrap="wrap" gap="2" position="relative">
-        <Stack gap="0">
-          <Text
-            fontFamily="mono"
-            fontSize="xs"
-            fontWeight="bold"
-            color={tokens.title}
-            letterSpacing="0.2em"
-          >
-            {pos.symbol}
-          </Text>
+        <Stack gap="1">
+          <Flex align="center" gap="2" flexWrap="wrap">
+            <Text
+              fontFamily="mono"
+              fontSize="xs"
+              fontWeight="bold"
+              color={tokens.title}
+              letterSpacing="0.2em"
+            >
+              {pos.symbol}
+            </Text>
+            {pos.profile ? <ProfileBadge profile={pos.profile} tokens={tokens} /> : null}
+          </Flex>
           <Text fontFamily="mono" fontSize="0.5rem" color={accent} letterSpacing="0.16em">
             {side.toUpperCase()} NODE
           </Text>

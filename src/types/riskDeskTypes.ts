@@ -104,6 +104,7 @@ export interface TradeMgmtPosition {
   symbol: string;
   ccxt_symbol: string;
   side: string;
+  profile?: string | null;
   size: number;
   unrealized_pnl_usd?: number;
   on_watchlist: boolean;
@@ -494,6 +495,7 @@ function normalizeTradeMgmtDesk(raw: Record<string, unknown>): TradeMgmtDesk {
           symbol: str(row.symbol) ?? "?",
           ccxt_symbol: str(row.ccxt_symbol) ?? "",
           side: str(row.side) ?? "unknown",
+          profile: str(row.profile),
           size: num(row.size) ?? 0,
           unrealized_pnl_usd: num(row.unrealized_pnl_usd) ?? undefined,
           on_watchlist: Boolean(row.on_watchlist),

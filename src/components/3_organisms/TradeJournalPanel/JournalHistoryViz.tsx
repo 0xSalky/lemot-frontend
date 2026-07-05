@@ -4,93 +4,94 @@ import {
   computeClosedStats,
   type ClosedHistoryStats,
 } from "@/components/3_organisms/TradeJournalPanel/journalClosedStats";
+import { formatR } from "@/components/3_organisms/TradeJournalPanel/journalFormat";
+import { PairLabel } from "@/components/3_organisms/TradeJournalPanel/profileBadge";
 import type { ThemeTokens } from "@/components/ui/theme-color";
 import type { TradeJournalRow } from "@/types/tradeJournalTypes";
-import { Box, Flex, Stack, Text } from "@chakra-ui/react";
+import { Box, Flex, Grid, Stack, Text } from "@chakra-ui/react";
 import { keyframes } from "@emotion/react";
 import { useMemo } from "react";
 
-const ringSpin = keyframes`
-  from { transform: rotate(-90deg); }
-  to { transform: rotate(270deg); }
+const pulse = keyframes`
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 `;
-
-const flicker = keyframes`
-  0%, 92%, 100% { opacity: 1; }
-  93% { opacity: 0.4; }
-  96% { opacity: 0.7; }
-`;
-
-const barGlow = keyframes`
-  0%, 100% { filter: brightness(1); }
-  50% { filter: brightness(1.35); }
-`;
-
-function formatR(value: number | null | undefined): string {
-  if (value == null || !Number.isFinite(value)) return "—";
-  const sign = value > 0 ? "+" : "";
-  return `${sign}${value.toFixed(2)}R`;
-}
 
 function WinRing({
   pct,
   accent,
-  size = 120,
-  stroke = 6,
+  mutedColor,
+  size = 140,
+  stroke = 7,
+  label = "WIN RATE",
 }: {
   pct: number | null;
   accent: string;
+  mutedColor: string;
   size?: number;
   stroke?: number;
+  label?: string;
 }) {
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const fill = pct != null ? Math.min(100, Math.max(0, pct)) : 0;
   const dash = (fill / 100) * c;
+  const pctFontSize = size >= 130 ? "4xl" : size >= 90 ? "xl" : "md";
 
   return (
-    <Box position="relative" w={`${size}px`} h={`${size}px`}>
-      <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={stroke}
-          opacity={0.12}
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          fill="none"
-          stroke={accent}
-          strokeWidth={stroke}
-          strokeLinecap="round"
-          strokeDasharray={`${dash} ${c - dash}`}
-          style={{
-            filter: `drop-shadow(0 0 6px ${accent})`,
-            transition: "stroke-dasharray 0.8s ease-out",
-          }}
-        />
-      </svg>
-      <Flex
-        position="absolute"
-        inset="0"
-        align="center"
-        justify="center"
-        direction="column"
-        fontFamily="mono"
-      >
-        <Text fontSize="xl" fontWeight="bold" color={accent} lineHeight="1">
-          {pct != null ? `${pct}%` : "—"}
+    <Stack align="center" gap="1.5" flexShrink={0}>
+      <Box position="relative" w={`${size}px`} h={`${size}px`}>
+        <svg width={size} height={size} style={{ transform: "rotate(-90deg)", display: "block" }}>
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={r}
+            fill="none"
+            stroke={mutedColor}
+            strokeWidth={stroke}
+            opacity={0.15}
+          />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={r}
+            fill="none"
+            stroke={accent}
+            strokeWidth={stroke}
+            strokeLinecap="round"
+            strokeDasharray={`${dash} ${c - dash}`}
+            style={{
+              filter: `drop-shadow(0 0 6px ${accent})`,
+              transition: "stroke-dasharray 0.8s ease-out",
+            }}
+          />
+        </svg>
+        <Flex position="absolute" inset="0" align="center" justify="center">
+          <Text
+            fontFamily="mono"
+            fontSize={pctFontSize}
+            fontWeight="bold"
+            color={accent}
+            lineHeight="1"
+            letterSpacing="-0.02em"
+          >
+            {pct != null ? `${pct}%` : "—"}
+          </Text>
+        </Flex>
+      </Box>
+      {label ? (
+        <Text
+          fontFamily="mono"
+          fontSize="2xs"
+          color={mutedColor}
+          letterSpacing="0.16em"
+          textAlign="center"
+          lineHeight="1"
+        >
+          {label}
         </Text>
-        <Text fontSize="2xs" color="currentColor" opacity={0.55} letterSpacing="0.12em">
-          WIN
-        </Text>
-      </Flex>
-    </Box>
+      ) : null}
+    </Stack>
   );
 }
 
@@ -102,98 +103,69 @@ function OutcomeBar({
   tokens: ThemeTokens;
 }) {
   const total = stats.wins + stats.losses + stats.breakeven;
-  if (total === 0) {
-    return (
-      <Box h="10px" bg={tokens.blockquoteBg} borderWidth="1px" borderColor={tokens.panelBorder} />
-    );
-  }
-
-  const segments = [
-    { key: "w", count: stats.wins, color: tokens.tagGreen.color },
-    { key: "l", count: stats.losses, color: tokens.tagRed.color },
-    { key: "be", count: stats.breakeven, color: tokens.panelMuted },
-  ];
+  if (total === 0) return null;
+  const winPct = (stats.wins / total) * 100;
+  const lossPct = (stats.losses / total) * 100;
+  const bePct = (stats.breakeven / total) * 100;
 
   return (
-    <Flex
-      h="10px"
-      overflow="hidden"
-      borderWidth="1px"
-      borderColor={tokens.panelBorder}
-      bg={tokens.blockquoteBg}
-      animation={`${barGlow} 3s ease-in-out infinite`}
-    >
-      {segments.map((seg) =>
-        seg.count > 0 ? (
-          <Box
-            key={seg.key}
-            flex={`${seg.count} 0 0`}
-            bg={seg.color}
-            boxShadow={`0 0 10px ${seg.color}`}
-            transition="flex 0.6s ease-out"
-          />
-        ) : null,
-      )}
-    </Flex>
+    <Stack gap="2" flex="1" minW="10rem">
+      <Flex justify="space-between" fontFamily="mono" fontSize="2xs">
+        <Text color={tokens.tagGreen.color}>W {stats.wins}</Text>
+        <Text color={tokens.tagRed.color}>L {stats.losses}</Text>
+        <Text color={tokens.panelMuted}>BE {stats.breakeven}</Text>
+      </Flex>
+      <Flex h="6px" overflow="hidden" rounded="full" bg={tokens.blockquoteBg} borderWidth="1px" borderColor={tokens.panelBorder}>
+        {winPct > 0 ? <Box flex={`${winPct} 0 0`} bg={tokens.tagGreen.color} /> : null}
+        {bePct > 0 ? <Box flex={`${bePct} 0 0`} bg={tokens.panelMuted} /> : null}
+        {lossPct > 0 ? <Box flex={`${lossPct} 0 0`} bg={tokens.tagRed.color} /> : null}
+      </Flex>
+    </Stack>
   );
 }
 
-function ProfileNode({
-  label,
+function ProfileStrip({
+  profile,
   stats,
-  accent,
   tokens,
 }: {
-  label: string;
+  profile: "a" | "b";
   stats: ClosedHistoryStats;
-  accent: string;
   tokens: ThemeTokens;
 }) {
+  const ringAccent = profile === "a" ? tokens.tagAccent.color : tokens.panelHeading;
+
   return (
-    <Stack
-      align="center"
-      gap="2"
+    <Flex
       flex="1"
-      minW={{ base: "7rem", md: "8rem" }}
-      p="3"
+      minW={{ base: "100%", sm: "12rem" }}
+      align="center"
+      gap="3"
+      px="3"
+      py="3"
       borderWidth="1px"
-      borderColor={`${accent}66`}
-      bg={`linear-gradient(180deg, ${tokens.blockquoteBg}88, transparent)`}
-      position="relative"
-      overflow="hidden"
+      borderColor={tokens.panelBorder}
+      rounded="sm"
+      bg={tokens.blockquoteBg}
     >
-      <Box
-        position="absolute"
-        inset="0"
-        pointerEvents="none"
-        borderWidth="1px"
-        borderColor={`${accent}22`}
-        animation={`${ringSpin} 24s linear infinite`}
-        transformOrigin="center"
-        opacity={0.4}
+      <WinRing
+        pct={stats.win_rate_pct}
+        accent={ringAccent}
+        mutedColor={tokens.panelMuted}
+        size={64}
+        stroke={4}
+        label="WIN"
       />
-      <Text
-        fontFamily="mono"
-        fontSize="2xs"
-        color={accent}
-        letterSpacing="0.14em"
-        textAlign="center"
-      >
-        {label}
-      </Text>
-      <Box color={tokens.panelMuted}>
-        <WinRing pct={stats.win_rate_pct} accent={accent} size={88} stroke={5} />
-      </Box>
-      <Text fontFamily="mono" fontSize="xs" color={tokens.panelBody}>
-        {stats.closed_trades} closed
-      </Text>
-      <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
-        W{stats.wins} · L{stats.losses} · BE{stats.breakeven}
-      </Text>
-      <Text fontFamily="mono" fontSize="sm" fontWeight="bold" color={accent}>
-        {formatR(stats.total_r)}
-      </Text>
-    </Stack>
+      <Stack gap="1" flex="1" minW="0">
+        <PairLabel profile={profile} base="PROFILE" tokens={tokens} size="xs" />
+        <Text fontFamily="mono" fontSize="xs" color={tokens.panelBody}>
+          {stats.closed_trades} closed · W{stats.wins} L{stats.losses}
+        </Text>
+        <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
+          ΣR {formatR(stats.total_r)}
+        </Text>
+      </Stack>
+    </Flex>
   );
 }
 
@@ -221,129 +193,80 @@ export default function JournalHistoryViz({
   );
 
   const alien = tokens.tagAccent.color;
-  const rColor =
-    overall.total_r > 0
-      ? tokens.tagGreen.color
-      : overall.total_r < 0
-        ? tokens.tagRed.color
-        : tokens.panelBody;
-
   const linkedClosed = trades.filter((t) => t.lifecycle === "closed" && t.journal_id != null).length;
+  const winAccent =
+    (overall.win_rate_pct ?? 0) >= 50 ? tokens.tagGreen.color : tokens.title;
 
   return (
     <Box
       position="relative"
       overflow="hidden"
       borderWidth="1px"
-      borderColor={`${alien}55`}
-      bg={`linear-gradient(135deg, ${tokens.blockquoteBg} 0%, ${tokens.panelBg} 50%, ${tokens.blockquoteBg} 100%)`}
-      px={{ base: 4, md: 5 }}
-      py={{ base: 5, md: 6 }}
-      boxShadow={`inset 0 0 48px ${alien}08`}
+      borderColor={`${alien}44`}
+      rounded="sm"
+      px={{ base: 3, md: 4 }}
+      py={{ base: 4, md: 5 }}
+      bg={`linear-gradient(135deg, ${tokens.blockquoteBg} 0%, ${tokens.panelBg} 60%, ${tokens.blockquoteBg} 100%)`}
     >
-      <Box
-        position="absolute"
-        inset="0"
-        pointerEvents="none"
-        opacity={0.08}
-        backgroundImage={`
-          linear-gradient(${alien} 1px, transparent 1px),
-          linear-gradient(90deg, ${alien} 1px, transparent 1px)
-        `}
-        backgroundSize="20px 20px"
-      />
+      <Stack gap="4" position="relative" zIndex={1}>
+        <Text
+          fontFamily="mono"
+          fontSize="2xs"
+          color={alien}
+          letterSpacing="0.2em"
+          animation={`${pulse} 4s ease-in-out infinite`}
+        >
+          ◈ PERFORMANCE
+        </Text>
 
-      <Stack gap="5" position="relative" zIndex={1}>
-        <Flex justify="space-between" align="flex-start" flexWrap="wrap" gap="4">
-          <Stack gap="1">
-            <Text
-              fontFamily="mono"
-              fontSize="2xs"
-              color={alien}
-              letterSpacing="0.24em"
-              animation={`${flicker} 6s step-end infinite`}
-            >
-              ◈ CLOSED PERFORMANCE
-            </Text>
-            <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted} letterSpacing="0.1em">
-              history only · R-multiples · no open book
-            </Text>
-          </Stack>
-          <Flex gap="6" align="center" flexWrap="wrap">
-            <Stack align="center" gap="0">
-              <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted} letterSpacing="0.1em">
-                ΣR
-              </Text>
-              <Text
-                fontFamily="mono"
-                fontSize="2xl"
-                fontWeight="bold"
-                color={rColor}
-                textShadow={`0 0 16px ${rColor}88`}
-              >
-                {formatR(overall.total_r)}
-              </Text>
-            </Stack>
-            <Stack align="center" gap="0">
-              <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted} letterSpacing="0.1em">
-                AVG
-              </Text>
-              <Text fontFamily="mono" fontSize="lg" fontWeight="bold" color={tokens.panelBody}>
-                {formatR(overall.avg_r)}
-              </Text>
-            </Stack>
-            <Stack align="center" gap="0">
-              <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
-                BEST
-              </Text>
-              <Text fontFamily="mono" fontSize="sm" color={tokens.tagGreen.color}>
-                {formatR(overall.best_r)}
-              </Text>
-            </Stack>
-            <Stack align="center" gap="0">
-              <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
-                WORST
-              </Text>
-              <Text fontFamily="mono" fontSize="sm" color={tokens.tagRed.color}>
-                {formatR(overall.worst_r)}
-              </Text>
-            </Stack>
-          </Flex>
-        </Flex>
-
-        <Flex gap="5" align="center" flexWrap="wrap">
-          <Box color={tokens.panelMuted}>
-            <WinRing pct={overall.win_rate_pct} accent={tokens.title} size={132} stroke={7} />
-          </Box>
-          <Stack flex="1" minW="12rem" gap="2">
-            <Flex justify="space-between" fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
-              <Text color={tokens.tagGreen.color}>W {overall.wins}</Text>
-              <Text color={tokens.tagRed.color}>L {overall.losses}</Text>
-              <Text>BE {overall.breakeven}</Text>
-              <Text>{overall.closed_trades} closed</Text>
-            </Flex>
+        <Flex gap="5" align="flex-start" flexWrap="wrap">
+          <WinRing
+            pct={overall.win_rate_pct}
+            accent={winAccent}
+            mutedColor={tokens.panelMuted}
+            size={132}
+            stroke={7}
+          />
+          <Stack flex="1" minW="12rem" gap="3">
             <OutcomeBar stats={overall} tokens={tokens} />
+            <Grid templateColumns="repeat(3, 1fr)" gap="2" fontFamily="mono" fontSize="2xs">
+              <Box>
+                <Text color={tokens.panelMuted} letterSpacing="0.08em">ΣR</Text>
+                <Text color={tokens.panelBody} fontSize="sm">{formatR(overall.total_r)}</Text>
+              </Box>
+              <Box>
+                <Text color={tokens.panelMuted} letterSpacing="0.08em">AVG</Text>
+                <Text color={tokens.panelBody} fontSize="sm">{formatR(overall.avg_r)}</Text>
+              </Box>
+              <Box>
+                <Text color={tokens.panelMuted} letterSpacing="0.08em">CLOSED</Text>
+                <Text color={tokens.panelBody} fontSize="sm">{overall.closed_trades}</Text>
+              </Box>
+            </Grid>
           </Stack>
         </Flex>
 
-        <Flex gap="3" flexWrap="wrap" justify="center">
-          <ProfileNode label="◇ PROFILE A" stats={profileA} accent={tokens.panelLabel} tokens={tokens} />
-          <ProfileNode label="◇ PROFILE B" stats={profileB} accent={tokens.tagBlue.color} tokens={tokens} />
+        <Flex gap="3" flexWrap="wrap">
+          <ProfileStrip profile="a" stats={profileA} tokens={tokens} />
+          <ProfileStrip profile="b" stats={profileB} tokens={tokens} />
         </Flex>
 
         {overall.closed_trades === 0 ? (
-          <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted} textAlign="center" letterSpacing="0.08em">
+          <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted} textAlign="center">
             {journalCount > 0
-              ? `${journalCount} journal entries · ${closedPnlRows} exchange closes — no matches yet`
+              ? `${journalCount} journal entries · ${closedPnlRows} exchange closes — awaiting matches`
               : "No journal entries yet"}
             {openCount > 0 ? ` · ${openCount} open on Risk Desk` : ""}
           </Text>
-        ) : linkedClosed < journalCount ? (
-          <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted} textAlign="center" letterSpacing="0.08em">
-            {linkedClosed} journal closes · {overall.closed_trades - linkedClosed} exchange-only
+        ) : (
+          <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted} textAlign="center">
+            {linkedClosed} journal closes
+            {overall.closed_trades - linkedClosed > 0
+              ? ` · ${overall.closed_trades - linkedClosed} exchange-only`
+              : ""}
             {openCount > 0 ? ` · ${openCount} still open` : ""}
           </Text>
-        ) : null}
+        )}
       </Stack>
     </Box>
   );
