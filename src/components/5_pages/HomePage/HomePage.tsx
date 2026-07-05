@@ -5,6 +5,7 @@ import ScannerChat from "@/components/3_organisms/ScannerChat/ScannerChat";
 import ScannerResults from "@/components/3_organisms/ScannerResults/ScannerResults";
 import SignalsMonitorPanel from "@/components/3_organisms/SignalsMonitorPanel/SignalsMonitorPanel";
 import RiskDeskPanel from "@/components/3_organisms/RiskDeskPanel/RiskDeskPanel";
+import TradeJournalPanel from "@/components/3_organisms/TradeJournalPanel/TradeJournalPanel";
 import ResponsiveCardGrid from "@/components/4_layouts/ResponsiveCardGrid/ResponsiveCardGrid";
 import { useThemeColor, useThemeTokens } from "@/components/ui/theme-color";
 import { TRADING_PAIRS, CONTENT_MAX_WIDTH } from "@/services/config";
@@ -124,6 +125,7 @@ const HomePage = () => {
                     <ThemeTabTrigger value="scanner-chat">AI Chat</ThemeTabTrigger>
                     <ThemeTabTrigger value="signals">Signals</ThemeTabTrigger>
                     <ThemeTabTrigger value="risk">Risk desk</ThemeTabTrigger>
+                    <ThemeTabTrigger value="journal">Journal</ThemeTabTrigger>
                     <ThemeTabTrigger value="config">Config</ThemeTabTrigger>
                 </Tabs.List>
 
@@ -167,6 +169,10 @@ const HomePage = () => {
 
                 <Tabs.Content value="risk">
                     {activeTab === "risk" ? <RiskDeskPanel active /> : null}
+                </Tabs.Content>
+
+                <Tabs.Content value="journal">
+                    {activeTab === "journal" ? <TradeJournalPanel active /> : null}
                 </Tabs.Content>
 
                 <Tabs.Content value="config">

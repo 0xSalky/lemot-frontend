@@ -18,6 +18,16 @@ export interface RiskDeskPosition {
   in_profit?: boolean;
   unrealized_pnl_usd?: number;
   r_multiple?: number;
+  journal_id?: number | null;
+  main_order_id?: string | null;
+  profile?: string | null;
+  band_side?: string | null;
+  band_range?: string | null;
+  entry_price?: number | null;
+  stop_loss_price?: number | null;
+  match_method?: string | null;
+  position_id?: string | null;
+  ccxt_symbol?: string | null;
 }
 
 export interface RiskSameSideStats {
@@ -218,6 +228,16 @@ export function normalizeRiskDesk(body: unknown): RiskDeskPayload {
           in_profit: typeof row.in_profit === "boolean" ? row.in_profit : undefined,
           unrealized_pnl_usd: num(row.unrealized_pnl_usd) ?? undefined,
           r_multiple: num(row.r_multiple) ?? undefined,
+          journal_id: num(row.journal_id),
+          main_order_id: str(row.main_order_id),
+          profile: str(row.profile),
+          band_side: str(row.band_side),
+          band_range: str(row.band_range),
+          entry_price: num(row.entry_price),
+          stop_loss_price: num(row.stop_loss_price),
+          match_method: str(row.match_method),
+          position_id: str(row.position_id),
+          ccxt_symbol: str(row.ccxt_symbol),
         };
       })
     : [];

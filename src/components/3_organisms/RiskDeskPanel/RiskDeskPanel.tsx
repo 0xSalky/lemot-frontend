@@ -104,32 +104,81 @@ function PositionRow({
   const side = pos.side.toLowerCase();
   const accent = side === "long" ? tokens.tagGreen.color : tokens.tagRed.color;
   const stripe = index % 2 === 1 ? tokens.blockquoteBg : "transparent";
+  const linked = pos.match_method === "order_id" && pos.journal_id != null;
 
   return (
-    <Flex
+    <Box
       px="3"
-      py="2"
+      py="2.5"
       borderLeftWidth="2px"
       borderLeftColor={accent}
       bg={stripe}
-      gap="3"
-      flexWrap="wrap"
-      align="center"
       fontFamily="mono"
       fontSize="xs"
     >
-      <Text fontWeight="bold" color={tokens.title} minW="3rem">
-        {pos.symbol}
-      </Text>
-      <Text color={accent} minW="3rem">
-        {side.toUpperCase()}
-      </Text>
-      <Text color={tokens.panelBody}>{formatR(pos.r_multiple)}</Text>
-      <Text color={tokens.panelMuted}>{formatUsd(pos.unrealized_pnl_usd)}</Text>
-      {pos.leverage != null ? (
-        <Text color={tokens.panelMuted}>{pos.leverage}x</Text>
+      <Flex gap="3" flexWrap="wrap" align="center" mb={linked ? "1.5" : "0"}>
+        <Text fontWeight="bold" color={tokens.title} minW="3rem">
+          {pos.symbol}
+        </Text>
+        <Text color={accent} minW="3rem">
+          {side.toUpperCase()}
+        </Text>
+        {pos.profile ? (
+          <Box
+            as="span"
+            px="1.5"
+            py="0.5"
+            fontSize="2xs"
+            borderWidth="1px"
+            borderColor={tokens.tagBlue.border}
+            bg={tokens.tagBlue.bg}
+            color={tokens.tagBlue.color}
+            rounded="sm"
+          >
+            {pos.profile.toUpperCase()}
+          </Box>
+        ) : null}
+        <Text color={tokens.panelBody}>{formatR(pos.r_multiple)}</Text>
+        <Text color={tokens.panelMuted}>{formatUsd(pos.unrealized_pnl_usd)}</Text>
+        {pos.leverage != null ? (
+          <Text color={tokens.panelMuted}>{pos.leverage}x</Text>
+        ) : null}
+        {linked ? (
+          <Text color={tokens.tagGreen.color} fontSize="2xs" letterSpacing="0.08em">
+            order-id link
+          </Text>
+        ) : (
+          <Text color={tokens.panelMuted} fontSize="2xs">
+            no journal link
+          </Text>
+        )}
+      </Flex>
+      {linked ? (
+        <Flex gap="4" flexWrap="wrap" color={tokens.panelMuted} fontSize="2xs">
+          <Text>
+            band{" "}
+            <Box as="span" color={tokens.tagAccent.color}>
+              {pos.band_side ?? "—"} {pos.band_range ?? "—"}
+            </Box>
+          </Text>
+          {pos.entry_price != null ? (
+            <Text>
+              entry <Box as="span" color={tokens.panelBody}>{pos.entry_price}</Box>
+            </Text>
+          ) : null}
+          {pos.stop_loss_price != null ? (
+            <Text>
+              stop <Box as="span">{pos.stop_loss_price}</Box>
+            </Text>
+          ) : null}
+          {pos.main_order_id ? (
+            <Text title={pos.main_order_id} color={tokens.panelLabel}>
+              order …{pos.main_order_id.slice(-8)}
+            </Text>
+          ) : null}
+        </Flex>
       ) : null}
-    </Flex>
+    </Box>
   );
 }
 
