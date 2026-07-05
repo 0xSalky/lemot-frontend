@@ -1,7 +1,7 @@
 "use client";
 
 import type { ThemeTokens } from "@/components/ui/theme-color";
-import type { RiskDeskPayload } from "@/types/riskDeskTypes";
+import type { RiskDeskBookView, RiskDeskPayload } from "@/types/riskDeskTypes";
 import { Box, Flex, Stack, Text } from "@chakra-ui/react";
 
 function formatR(value: number | null | undefined): string {
@@ -18,18 +18,20 @@ function slotColor(tokens: ThemeTokens, side: string | undefined, filled: boolea
 }
 
 export default function CapacityGaugeCore({
-  desk,
+  book,
   tokens,
+  title = "Slot occupancy",
 }: {
-  desk: RiskDeskPayload;
+  book: RiskDeskBookView | RiskDeskPayload;
   tokens: ThemeTokens;
+  title?: string;
 }) {
-  const max = desk.max_open_trades;
-  const slots = max > 0 ? max : Math.max(desk.slots_used, 3);
+  const max = book.max_open_trades;
+  const slots = max > 0 ? max : Math.max(book.slots_used, 3);
   const alien = tokens.tagAccent.color;
-  const fillPct = max > 0 ? Math.min(100, Math.round(desk.fill_ratio * 100)) : 0;
+  const fillPct = max > 0 ? Math.min(100, Math.round(book.fill_ratio * 100)) : 0;
   const accent =
-    desk.slots_used >= max && max > 0 ? tokens.tagRed.color : tokens.tagGreen.color;
+    book.slots_used >= max && max > 0 ? tokens.tagRed.color : tokens.tagGreen.color;
 
   return (
     <Box
@@ -55,16 +57,16 @@ export default function CapacityGaugeCore({
       <Stack gap="3" position="relative" zIndex={1}>
         <Flex justify="space-between" align="center" fontFamily="mono" fontSize="2xs" flexWrap="wrap" gap="2">
           <Text color={tokens.panelLabel} letterSpacing="0.12em" textTransform="uppercase">
-            Slot occupancy
+            {title}
           </Text>
           <Text color={accent} fontWeight="bold">
-            {desk.slots_used}/{max > 0 ? max : "∞"}
+            {book.slots_used}/{max > 0 ? max : "∞"}
           </Text>
         </Flex>
 
         <Flex gap="2px" h="4px" rounded="full" overflow="hidden" bg={tokens.blockquoteBg}>
           {Array.from({ length: slots }).map((_, index) => {
-            const pos = desk.positions[index];
+            const pos = book.positions[index];
             const filled = Boolean(pos);
             const side = pos?.side?.toLowerCase();
             const color = slotColor(tokens, side, filled);
@@ -82,7 +84,7 @@ export default function CapacityGaugeCore({
 
         <Flex gap="2" flexWrap="wrap">
           {Array.from({ length: slots }).map((_, index) => {
-            const pos = desk.positions[index];
+            const pos = book.positions[index];
             const filled = Boolean(pos);
             const side = pos?.side?.toLowerCase();
             const color = slotColor(tokens, side, filled);
@@ -135,10 +137,10 @@ export default function CapacityGaugeCore({
         <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
           {max > 0 ? (
             <>
-              {desk.slots_used} / {max} slots · {desk.slots_free ?? 0} free · {fillPct}% load
+              {book.slots_used} / {max} slots · {book.slots_free ?? 0} free · {fillPct}% load
             </>
           ) : (
-            <>unlimited capacity · {desk.slots_used} open</>
+            <>unlimited capacity · {book.slots_used} open</>
           )}
         </Text>
       </Stack>

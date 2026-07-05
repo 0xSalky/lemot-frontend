@@ -12,6 +12,7 @@ import type {
   RiskDeskPayload,
   RiskDeskPosition,
   RiskGatesSummary,
+  RiskProfileDesk,
 } from "@/types/riskDeskTypes";
 import { Box, Flex, Spinner, Stack, Text } from "@chakra-ui/react";
 import { keyframes } from "@emotion/react";
@@ -182,6 +183,92 @@ function PositionRow({
   );
 }
 
+function ProfileBookSection({
+  profileDesk,
+  tokens,
+  PositionRowComponent,
+}: {
+  profileDesk: RiskProfileDesk;
+  tokens: ThemeTokens;
+  PositionRowComponent: typeof PositionRow;
+}) {
+  const gateNodes = profileDesk.gates.map(riskGateToMatrixNode);
+  const summaryLabel = profileDesk.gates_summary.toUpperCase();
+
+  return (
+    <Box borderBottomWidth="1px" borderColor={tokens.panelBorder}>
+      <Flex
+        px="4"
+        pt="3"
+        pb="2"
+        align="center"
+        justify="space-between"
+        flexWrap="wrap"
+        gap="2"
+      >
+        <Text
+          fontFamily="mono"
+          fontSize="xs"
+          fontWeight="bold"
+          color={tokens.title}
+          letterSpacing="0.14em"
+        >
+          PROFILE {profileDesk.profile.toUpperCase()}
+        </Text>
+        <Flex gap="2" flexWrap="wrap">
+          <EventTag
+            label={`NET ${profileDesk.net_side.toUpperCase()}`}
+            tone={{
+              bg: tokens.blockquoteBg,
+              color: netSideColor(tokens, profileDesk.net_side),
+              border: netSideColor(tokens, profileDesk.net_side),
+            }}
+          />
+          <EventTag
+            label={`GATES ${summaryLabel}`}
+            tone={{
+              bg: tokens.blockquoteBg,
+              color: gateSummaryColor(tokens, profileDesk.gates_summary),
+              border: gateSummaryColor(tokens, profileDesk.gates_summary),
+            }}
+          />
+        </Flex>
+      </Flex>
+
+      <Box px="4" pb="3">
+        <CapacityGaugeCore
+          book={profileDesk}
+          tokens={tokens}
+          title={`Profile ${profileDesk.profile.toUpperCase()} slots`}
+        />
+      </Box>
+
+      <Box px="4" pb="4">
+        <ConditionMatrix nodes={gateNodes} tokens={tokens} variant="gate" showTitle={false} />
+      </Box>
+
+      {profileDesk.positions.length > 0 ? (
+        <Box>
+          {profileDesk.positions.map((pos, index) => (
+            <PositionRowComponent
+              key={`${profileDesk.profile}-${pos.symbol}-${index}`}
+              pos={pos}
+              index={index}
+              tokens={tokens}
+            />
+          ))}
+        </Box>
+      ) : (
+        <Box px="4" pb="3">
+          <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
+            // flat — {profileDesk.slots_free ?? profileDesk.max_open_trades} profile slot(s) free
+          </Text>
+        </Box>
+      )}
+    </Box>
+  );
+}
+
 export default function RiskDeskPanel({ active }: { active: boolean }) {
   const { palette } = useThemeColor();
   const tokens = useThemeTokens(palette);
@@ -211,9 +298,16 @@ export default function RiskDeskPanel({ active }: { active: boolean }) {
   }, [active, pageVisible]);
 
   const gateNodes = useMemo(
-    () => (desk?.gates ?? []).map(riskGateToMatrixNode),
-    [desk?.gates],
+    () => (desk?.global?.gates ?? desk?.gates ?? []).map(riskGateToMatrixNode),
+    [desk?.global?.gates, desk?.gates],
   );
+
+  const profileDesks = useMemo(() => {
+    if (!desk?.profiles) return [] as RiskProfileDesk[];
+    return (["a", "b"] as const)
+      .map((key) => desk.profiles[key])
+      .filter((p): p is RiskProfileDesk => Boolean(p));
+  }, [desk?.profiles]);
 
   const liveColor =
     loading && !desk
@@ -222,7 +316,7 @@ export default function RiskDeskPanel({ active }: { active: boolean }) {
         ? tokens.tagGreen.color
         : tokens.warn;
 
-  const summaryLabel = desk?.gates_summary?.toUpperCase() ?? "—";
+  const summaryLabel = (desk?.global?.gates_summary ?? desk?.gates_summary)?.toUpperCase() ?? "—";
 
   return (
     <Box>
@@ -314,7 +408,11 @@ export default function RiskDeskPanel({ active }: { active: boolean }) {
             </Box>
 
             <Box px="4" py="4" borderBottomWidth="1px" borderColor={tokens.panelBorder}>
-              <CapacityGaugeCore desk={desk} tokens={tokens} />
+              <CapacityGaugeCore
+                book={desk}
+                tokens={tokens}
+                title="Global account slots"
+              />
             </Box>
 
             {desk.trade_mgmt ? (
@@ -331,7 +429,7 @@ export default function RiskDeskPanel({ active }: { active: boolean }) {
                   color={tokens.panelLabel}
                   letterSpacing="0.12em"
                 >
-                  GATE MATRIX
+                  ACCOUNT GATES
                 </Text>
                 <Flex gap="2" flexWrap="wrap">
                   <EventTag
@@ -349,16 +447,37 @@ export default function RiskDeskPanel({ active }: { active: boolean }) {
                     label={`GATES ${summaryLabel}`}
                     tone={{
                       bg: tokens.blockquoteBg,
-                      color: gateSummaryColor(tokens, desk.gates_summary),
-                      border: gateSummaryColor(tokens, desk.gates_summary),
+                      color: gateSummaryColor(
+                        tokens,
+                        desk.global?.gates_summary ?? desk.gates_summary,
+                      ),
+                      border: gateSummaryColor(
+                        tokens,
+                        desk.global?.gates_summary ?? desk.gates_summary,
+                      ),
                     }}
                   />
+                  {(desk.global?.unknown_count ?? desk.unknown_positions.length) > 0 ? (
+                    <EventTag
+                      label={`UNLINKED ${desk.global?.unknown_count ?? desk.unknown_positions.length}`}
+                      tone={tokens.tagNeutral}
+                    />
+                  ) : null}
                 </Flex>
               </Flex>
               <ConditionMatrix nodes={gateNodes} tokens={tokens} variant="gate" showTitle={false} />
             </Box>
 
-            {desk.positions.length > 0 ? (
+            {profileDesks.map((profileDesk) => (
+              <ProfileBookSection
+                key={profileDesk.profile}
+                profileDesk={profileDesk}
+                tokens={tokens}
+                PositionRowComponent={PositionRow}
+              />
+            ))}
+
+            {desk.unknown_positions.length > 0 ? (
               <Box borderBottomWidth="1px" borderColor={tokens.panelBorder}>
                 <Text
                   px="4"
@@ -366,22 +485,24 @@ export default function RiskDeskPanel({ active }: { active: boolean }) {
                   pb="1"
                   fontFamily="mono"
                   fontSize="2xs"
-                  color={tokens.panelLabel}
+                  color={tokens.warn}
                   letterSpacing="0.12em"
                 >
-                  OPEN POSITIONS
+                  UNLINKED POSITIONS
                 </Text>
-                {desk.positions.map((pos, index) => (
-                  <PositionRow key={`${pos.symbol}-${index}`} pos={pos} index={index} tokens={tokens} />
+                {desk.unknown_positions.map((pos, index) => (
+                  <PositionRow key={`unknown-${pos.symbol}-${index}`} pos={pos} index={index} tokens={tokens} />
                 ))}
               </Box>
-            ) : (
+            ) : null}
+
+            {desk.positions.length === 0 && profileDesks.every((p) => p.positions.length === 0) ? (
               <Box px="4" py="3" borderBottomWidth="1px" borderColor={tokens.panelBorder}>
                 <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
-                  // flat book — all gates green, slots available
+                  // flat account — profiles have free slots
                 </Text>
               </Box>
-            )}
+            ) : null}
 
             {desk.next_same_side_preview ? (
               <Box px="4" py="4" borderBottomWidth="1px" borderColor={tokens.panelBorder}>

@@ -135,6 +135,35 @@ export interface TradeMgmtDesk {
   positions: TradeMgmtPosition[];
 }
 
+export interface RiskDeskBookView {
+  max_open_trades: number;
+  slots_used: number;
+  slots_free: number | null;
+  fill_ratio: number;
+  net_side: string;
+  book_state?: string | null;
+  gates_summary: RiskGatesSummary;
+  gates: RiskGate[];
+  same_side: RiskSameSideStats;
+  positions: RiskDeskPosition[];
+  next_same_side_preview?: RiskNextPreview | null;
+}
+
+export interface RiskProfileDesk extends RiskDeskBookView {
+  profile: string;
+}
+
+export interface RiskDeskGlobalView {
+  max_open_trades: number;
+  slots_used: number;
+  slots_free: number | null;
+  fill_ratio: number;
+  net_side: string;
+  gates_summary: RiskGatesSummary;
+  gates: RiskGate[];
+  unknown_count: number;
+}
+
 export interface RiskDeskPayload {
   ready: boolean;
   fetched_at: string | null;
@@ -158,6 +187,9 @@ export interface RiskDeskPayload {
     worst_leg_hard_reject_r: number;
   };
   positions: RiskDeskPosition[];
+  unknown_positions: RiskDeskPosition[];
+  profiles: Record<string, RiskProfileDesk>;
+  global: RiskDeskGlobalView | null;
   next_same_side_preview: RiskNextPreview | null;
   recent_events: RiskDeskEvent[];
   trade_mgmt: TradeMgmtDesk | null;
@@ -183,6 +215,9 @@ export const EMPTY_RISK_DESK: RiskDeskPayload = {
   same_side: { count: 0, avg_r: null, worst_r: null, best_r: null },
   limits: { avg_down_hard_reject_r: 1, worst_leg_hard_reject_r: 1.5 },
   positions: [],
+  unknown_positions: [],
+  profiles: {},
+  global: null,
   next_same_side_preview: null,
   recent_events: [],
   trade_mgmt: null,
@@ -199,9 +234,7 @@ function str(value: unknown): string | null {
   return s || null;
 }
 
-export function normalizeRiskDesk(body: unknown): RiskDeskPayload {
-  if (!body || typeof body !== "object") return { ...EMPTY_RISK_DESK };
-  const raw = body as Record<string, unknown>;
+function normalizeBookView(raw: Record<string, unknown>): RiskDeskBookView {
   const gates = Array.isArray(raw.gates)
     ? raw.gates.map((g) => {
         const row = g as Record<string, unknown>;
@@ -216,36 +249,88 @@ export function normalizeRiskDesk(body: unknown): RiskDeskPayload {
         };
       })
     : [];
-
-  const positions = Array.isArray(raw.positions)
-    ? raw.positions.map((p) => {
-        const row = p as Record<string, unknown>;
-        return {
-          symbol: str(row.symbol) ?? "?",
-          side: str(row.side) ?? "unknown",
-          leverage: num(row.leverage) ?? undefined,
-          pnl_pct: num(row.pnl_pct) ?? undefined,
-          in_profit: typeof row.in_profit === "boolean" ? row.in_profit : undefined,
-          unrealized_pnl_usd: num(row.unrealized_pnl_usd) ?? undefined,
-          r_multiple: num(row.r_multiple) ?? undefined,
-          journal_id: num(row.journal_id),
-          main_order_id: str(row.main_order_id),
-          profile: str(row.profile),
-          band_side: str(row.band_side),
-          band_range: str(row.band_range),
-          entry_price: num(row.entry_price),
-          stop_loss_price: num(row.stop_loss_price),
-          match_method: str(row.match_method),
-          position_id: str(row.position_id),
-          ccxt_symbol: str(row.ccxt_symbol),
-        };
-      })
-    : [];
-
   const sameRaw = (raw.same_side ?? {}) as Record<string, unknown>;
-  const limitsRaw = (raw.limits ?? {}) as Record<string, unknown>;
   const previewRaw = raw.next_same_side_preview as Record<string, unknown> | null;
-  const tradeMgmtRaw = raw.trade_mgmt as Record<string, unknown> | null;
+  const positions = normalizePositions(raw.positions);
+  const summary = str(raw.gates_summary);
+  const gatesSummary: RiskGatesSummary =
+    summary === "blocked" || summary === "warn" ? summary : "clear";
+
+  return {
+    max_open_trades: num(raw.max_open_trades) ?? 0,
+    slots_used: num(raw.slots_used) ?? 0,
+    slots_free: num(raw.slots_free),
+    fill_ratio: num(raw.fill_ratio) ?? 0,
+    net_side: str(raw.net_side) ?? "flat",
+    book_state: str(raw.book_state),
+    gates_summary: gatesSummary,
+    gates,
+    same_side: {
+      count: num(sameRaw.count) ?? 0,
+      avg_r: num(sameRaw.avg_r),
+      worst_r: num(sameRaw.worst_r),
+      best_r: num(sameRaw.best_r),
+    },
+    positions,
+    next_same_side_preview: previewRaw
+      ? {
+          side: str(previewRaw.side) ?? "long",
+          avg_r: num(previewRaw.avg_r),
+          same_side_count: num(previewRaw.same_side_count) ?? 0,
+          loss_penalty_pts: num(previewRaw.loss_penalty_pts) ?? 0,
+          crowding_penalty_pts: num(previewRaw.crowding_penalty_pts) ?? 0,
+          total_penalty_pts: num(previewRaw.total_penalty_pts) ?? 0,
+          hard_block: str(previewRaw.hard_block),
+          note: str(previewRaw.note) ?? "",
+        }
+      : null,
+  };
+}
+
+function normalizePositions(value: unknown): RiskDeskPosition[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((p) => {
+    const row = p as Record<string, unknown>;
+    return {
+      symbol: str(row.symbol) ?? "?",
+      side: str(row.side) ?? "unknown",
+      leverage: num(row.leverage) ?? undefined,
+      pnl_pct: num(row.pnl_pct) ?? undefined,
+      in_profit: typeof row.in_profit === "boolean" ? row.in_profit : undefined,
+      unrealized_pnl_usd: num(row.unrealized_pnl_usd) ?? undefined,
+      r_multiple: num(row.r_multiple) ?? undefined,
+      journal_id: num(row.journal_id),
+      main_order_id: str(row.main_order_id),
+      profile: str(row.profile),
+      band_side: str(row.band_side),
+      band_range: str(row.band_range),
+      entry_price: num(row.entry_price),
+      stop_loss_price: num(row.stop_loss_price),
+      match_method: str(row.match_method),
+      position_id: str(row.position_id),
+      ccxt_symbol: str(row.ccxt_symbol),
+    };
+  });
+}
+
+export function normalizeRiskDesk(body: unknown): RiskDeskPayload {
+  if (!body || typeof body !== "object") return { ...EMPTY_RISK_DESK };
+  const raw = body as Record<string, unknown>;
+  const accountView = normalizeBookView(raw);
+  const gates = accountView.gates;
+  const positions = accountView.positions;
+
+  const limitsRaw = (raw.limits ?? {}) as Record<string, unknown>;
+  const globalRaw = raw.global as Record<string, unknown> | null;
+  const profilesRaw = raw.profiles as Record<string, unknown> | null;
+  const profiles: Record<string, RiskProfileDesk> = {};
+  if (profilesRaw && typeof profilesRaw === "object") {
+    for (const [key, value] of Object.entries(profilesRaw)) {
+      if (!value || typeof value !== "object") continue;
+      const book = normalizeBookView(value as Record<string, unknown>);
+      profiles[key] = { ...book, profile: str((value as Record<string, unknown>).profile) ?? key };
+    }
+  }
 
   const events = Array.isArray(raw.recent_events)
     ? raw.recent_events.map((e) => {
@@ -268,6 +353,8 @@ export function normalizeRiskDesk(body: unknown): RiskDeskPayload {
   const summary = str(raw.gates_summary);
   const gatesSummary: RiskGatesSummary =
     summary === "blocked" || summary === "warn" ? summary : "clear";
+  const tradeMgmtRaw = raw.trade_mgmt as Record<string, unknown> | null;
+  const previewRaw = raw.next_same_side_preview as Record<string, unknown> | null;
 
   return {
     ready: Boolean(raw.ready),
@@ -278,25 +365,49 @@ export function normalizeRiskDesk(body: unknown): RiskDeskPayload {
     risk_percent: num(raw.risk_percent) ?? 1,
     risk_unit_usd: num(raw.risk_unit_usd),
     r_definition: str(raw.r_definition) ?? EMPTY_RISK_DESK.r_definition,
-    max_open_trades: num(raw.max_open_trades) ?? 0,
-    slots_used: num(raw.slots_used) ?? 0,
-    slots_free: num(raw.slots_free),
-    fill_ratio: num(raw.fill_ratio) ?? 0,
-    net_side: str(raw.net_side) ?? "flat",
-    book_state: str(raw.book_state),
+    max_open_trades: accountView.max_open_trades,
+    slots_used: accountView.slots_used,
+    slots_free: accountView.slots_free,
+    fill_ratio: accountView.fill_ratio,
+    net_side: accountView.net_side,
+    book_state: accountView.book_state ?? null,
     gates_summary: gatesSummary,
     gates,
-    same_side: {
-      count: num(sameRaw.count) ?? 0,
-      avg_r: num(sameRaw.avg_r),
-      worst_r: num(sameRaw.worst_r),
-      best_r: num(sameRaw.best_r),
-    },
+    same_side: accountView.same_side,
     limits: {
       avg_down_hard_reject_r: num(limitsRaw.avg_down_hard_reject_r) ?? 1,
       worst_leg_hard_reject_r: num(limitsRaw.worst_leg_hard_reject_r) ?? 1.5,
     },
     positions,
+    unknown_positions: normalizePositions(raw.unknown_positions),
+    profiles,
+    global: globalRaw
+      ? {
+          max_open_trades: num(globalRaw.max_open_trades) ?? accountView.max_open_trades,
+          slots_used: num(globalRaw.slots_used) ?? accountView.slots_used,
+          slots_free: num(globalRaw.slots_free),
+          fill_ratio: num(globalRaw.fill_ratio) ?? accountView.fill_ratio,
+          net_side: str(globalRaw.net_side) ?? accountView.net_side,
+          gates_summary: (["blocked", "warn"].includes(String(globalRaw.gates_summary))
+            ? globalRaw.gates_summary
+            : "clear") as RiskGatesSummary,
+          gates: Array.isArray(globalRaw.gates)
+            ? globalRaw.gates.map((g) => {
+                const row = g as Record<string, unknown>;
+                return {
+                  id: str(row.id) ?? "gate",
+                  label: str(row.label) ?? "Gate",
+                  short: str(row.short) ?? "G",
+                  status: (["ok", "warn", "block"].includes(String(row.status))
+                    ? row.status
+                    : "ok") as RiskGateStatus,
+                  detail: str(row.detail) ?? "",
+                };
+              })
+            : [],
+          unknown_count: num(globalRaw.unknown_count) ?? 0,
+        }
+      : null,
     next_same_side_preview: previewRaw
       ? {
           side: str(previewRaw.side) ?? "long",
