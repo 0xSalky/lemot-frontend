@@ -9,12 +9,18 @@ import RPerformanceCore from "@/components/3_organisms/RiskDeskPanel/RPerformanc
 import { useThemeColor, useThemeTokens, type ThemeTokens } from "@/components/ui/theme-color";
 import { usePageVisible } from "@/hooks/usePageVisible";
 import { fetchRiskDesk } from "@/services/riskDesk";
+import { fetchSignalsRuntime } from "@/services/signalsRuntime";
 import type {
   RiskDeskPayload,
   RiskDeskPosition,
   RiskGatesSummary,
   RiskProfileDesk,
+  TradeMgmtDesk,
 } from "@/types/riskDeskTypes";
+import {
+  UNAVAILABLE_SIGNALS_RUNTIME,
+  type SignalsRuntimeControls,
+} from "@/types/signalsRuntimeTypes";
 import { Box, Flex, Spinner, Stack, Text } from "@chakra-ui/react";
 import { keyframes } from "@emotion/react";
 import { useEffect, useMemo, useState } from "react";
@@ -51,6 +57,18 @@ function formatR(value: number | null | undefined): string {
   if (value == null || !Number.isFinite(value)) return "—";
   const sign = value > 0 ? "+" : "";
   return `${sign}${value.toFixed(2)}R`;
+}
+
+function profileSignalsEnabled(
+  profile: "a" | "b",
+  controls: SignalsRuntimeControls,
+): boolean {
+  if (!controls.signals_enabled) return false;
+  return profile === "a" ? controls.a_enabled : controls.b_enabled;
+}
+
+function isProfileB(position: { profile?: string | null }): boolean {
+  return String(position.profile ?? "").trim().toLowerCase() === "b";
 }
 
 function gateSummaryColor(tokens: ThemeTokens, summary: RiskGatesSummary): string {
@@ -263,6 +281,9 @@ export default function RiskDeskPanel({ active }: { active: boolean }) {
   const tokens = useThemeTokens(palette);
   const pageVisible = usePageVisible();
   const [desk, setDesk] = useState<RiskDeskPayload | null>(null);
+  const [runtime, setRuntime] = useState<SignalsRuntimeControls>(
+    UNAVAILABLE_SIGNALS_RUNTIME,
+  );
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -270,11 +291,14 @@ export default function RiskDeskPanel({ active }: { active: boolean }) {
     let cancelled = false;
 
     const poll = () => {
-      void fetchRiskDesk().then((data) => {
-        if (cancelled) return;
-        setDesk(data);
-        setLoading(false);
-      });
+      void Promise.all([fetchRiskDesk(), fetchSignalsRuntime()]).then(
+        ([deskData, runtimeData]) => {
+          if (cancelled) return;
+          setDesk(deskData);
+          setRuntime(runtimeData);
+          setLoading(false);
+        },
+      );
     };
 
     const initial = window.setTimeout(poll, 0);
@@ -291,12 +315,41 @@ export default function RiskDeskPanel({ active }: { active: boolean }) {
     [desk?.global?.gates, desk?.gates],
   );
 
+  const showProfileB = profileSignalsEnabled("b", runtime);
+
   const profileDesks = useMemo(() => {
     if (!desk?.profiles) return [] as RiskProfileDesk[];
     return (["a", "b"] as const)
+      .filter((key) => key !== "b" || showProfileB)
       .map((key) => desk.profiles[key])
       .filter((p): p is RiskProfileDesk => Boolean(p));
-  }, [desk?.profiles]);
+  }, [desk?.profiles, showProfileB]);
+
+  const deskForPerformance = useMemo((): RiskDeskPayload | null => {
+    if (!desk) return null;
+    if (showProfileB) return desk;
+    return {
+      ...desk,
+      positions: desk.positions.filter((pos) => !isProfileB(pos)),
+    };
+  }, [desk, showProfileB]);
+
+  const tradeMgmtForUi = useMemo((): TradeMgmtDesk | null => {
+    if (!desk?.trade_mgmt) return null;
+    if (showProfileB) return desk.trade_mgmt;
+    return {
+      ...desk.trade_mgmt,
+      positions: desk.trade_mgmt.positions.filter((pos) => !isProfileB(pos)),
+    };
+  }, [desk?.trade_mgmt, showProfileB]);
+
+  const recentEvents = useMemo(() => {
+    if (!desk) return [];
+    if (showProfileB) return desk.recent_events;
+    return desk.recent_events.filter(
+      (event) => String(event.profile ?? "").trim().toLowerCase() !== "b",
+    );
+  }, [desk, showProfileB]);
 
   const liveColor =
     loading && !desk
@@ -393,7 +446,7 @@ export default function RiskDeskPanel({ active }: { active: boolean }) {
         ) : desk ? (
           <Stack gap="0" position="relative">
             <Box px="4" pt="4" pb="0">
-              <RPerformanceCore desk={desk} tokens={tokens} />
+              <RPerformanceCore desk={deskForPerformance ?? desk} tokens={tokens} />
             </Box>
 
             <Box px="4" py="4" borderBottomWidth="1px" borderColor={tokens.panelBorder}>
@@ -404,9 +457,9 @@ export default function RiskDeskPanel({ active }: { active: boolean }) {
               />
             </Box>
 
-            {desk.trade_mgmt ? (
+            {tradeMgmtForUi ? (
               <Box px="4" py="4" borderBottomWidth="1px" borderColor={tokens.panelBorder}>
-                <TradeMgmtCore tradeMgmt={desk.trade_mgmt} tokens={tokens} />
+                <TradeMgmtCore tradeMgmt={tradeMgmtForUi} tokens={tokens} />
               </Box>
             ) : null}
 
@@ -535,13 +588,13 @@ export default function RiskDeskPanel({ active }: { active: boolean }) {
               >
                 RECENT RISK EVENTS
               </Text>
-              {desk.recent_events.length === 0 ? (
+              {recentEvents.length === 0 ? (
                 <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
                   // no recent trade blocks or opens
                 </Text>
               ) : (
                 <Stack gap="1">
-                  {desk.recent_events.map((event, index) => {
+                  {recentEvents.map((event, index) => {
                     const kindColor =
                       event.kind === "opened"
                         ? tokens.tagGreen.color
