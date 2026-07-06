@@ -42,3 +42,5 @@ export const NATR_MULTIPLIER = "2.5";
 
 /** Main content column: full width on small screens, max half viewport on large. */
 export const CONTENT_MAX_WIDTH = { base: "100%", lg: "50vw" } as const;
+
+export const IS_PROFILE_B_ACTIVE = false;

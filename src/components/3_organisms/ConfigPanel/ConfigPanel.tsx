@@ -1,7 +1,6 @@
 "use client";
 
 import ConfirmDialog from "@/components/2_molecules/ConfirmDialog/ConfirmDialog";
-import AccountBalance from "@/components/3_organisms/AccountBalance/AccountBalance";
 import SignalsConfigPanel from "@/components/3_organisms/SignalsConfigPanel/SignalsConfigPanel";
 import { useTradingAccess } from "@/components/3_organisms/TradingAccess/TradingAccess";
 import { ColorModeButton } from "@/components/ui/color-mode";
@@ -16,6 +15,7 @@ import {
 } from "@/services/scannerUtils";
 import { Box, Button, Separator, Stack, Text } from "@chakra-ui/react";
 import { useCallback, useState, type ReactNode } from "react";
+import { IS_PROFILE_B_ACTIVE } from "@/services/config";
 
 type PendingScan = {
   profile: ScannerProfile;
@@ -210,35 +210,25 @@ export default function ConfigPanel({ scannerLoading, onScannerRefresh }: Config
             />
           </ConfigSection>
 
-          <Separator borderColor={tokens.panelBorder} />
-
-          <ConfigSection title="Scalper">
-            <ScannerConfigPanel
-              profile="b"
-              loading={scannerLoading.b}
-              onRefresh={() => onScannerRefresh("b")}
-              onRequestScan={() => setPendingScan({ profile: "b", withAi: false })}
-              onRequestScanWithAi={() => setPendingScan({ profile: "b", withAi: true })}
-            />
-          </ConfigSection>
+          {IS_PROFILE_B_ACTIVE && (
+            <>
+              <Separator borderColor={tokens.panelBorder} />
+              <ConfigSection title="Scalper">
+                <ScannerConfigPanel
+                  profile="b"
+                  loading={scannerLoading.b}
+                  onRefresh={() => onScannerRefresh("b")}
+                  onRequestScan={() => setPendingScan({ profile: "b", withAi: false })}
+                  onRequestScanWithAi={() => setPendingScan({ profile: "b", withAi: true })}
+                />
+              </ConfigSection>
+            </>
+          )}
 
           <Separator borderColor={tokens.panelBorder} />
 
           <ConfigSection title="Signals (live)">
             <SignalsConfigPanel tokens={tokens} />
-          </ConfigSection>
-
-          <Separator borderColor={tokens.panelBorder} />
-
-          <ConfigSection title="Account">
-            <Stack
-              direction={{ base: "column", sm: "row" }}
-              gap="3"
-              align={{ base: "stretch", sm: "center" }}
-              flexWrap="wrap"
-            >
-              <AccountBalance />
-            </Stack>
           </ConfigSection>
 
           {!serverConfigured ? (

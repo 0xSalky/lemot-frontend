@@ -8,7 +8,7 @@ import RiskDeskPanel from "@/components/3_organisms/RiskDeskPanel/RiskDeskPanel"
 import TradeJournalPanel from "@/components/3_organisms/TradeJournalPanel/TradeJournalPanel";
 import ResponsiveCardGrid from "@/components/4_layouts/ResponsiveCardGrid/ResponsiveCardGrid";
 import { useThemeColor, useThemeTokens } from "@/components/ui/theme-color";
-import { TRADING_PAIRS, CONTENT_MAX_WIDTH } from "@/services/config";
+import { TRADING_PAIRS, CONTENT_MAX_WIDTH, IS_PROFILE_B_ACTIVE } from "@/services/config";
 import type { ScannerLatestBatchFetchResult } from "@/types/scannerTypes";
 import {
     fetchLatestScannerBatch,
@@ -120,8 +120,10 @@ const HomePage = () => {
                     pb="1"
                 >
                     <ThemeTabTrigger value="pairs">Pairs</ThemeTabTrigger>
-                    <ThemeTabTrigger value="scanner-a">Day</ThemeTabTrigger>
-                    <ThemeTabTrigger value="scanner-b">Scalper</ThemeTabTrigger>
+                    <ThemeTabTrigger value="scanner-a">Scanner</ThemeTabTrigger>
+                    {IS_PROFILE_B_ACTIVE && (
+                        <ThemeTabTrigger value="scanner-b">Scanner B</ThemeTabTrigger>
+                    )}
                     <ThemeTabTrigger value="scanner-chat">AI Chat</ThemeTabTrigger>
                     <ThemeTabTrigger value="signals">Signals</ThemeTabTrigger>
                     <ThemeTabTrigger value="risk">Risk desk</ThemeTabTrigger>
@@ -148,16 +150,18 @@ const HomePage = () => {
                     ) : null}
                 </Tabs.Content>
 
-                <Tabs.Content value="scanner-b">
-                    {activeTab === "scanner-b" ? (
-                        <ScannerResults
-                            profile="b"
-                            latestBatch={batches.b}
-                            loading={loading.b}
-                            active
-                        />
-                    ) : null}
-                </Tabs.Content>
+                {IS_PROFILE_B_ACTIVE && (
+                    <Tabs.Content value="scanner-b">
+                        {activeTab === "scanner-b" ? (
+                            <ScannerResults
+                                profile="b"
+                                latestBatch={batches.b}
+                                loading={loading.b}
+                                active
+                            />
+                        ) : null}
+                    </Tabs.Content>
+                )}
 
                 <Tabs.Content value="scanner-chat">
                     <ScannerChat />

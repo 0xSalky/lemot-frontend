@@ -34,6 +34,7 @@ import {
     Textarea,
 } from "@chakra-ui/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { IS_PROFILE_B_ACTIVE } from "@/services/config";
 
 function ProfileChip({
     label,
@@ -136,8 +137,8 @@ function MessageBubble({
         message.context?.model === "haiku" || message.context?.model === "sonnet"
             ? message.context.model
             : message.context?.model === "claude-sonnet-5"
-              ? "sonnet"
-              : null;
+                ? "sonnet"
+                : null;
 
     return (
         <Flex direction="column" align={isUser ? "flex-end" : "flex-start"} w="100%">
@@ -528,13 +529,15 @@ const ScannerChat = () => {
                         onClick={() => setSelectedProfile("a")}
                         tokens={tokens}
                     />
-                    <ProfileChip
-                        label="B"
-                        active={activeProfile === "b"}
-                        disabled={Boolean(lockedProfile && lockedProfile !== "b")}
-                        onClick={() => setSelectedProfile("b")}
-                        tokens={tokens}
-                    />
+                    {IS_PROFILE_B_ACTIVE && (
+                        <ProfileChip
+                            label="B"
+                            active={activeProfile === "b"}
+                            disabled={Boolean(lockedProfile && lockedProfile !== "b")}
+                            onClick={() => setSelectedProfile("b")}
+                            tokens={tokens}
+                        />
+                    )}
                     <Box w="1px" h="5" bg={tokens.panelBorder} />
                     <ProfileChip
                         label="Haiku"

@@ -3,6 +3,7 @@
 import type { ThemeTokens } from "@/components/ui/theme-color";
 import { useThemeColor } from "@/components/ui/theme-color";
 import { toaster } from "@/components/ui/toaster";
+import { IS_PROFILE_B_ACTIVE } from "@/services/config";
 import {
   fetchSignalsRuntime,
   patchSignalsRuntime,
@@ -226,63 +227,67 @@ export default function SignalsConfigPanel({ tokens }: SignalsConfigPanelProps) 
           }
         />
 
-        <RuntimeSwitchRow
-          label="Profile B signals"
-          description="5m fractal band alerts from the profile B scanner universe (scalping)."
-          checked={controls.b_enabled}
-          disabled={panelDisabled || masterOff}
-          colorPalette="orange"
-          tokens={tokens}
-          onChange={(next) => void update({ b_enabled: next }, "b_enabled")}
-        />
+        {IS_PROFILE_B_ACTIVE && (
+          <>
+            <RuntimeSwitchRow
+              label="Profile B signals"
+              description="5m fractal band alerts from the profile B scanner universe (scalping)."
+              checked={controls.b_enabled}
+              disabled={panelDisabled || masterOff}
+              colorPalette="orange"
+              tokens={tokens}
+              onChange={(next) => void update({ b_enabled: next }, "b_enabled")}
+            />
 
-        <RuntimeSwitchRow
-          label="Profile B AI entry advice"
-          description="Sonnet follow-up after profile B alerts only — independent from A."
-          checked={controls.b_entry_advice_enabled}
-          disabled={bOff}
-          colorPalette="blue"
-          tokens={tokens}
-          onChange={(next) =>
-            void update({ b_entry_advice_enabled: next }, "b_entry_advice_enabled")
-          }
-        />
+            <RuntimeSwitchRow
+              label="Profile B AI entry advice"
+              description="Sonnet follow-up after profile B alerts only — independent from A."
+              checked={controls.b_entry_advice_enabled}
+              disabled={bOff}
+              colorPalette="blue"
+              tokens={tokens}
+              onChange={(next) =>
+                void update({ b_entry_advice_enabled: next }, "b_entry_advice_enabled")
+              }
+            />
 
-        <RuntimeSwitchRow
-          label="Profile B auto trade"
-          description="Execute on Bybit when profile B AI confirms ENTER (max 4% SL, min 1:2 RR)."
-          checked={controls.b_auto_trade_enabled}
-          disabled={bOff || !controls.b_entry_advice_enabled}
-          colorPalette="green"
-          tokens={tokens}
-          onChange={(next) =>
-            void update({ b_auto_trade_enabled: next }, "b_auto_trade_enabled")
-          }
-        />
+            <RuntimeSwitchRow
+              label="Profile B auto trade"
+              description="Execute on Bybit when profile B AI confirms ENTER (max 4% SL, min 1:2 RR)."
+              checked={controls.b_auto_trade_enabled}
+              disabled={bOff || !controls.b_entry_advice_enabled}
+              colorPalette="green"
+              tokens={tokens}
+              onChange={(next) =>
+                void update({ b_auto_trade_enabled: next }, "b_auto_trade_enabled")
+              }
+            />
 
-        <RuntimeSwitchRow
-          label="Profile B trade management"
-          description="Adjust SL/TP on open B-profile positions (scalping, 5m fractals)."
-          checked={controls.b_trade_mgmt_enabled}
-          disabled={bOff}
-          colorPalette="purple"
-          tokens={tokens}
-          onChange={(next) =>
-            void update({ b_trade_mgmt_enabled: next }, "b_trade_mgmt_enabled")
-          }
-        />
+            <RuntimeSwitchRow
+              label="Profile B trade management"
+              description="Adjust SL/TP on open B-profile positions (scalping, 5m fractals)."
+              checked={controls.b_trade_mgmt_enabled}
+              disabled={bOff}
+              colorPalette="purple"
+              tokens={tokens}
+              onChange={(next) =>
+                void update({ b_trade_mgmt_enabled: next }, "b_trade_mgmt_enabled")
+              }
+            />
 
-        <RuntimeSwitchRow
-          label="Profile B trade mgmt auto"
-          description="Apply B-profile SL/TP moves on Bybit without Telegram confirm."
-          checked={controls.b_trade_mgmt_auto_enabled}
-          disabled={bOff || !controls.b_trade_mgmt_enabled}
-          colorPalette="green"
-          tokens={tokens}
-          onChange={(next) =>
-            void update({ b_trade_mgmt_auto_enabled: next }, "b_trade_mgmt_auto_enabled")
-          }
-        />
+            <RuntimeSwitchRow
+              label="Profile B trade mgmt auto"
+              description="Apply B-profile SL/TP moves on Bybit without Telegram confirm."
+              checked={controls.b_trade_mgmt_auto_enabled}
+              disabled={bOff || !controls.b_trade_mgmt_enabled}
+              colorPalette="green"
+              tokens={tokens}
+              onChange={(next) =>
+                void update({ b_trade_mgmt_auto_enabled: next }, "b_trade_mgmt_auto_enabled")
+              }
+            />
+          </>
+        )}
       </Stack>
 
       {controls.updated_at ? (
