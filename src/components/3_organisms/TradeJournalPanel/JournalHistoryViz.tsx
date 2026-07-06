@@ -191,6 +191,10 @@ export default function JournalHistoryViz({
     () => computeClosedStats(trades.filter((t) => t.profile === "b")),
     [trades],
   );
+  const hasProfileBTrades = useMemo(
+    () => trades.some((t) => t.profile === "b"),
+    [trades],
+  );
 
   const alien = tokens.tagAccent.color;
   const linkedClosed = trades.filter((t) => t.lifecycle === "closed" && t.journal_id != null).length;
@@ -246,10 +250,12 @@ export default function JournalHistoryViz({
           </Stack>
         </Flex>
 
-        <Flex gap="3" flexWrap="wrap">
-          <ProfileStrip profile="a" stats={profileA} tokens={tokens} />
-          <ProfileStrip profile="b" stats={profileB} tokens={tokens} />
-        </Flex>
+        {hasProfileBTrades ? (
+          <Flex gap="3" flexWrap="wrap">
+            <ProfileStrip profile="a" stats={profileA} tokens={tokens} />
+            <ProfileStrip profile="b" stats={profileB} tokens={tokens} />
+          </Flex>
+        ) : null}
 
         {overall.closed_trades === 0 ? (
           <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted} textAlign="center">
