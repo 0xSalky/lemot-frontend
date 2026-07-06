@@ -7,8 +7,16 @@ import {
   type ScannerChartTimeframe,
 } from "@/types/scannerTypes";
 import { fetchScannerChart, chartSpotPrice, formatLevelPrice, formatRefreshCountdown, SCANNER_CHART_REFRESH_MS } from "@/services/scannerUtils";
+import ChartPriceModeToggle from "@/components/2_molecules/ChartPriceModeToggle/ChartPriceModeToggle";
+import { ChartCandleSvg } from "@/components/2_molecules/ChartCandleSvg/ChartCandleSvg";
 import { usePageVisible } from "@/hooks/usePageVisible";
 import type { ThemeTokens } from "@/components/ui/theme-color";
+import {
+  candleGeometries,
+  chartCandleTheme,
+  computeOhlcBounds,
+  type ChartPriceMode,
+} from "@/utils/chartOhlc";
 import { Box, Flex, NativeSelect, Text } from "@chakra-ui/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -50,12 +58,7 @@ function computeChartBounds(
   candles: ScannerChartPayload["candles"],
   spot: number,
 ): [number, number] {
-  const closes = candles.map((c) => c.close);
-  const rawMin = Math.min(...closes, spot);
-  const rawMax = Math.max(...closes, spot);
-  const span = Math.max(rawMax - rawMin, rawMin * 0.004, 1e-12);
-  const pad = span * 0.04;
-  return [rawMin - pad, rawMax + pad];
+  return computeOhlcBounds(candles, spot);
 }
 
 function visibleCandlesForZoom(
@@ -103,6 +106,8 @@ function ScannerSetupChart({
   const nextRefreshAtRef = useRef(0);
   const [containerWidth, setContainerWidth] = useState(0);
   const [timeframe, setTimeframe] = useState<ScannerChartTimeframe>(defaultTimeframe);
+  const [priceMode, setPriceMode] = useState<ChartPriceMode>("candle");
+  const candleTheme = useMemo(() => chartCandleTheme(tokens), [tokens]);
   const [zoomStep, setZoomStep] = useState(0);
   const [refreshCountdownSec, setRefreshCountdownSec] = useState(
     Math.ceil(CHART_REFRESH_MS / 1000),
@@ -275,9 +280,11 @@ function ScannerSetupChart({
 
     const spotY = yAt(spotPrice);
     const lastY = yAt(spotPrice);
+    const candleShapes = candleGeometries(visibleCandles, xAt, yAt, innerW, innerH);
 
     return {
       closePoints,
+      candleShapes,
       bandRects,
       spotY,
       spotPrice,
@@ -326,7 +333,7 @@ function ScannerSetupChart({
           </Box>
         ) : (
           <>
-            <Flex position="absolute" top="2" left="2" zIndex={5} gap="1" align="center">
+            <Flex position="absolute" top="2" left="2" zIndex={5} gap="1" align="center" flexWrap="wrap">
               <Box
                 as="button"
                 aria-label="Zoom in"
@@ -384,6 +391,11 @@ function ScannerSetupChart({
               >
                 {formatZoomLabel(zoomStep)}
               </Text>
+              <ChartPriceModeToggle
+                mode={priceMode}
+                onChange={setPriceMode}
+                tokens={tokens}
+              />
             </Flex>
 
             <Flex
@@ -464,24 +476,28 @@ function ScannerSetupChart({
                 width={chartWidth}
                 height={CHART_HEIGHT}
                 viewBox={`0 0 ${chartWidth} ${CHART_HEIGHT}`}
-                preserveAspectRatio="none"
+                preserveAspectRatio={priceMode === "candle" ? "xMidYMid meet" : "none"}
                 style={{
                   display: "block",
                   width: "100%",
                   height: CHART_HEIGHT,
                 }}
                 role="img"
-                aria-label={`${timeframe} price chart for ${symbol} with HTF bands`}
+                aria-label={`${timeframe} ${priceMode} price chart for ${symbol} with HTF bands`}
               >
-                <polyline
-                  points={plot.closePoints}
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.25"
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                  opacity={0.95}
-                />
+                {priceMode === "candle" ? (
+                  <ChartCandleSvg candles={plot.candleShapes} theme={candleTheme} />
+                ) : (
+                    <polyline
+                      points={plot.closePoints}
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.25"
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
+                      opacity={0.95}
+                    />
+                  )}
 
                 <line
                   x1={PAD_X}

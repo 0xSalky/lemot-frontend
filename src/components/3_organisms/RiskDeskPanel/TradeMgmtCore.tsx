@@ -80,6 +80,12 @@ function ExitChip({
   );
 }
 
+function milestoneLegendLabel(m: TradeMgmtMilestone): string {
+  if (m.kind === "tp") return `TP ${m.r}R`;
+  if (m.lock_r != null) return `lock +${m.lock_r}R @${m.r}R`;
+  return m.label;
+}
+
 function RRail({
   pos,
   tokens,
@@ -100,7 +106,8 @@ function RRail({
     progress.target_tp_rr != null ? Math.min(100, (progress.target_tp_rr / scale) * 100) : null;
 
   return (
-    <Box position="relative" h="3.5rem" mt="2" mb="1">
+    <Stack gap="1.5" mt="2" mb="1">
+      <Box position="relative" h="3rem" px="1">
       <Box
         position="absolute"
         left="0"
@@ -144,6 +151,7 @@ function RRail({
           top="50%"
           transform="translate(-50%, -50%)"
           zIndex={2}
+          title={milestoneLegendLabel(m)}
         >
           <Box
             w={m.kind === "tp" ? "10px" : "8px"}
@@ -154,19 +162,6 @@ function RRail({
             bg={m.reached ? milestoneColor(tokens, m, accent) : tokens.panelBg}
             boxShadow={m.reached ? `0 0 10px ${milestoneColor(tokens, m, accent)}` : undefined}
           />
-          <Text
-            position="absolute"
-            top="-1.1rem"
-            left="50%"
-            transform="translateX(-50%)"
-            fontFamily="mono"
-            fontSize="0.45rem"
-            color={milestoneColor(tokens, m, accent)}
-            whiteSpace="nowrap"
-            letterSpacing="0.06em"
-          >
-            {m.kind === "tp" ? `TP ${m.r}R` : m.label}
-          </Text>
         </Box>
       ))}
       <Box
@@ -182,7 +177,7 @@ function RRail({
         zIndex={3}
         animation={`${corePulse} 2.2s ease-in-out infinite`}
       />
-      <Flex justify="space-between" position="absolute" bottom="-0.1rem" left="0" right="0">
+      <Flex justify="space-between" position="absolute" bottom="0" left="0" right="0">
         <Text fontFamily="mono" fontSize="0.45rem" color={tokens.panelMuted}>
           0R
         </Text>
@@ -190,7 +185,20 @@ function RRail({
           {scale}R max
         </Text>
       </Flex>
-    </Box>
+      </Box>
+
+      <Flex gap="2" flexWrap="wrap" fontFamily="mono" fontSize="2xs">
+        {progress.milestones.map((m) => (
+          <Text
+            key={`legend-${m.id}`}
+            color={milestoneColor(tokens, m, accent)}
+            opacity={m.reached ? 1 : 0.85}
+          >
+            {milestoneLegendLabel(m)}
+          </Text>
+        ))}
+      </Flex>
+    </Stack>
   );
 }
 

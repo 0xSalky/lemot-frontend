@@ -1,6 +1,14 @@
 "use client";
 
 import type { ThemeTokens } from "@/components/ui/theme-color";
+import ChartPriceModeToggle from "@/components/2_molecules/ChartPriceModeToggle/ChartPriceModeToggle";
+import { ChartCandleSvg } from "@/components/2_molecules/ChartCandleSvg/ChartCandleSvg";
+import {
+  candleGeometries,
+  chartCandleTheme,
+  computeOhlcBounds,
+  type ChartPriceMode,
+} from "@/utils/chartOhlc";
 import {
   deltaTone,
   formatBarTime,
@@ -95,7 +103,10 @@ function visibleBarsForZoom(bars: FootprintMergedBar[], zoomScale: number): Foot
   return bars.slice(bars.length - visibleCount);
 }
 
-function computePriceBounds(closes: number[], spot: number): [number, number] {
+function computePriceBounds(closes: number[], spot: number, bars: FootprintMergedBar[]): [number, number] {
+  if (bars.length > 0) {
+    return computeOhlcBounds(bars, spot, 0.04, 0.002);
+  }
   const rawMin = Math.min(...closes, spot);
   const rawMax = Math.max(...closes, spot);
   const span = Math.max(rawMax - rawMin, rawMin * 0.002, 1e-12);
@@ -141,6 +152,8 @@ export default function FootprintPairChart({
   const [width, setWidth] = useState(0);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [zoomStep, setZoomStep] = useState(0);
+  const [priceMode, setPriceMode] = useState<ChartPriceMode>("candle");
+  const candleTheme = useMemo(() => chartCandleTheme(tokens), [tokens]);
 
   const viewKey = useMemo(
     () => `${timeframe}:${bars.length}:${bars.at(-1)?.time ?? 0}`,
@@ -180,7 +193,7 @@ export default function FootprintPairChart({
           ? livePrice
           : 0;
     const closes = visible.map((b) => b.close);
-    const [baseMin, baseMax] = computePriceBounds(closes, spotPrice);
+    const [baseMin, baseMax] = computePriceBounds(closes, spotPrice, visible);
     const [minPrice, maxPrice] = applyZoomBounds(baseMin, baseMax, zoomScale, spotPrice);
     const priceSpan = Math.max(maxPrice - minPrice, 1e-12);
 
@@ -273,6 +286,7 @@ export default function FootprintPairChart({
       .join(" ");
 
     const barWidth = Math.max(2, innerW / Math.max(visible.length, 1) - 1);
+    const candleShapes = candleGeometries(visible, xAt, clampYPrice, innerW, priceInnerH);
 
     const bandRects = bands.flatMap((band, i) => {
       const low = Math.min(band.low, band.high);
@@ -297,6 +311,7 @@ export default function FootprintPairChart({
       chartWidth,
       visible,
       closePoints,
+      candleShapes,
       cvdPoints,
       oiPoints,
       bandRects,
@@ -353,7 +368,7 @@ export default function FootprintPairChart({
       bg={embedded ? "transparent" : tokens.panelBg}
     >
       <Box position="relative" h={`${TOTAL_HEIGHT}px`} overflow="hidden">
-        <Flex position="absolute" top="2" left="2" zIndex={5} gap="1" align="center">
+        <Flex position="absolute" top="2" left="2" zIndex={5} gap="1" align="center" flexWrap="wrap">
           <Box
             as="button"
             aria-label="Zoom in"
@@ -410,6 +425,11 @@ export default function FootprintPairChart({
           >
             {formatZoomLabel(zoomStep)}
           </Text>
+          <ChartPriceModeToggle
+            mode={priceMode}
+            onChange={setPriceMode}
+            tokens={tokens}
+          />
         </Flex>
 
         {(onTimeframeChange != null || refreshCountdownSec != null) ? (
@@ -476,8 +496,8 @@ export default function FootprintPairChart({
               width="100%"
               height={TOTAL_HEIGHT}
               viewBox={`0 0 ${plot.chartWidth} ${TOTAL_HEIGHT}`}
-              preserveAspectRatio="none"
-              aria-label={`${timeframe} footprint chart${symbol ? ` for ${symbol}` : ""}`}
+              preserveAspectRatio={priceMode === "candle" ? "xMidYMid meet" : "none"}
+              aria-label={`${timeframe} ${priceMode} footprint chart${symbol ? ` for ${symbol}` : ""}`}
               onMouseLeave={() => setHoverIndex(null)}
             >
               <defs>
@@ -574,12 +594,16 @@ export default function FootprintPairChart({
                   />
                 ))}
 
-                <polyline
-                  fill="none"
-                  stroke={tokens.panelHeading}
-                  strokeWidth={1.5}
-                  points={plot.closePoints}
-                />
+                {priceMode === "candle" ? (
+                  <ChartCandleSvg candles={plot.candleShapes} theme={candleTheme} />
+                ) : (
+                  <polyline
+                    fill="none"
+                    stroke={tokens.panelHeading}
+                    strokeWidth={1.5}
+                    points={plot.closePoints}
+                  />
+                )}
 
                 <line
                   x1={PAD_X}

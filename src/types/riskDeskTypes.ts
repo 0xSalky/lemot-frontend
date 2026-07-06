@@ -165,6 +165,12 @@ export interface RiskDeskGlobalView {
   unknown_count: number;
 }
 
+export interface RiskDeskSignalsRuntime {
+  signals_enabled: boolean;
+  a_enabled: boolean;
+  b_enabled: boolean;
+}
+
 export interface RiskDeskPayload {
   ready: boolean;
   fetched_at: string | null;
@@ -194,6 +200,7 @@ export interface RiskDeskPayload {
   next_same_side_preview: RiskNextPreview | null;
   recent_events: RiskDeskEvent[];
   trade_mgmt: TradeMgmtDesk | null;
+  signals_runtime: RiskDeskSignalsRuntime | null;
 }
 
 export const EMPTY_RISK_DESK: RiskDeskPayload = {
@@ -222,6 +229,7 @@ export const EMPTY_RISK_DESK: RiskDeskPayload = {
   next_same_side_preview: null,
   recent_events: [],
   trade_mgmt: null,
+  signals_runtime: null,
 };
 
 function num(value: unknown): number | null {
@@ -356,6 +364,7 @@ export function normalizeRiskDesk(body: unknown): RiskDeskPayload {
     summary === "blocked" || summary === "warn" ? summary : "clear";
   const tradeMgmtRaw = raw.trade_mgmt as Record<string, unknown> | null;
   const previewRaw = raw.next_same_side_preview as Record<string, unknown> | null;
+  const runtimeRaw = raw.signals_runtime as Record<string, unknown> | null;
 
   return {
     ready: Boolean(raw.ready),
@@ -423,6 +432,13 @@ export function normalizeRiskDesk(body: unknown): RiskDeskPayload {
       : null,
     recent_events: events,
     trade_mgmt: tradeMgmtRaw ? normalizeTradeMgmtDesk(tradeMgmtRaw) : null,
+    signals_runtime: runtimeRaw
+      ? {
+          signals_enabled: Boolean(runtimeRaw.signals_enabled),
+          a_enabled: Boolean(runtimeRaw.a_enabled),
+          b_enabled: Boolean(runtimeRaw.b_enabled),
+        }
+      : null,
   };
 }
 
