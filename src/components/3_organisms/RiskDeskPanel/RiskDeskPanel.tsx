@@ -250,7 +250,7 @@ function ProfileBookSection({
       ) : (
         <Box px="4" pb="3">
           <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
-            // flat — {profileDesk.slots_free ?? profileDesk.max_open_trades} profile slot(s) free
+            {`// flat — ${profileDesk.slots_free ?? profileDesk.max_open_trades} profile slot(s) free`}
           </Text>
         </Box>
       )}
@@ -288,15 +288,18 @@ export default function RiskDeskPanel({ active }: { active: boolean }) {
 
   const gateNodes = useMemo(
     () => (desk?.global?.gates ?? desk?.gates ?? []).map(riskGateToMatrixNode),
-    [desk?.global?.gates, desk?.gates],
+    [desk],
   );
 
   const profileDesks = useMemo(() => {
     if (!desk?.profiles) return [] as RiskProfileDesk[];
     return (["a", "b"] as const)
       .map((key) => desk.profiles[key])
-      .filter((p): p is RiskProfileDesk => Boolean(p));
-  }, [desk?.profiles]);
+      .filter(
+        (p): p is RiskProfileDesk =>
+          Boolean(p) && (p.max_open_trades ?? 0) > 0,
+      );
+  }, [desk]);
 
   const liveColor =
     loading && !desk
@@ -488,7 +491,7 @@ export default function RiskDeskPanel({ active }: { active: boolean }) {
             {desk.positions.length === 0 && profileDesks.every((p) => p.positions.length === 0) ? (
               <Box px="4" py="3" borderBottomWidth="1px" borderColor={tokens.panelBorder}>
                 <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
-                  // flat account — profiles have free slots
+                  {"// flat account — profiles have free slots"}
                 </Text>
               </Box>
             ) : null}
@@ -537,7 +540,7 @@ export default function RiskDeskPanel({ active }: { active: boolean }) {
               </Text>
               {desk.recent_events.length === 0 ? (
                 <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
-                  // no recent trade blocks or opens
+                  {"// no recent trade blocks or opens"}
                 </Text>
               ) : (
                 <Stack gap="1">
