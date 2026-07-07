@@ -16,6 +16,7 @@ import {
     orderedBands,
     prefetchScannerCharts,
     scannerProfileLabel,
+    SCANNER_CHART_REFRESH_MS,
     SCANNER_PROFILE_CHART_TIMEFRAME,
     scannerSymbolToBase,
     setupsFromScannerView,
@@ -27,7 +28,7 @@ import SetupHeaderTags from "@/components/2_molecules/SetupHeaderTags/SetupHeade
 import DaySetupChart from "@/components/3_organisms/DaySetupChart/DaySetupChart";
 import { useThemeColor, useThemeTokens, type ThemeTokens } from "@/components/ui/theme-color";
 import { themedPanelStyle } from "@/components/ui/themed-panel";
-import { expectsFootprintSymbol, hasFootprintChartCandles, hasOrderflowData, hasScannerChartCandles } from "@/services/footprintUtils";
+import { expectsFootprintSymbol, hasFootprintChartCandles, hasOrderflowData, hasScannerChartCandles, isFootprintCollectorOnline } from "@/services/footprintUtils";
 import { Box, Badge, Flex, Stack, Text } from "@chakra-ui/react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -235,6 +236,7 @@ function SetupCard({
     footprintPair,
     managedChart,
     managedChartLoading,
+    chartRefreshCountdownSec,
 }: {
     setup: ScannerSetupRow;
     tokens: ThemeTokens;
@@ -243,6 +245,7 @@ function SetupCard({
     footprintPair?: FootprintPairView | null;
     managedChart?: ScannerChartPayload | null;
     managedChartLoading?: boolean;
+    chartRefreshCountdownSec?: number;
 }) {
     const bands = orderedBands(Array.isArray(setup.bands) ? setup.bands : []);
 
@@ -271,6 +274,8 @@ function SetupCard({
                 defaultChartTimeframe={defaultChartTimeframe}
                 managedChart={managedChart}
                 managedChartLoading={managedChartLoading}
+                footprintRefreshCountdownSec={chartRefreshCountdownSec}
+                managedRefreshCountdownSec={chartRefreshCountdownSec}
             />
             <Stack gap="3" mt="2">
                 {bands.map((band, bandIdx) => (
@@ -365,6 +370,9 @@ const ScannerResults = ({ profile, scannerView, loading = false }: ScannerResult
     const defaultChartTimeframe = SCANNER_PROFILE_CHART_TIMEFRAME[profile];
     const [prefetchedCharts, setPrefetchedCharts] = useState<Record<string, ScannerChartPayload | null>>({});
     const [chartsLoading, setChartsLoading] = useState(false);
+    const chartRefreshSec = Math.ceil(SCANNER_CHART_REFRESH_MS / 1000);
+    const [refreshDeadline, setRefreshDeadline] = useState(() => Date.now() + SCANNER_CHART_REFRESH_MS);
+    const [chartRefreshCountdownSec, setChartRefreshCountdownSec] = useState(chartRefreshSec);
 
     const batchMeta =
         scannerView != null && !("message" in scannerView) ? scannerView.batch : null;
@@ -406,6 +414,24 @@ const ScannerResults = ({ profile, scannerView, loading = false }: ScannerResult
         scannerView != null && !("message" in scannerView) ? scannerView.batch?.id : null;
 
     useEffect(() => {
+        if (!loading && scannerView != null && !("message" in scannerView)) {
+            setRefreshDeadline(Date.now() + SCANNER_CHART_REFRESH_MS);
+            setChartRefreshCountdownSec(chartRefreshSec);
+        }
+    }, [batchId, chartRefreshSec, loading, profile, scannerView]);
+
+    useEffect(() => {
+        const tick = () => {
+            setChartRefreshCountdownSec(
+                Math.max(0, Math.ceil((refreshDeadline - Date.now()) / 1000)),
+            );
+        };
+        tick();
+        const id = window.setInterval(tick, 1000);
+        return () => window.clearInterval(id);
+    }, [refreshDeadline]);
+
+    useEffect(() => {
         setPrefetchedCharts({});
     }, [batchId, profile]);
 
@@ -435,9 +461,7 @@ const ScannerResults = ({ profile, scannerView, loading = false }: ScannerResult
         };
     }, [defaultChartTimeframe, loading, missingChartKey, profile]);
 
-    const wsConnected =
-        footprintHealth &&
-        Number((footprintHealth as { ws_connected?: number }).ws_connected) === 1;
+    const wsConnected = isFootprintCollectorOnline(footprintHealth, footprintPairs);
 
     if (loading && scannerView == null) {
         return (
@@ -510,6 +534,7 @@ const ScannerResults = ({ profile, scannerView, loading = false }: ScannerResult
                             footprintPair={footprintPair}
                             managedChart={managedChart}
                             managedChartLoading={chartsLoading && managedChart == null}
+                            chartRefreshCountdownSec={chartRefreshCountdownSec}
                         />
                     );
                 })}

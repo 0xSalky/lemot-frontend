@@ -11,6 +11,7 @@ import {
   formatFootprintLiqLine,
   formatFootprintStatsLine,
   formatStructureBiasLabel,
+  isFootprintCollectorOnline,
   signalSeverityPalette,
   structureBiasPalette,
   trendEmoji,
@@ -232,8 +233,10 @@ export default function FootprintPanel() {
     });
   }, [payload]);
 
-  const wsConnected =
-    payload?.health && Number((payload.health as { ws_connected?: number }).ws_connected) === 1;
+  const wsConnected = isFootprintCollectorOnline(
+    payload?.health as Record<string, unknown> | null | undefined,
+    payload?.pairs,
+  );
 
   return (
     <Stack gap="4">

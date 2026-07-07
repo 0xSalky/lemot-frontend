@@ -159,6 +159,29 @@ export function hasScannerChartCandles(chart?: ScannerChartPayload | null): bool
   return (chart?.candles ?? []).some(hasRealOhlc);
 }
 
+const COLLECTOR_STALE_MS = 5 * 60 * 1000;
+
+/** Online when WS flag is set, or collector wrote a recent message / has live orderflow. */
+export function isFootprintCollectorOnline(
+  health?: Record<string, unknown> | null,
+  pairsByBase?: Record<string, FootprintPairView>,
+): boolean {
+  if (health && Number(health.ws_connected) === 1) return true;
+
+  const lastMessageAt = health?.last_message_at;
+  if (typeof lastMessageAt === "string" && lastMessageAt) {
+    const ageMs = Date.now() - Date.parse(lastMessageAt);
+    if (Number.isFinite(ageMs) && ageMs >= 0 && ageMs < COLLECTOR_STALE_MS) {
+      return true;
+    }
+  }
+
+  if (pairsByBase) {
+    return Object.values(pairsByBase).some((pair) => hasFootprintData(pair));
+  }
+  return false;
+}
+
 /** True when merged bars or chart payload include real OHLC range (not flat mark-only dots). */
 export function hasFootprintChartCandles(pair?: FootprintPairView | null): boolean {
   const merged = pair?.merged ?? [];
