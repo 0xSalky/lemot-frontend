@@ -16,6 +16,9 @@ import type {
 /** Auto-refresh interval for scanner/footprint charts (5 minutes). */
 export const SCANNER_CHART_REFRESH_MS = 5 * 60 * 1000;
 
+/** Live mark + forming-bar patch between full candle reloads. */
+export const SCANNER_CHART_LIVE_PATCH_MS = 30 * 1000;
+
 const CHART_CLIENT_CACHE_TTL_MS = 300_000;
 
 export function formatRefreshCountdown(seconds: number): string {
@@ -239,13 +242,79 @@ export function chartSpotPrice(
   return 0;
 }
 
+function mergeChartLivePatch(
+  existing: ScannerChartPayload | null | undefined,
+  patch: ScannerChartPayload,
+): ScannerChartPayload {
+  if (!existing?.candles?.length) return patch;
+
+  const candles = [...existing.candles];
+  const patchCandles = patch.candles ?? [];
+  const patchLast = patchCandles[patchCandles.length - 1];
+  const baseLast = candles[candles.length - 1];
+
+  if (patchLast && baseLast && patchLast.time === baseLast.time) {
+    candles[candles.length - 1] = patchLast;
+  } else if (patchLast && baseLast && patchLast.time > baseLast.time) {
+    candles.push(patchLast);
+  } else if (patchCandles.length > candles.length) {
+    return patch;
+  }
+
+  return {
+    ...existing,
+    symbol: patch.symbol ?? existing.symbol,
+    timeframe: patch.timeframe ?? existing.timeframe,
+    last: patch.last ?? existing.last,
+    candles,
+  };
+}
+
 export async function fetchScannerChart(
   symbol: string,
   timeframe: ScannerChartTimeframe = "1h",
-  options?: { bustCache?: boolean },
+  options?: { bustCache?: boolean; patch?: boolean },
 ): Promise<ScannerChartPayload | null> {
   const key = `${symbol.trim()}|${timeframe}`;
   if (!symbol.trim()) return null;
+
+  if (options?.patch) {
+    const params = new URLSearchParams({
+      symbol: symbol.trim(),
+      timeframe,
+      patch: "1",
+    });
+    const res = await apiFetch(`/api/scanner/chart?${params.toString()}`, {
+      cache: "no-store",
+    });
+    const raw = await res.text();
+    let data: unknown;
+    try {
+      data = raw ? JSON.parse(raw) : {};
+    } catch {
+      return null;
+    }
+    if (!res.ok) return null;
+    const payload = data as Partial<ScannerChartPayload>;
+    if (!Array.isArray(payload.candles) || payload.candles.length === 0) {
+      return null;
+    }
+    const normalized = {
+      symbol: payload.symbol ?? symbol.trim(),
+      timeframe: payload.timeframe ?? timeframe,
+      last: typeof payload.last === "number" ? payload.last : undefined,
+      candles: payload.candles,
+    };
+    const cached = chartPayloadCache.get(key);
+    const merged = cached
+      ? mergeChartLivePatch(await cached.promise.catch(() => null), normalized)
+      : normalized;
+    chartPayloadCache.set(key, {
+      expiresAt: Date.now() + CHART_CLIENT_CACHE_TTL_MS,
+      promise: Promise.resolve(merged),
+    });
+    return merged;
+  }
 
   if (options?.bustCache) {
     chartPayloadCache.delete(key);
@@ -383,6 +452,61 @@ export async function prefetchScannerCharts(
         expiresAt: Date.now() + CHART_CLIENT_CACHE_TTL_MS,
         promise: Promise.resolve(payload),
       });
+    }
+  }
+  return out;
+}
+
+/** Ticker + last-bar patch only — cheap between full OHLCV reloads. */
+export async function patchScannerCharts(
+  symbols: readonly string[],
+  timeframe: ScannerChartTimeframe,
+): Promise<Record<string, ScannerChartPayload | null>> {
+  const unique = [...new Set(symbols.map((s) => s.trim()).filter(Boolean))];
+  if (unique.length === 0) return {};
+
+  if (unique.length === 1) {
+    const symbol = unique[0];
+    const chart = await fetchScannerChart(symbol, timeframe, { patch: true });
+    return { [symbol]: chart };
+  }
+
+  const params = new URLSearchParams({
+    symbols: unique.join(","),
+    timeframe,
+    patch: "1",
+  });
+  const res = await apiFetch(`/api/scanner/charts?${params.toString()}`, {
+    cache: "no-store",
+  });
+  const raw = await res.text();
+  let data: unknown;
+  try {
+    data = raw ? JSON.parse(raw) : {};
+  } catch {
+    return Object.fromEntries(unique.map((symbol) => [symbol, null]));
+  }
+  if (!res.ok) {
+    return Object.fromEntries(unique.map((symbol) => [symbol, null]));
+  }
+
+  const record = data as { charts?: Record<string, ScannerChartPayload | null> };
+  const charts = record.charts ?? {};
+  const out: Record<string, ScannerChartPayload | null> = {};
+  for (const symbol of unique) {
+    const payload = charts[symbol] ?? null;
+    out[symbol] = payload;
+    if (payload?.candles?.length) {
+      const key = `${symbol}|${timeframe}`;
+      const existing = chartPayloadCache.get(key);
+      const merged = existing
+        ? mergeChartLivePatch(await existing.promise.catch(() => null), payload)
+        : payload;
+      chartPayloadCache.set(key, {
+        expiresAt: Date.now() + CHART_CLIENT_CACHE_TTL_MS,
+        promise: Promise.resolve(merged),
+      });
+      out[symbol] = merged;
     }
   }
   return out;
