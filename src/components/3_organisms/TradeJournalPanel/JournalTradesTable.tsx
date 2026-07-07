@@ -97,57 +97,119 @@ function TradeCard({
         />
       ) : null}
 
+      <Box display={{ base: "block", md: "none" }}>
+        <Stack
+          gap="2"
+          px="3"
+          py="3"
+          borderLeftWidth="3px"
+          borderLeftColor={sideColor}
+        >
+          <Flex align="flex-start" justify="space-between" gap="3">
+            <Stack gap="0.5" minW="0" flex="1">
+              <Flex align="center" gap="2" minW="0">
+                <ProfileLetter profile={trade.profile} tokens={tokens} size="xs" />
+                <Text
+                  fontFamily="mono"
+                  fontSize="sm"
+                  fontWeight="bold"
+                  color={tokens.title}
+                  letterSpacing="0.04em"
+                  lineHeight="1.2"
+                >
+                  {trade.base}
+                </Text>
+                <Text
+                  fontFamily="mono"
+                  fontSize="2xs"
+                  color={sideColor}
+                  fontWeight="bold"
+                  letterSpacing="0.08em"
+                  flexShrink={0}
+                >
+                  {side.toUpperCase()}
+                </Text>
+              </Flex>
+              <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
+                {formatShortDate(trade.closed_at ?? trade.executed_at)}
+              </Text>
+            </Stack>
+            <Stack align="flex-end" gap="1" flexShrink={0}>
+              <Text
+                fontFamily="mono"
+                fontSize="lg"
+                fontWeight="bold"
+                color={rColor(tokens, rVal)}
+                lineHeight="1"
+              >
+                {formatR(rVal)}
+              </Text>
+              <Box
+                px="1.5"
+                py="0.5"
+                fontFamily="mono"
+                fontSize="2xs"
+                fontWeight="bold"
+                letterSpacing="0.08em"
+                borderWidth="1px"
+                borderColor={outcome.border}
+                color={outcome.color}
+                bg={outcome.bg}
+                rounded="sm"
+              >
+                {outcome.label}
+              </Box>
+            </Stack>
+          </Flex>
+          <Flex align="center" gap="1.5" flexWrap="wrap" fontFamily="mono" fontSize="xs">
+            <Text color={tokens.panelBody}>{formatPrice(trade.entry_price)}</Text>
+            <Text color={tokens.panelMuted} fontSize="2xs">
+              →
+            </Text>
+            <Text color={tokens.panelHeading} fontWeight="semibold">
+              {formatPrice(trade.exit_price)}
+            </Text>
+          </Flex>
+          {trade.band_range ? (
+            <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted} lineClamp={2}>
+              <Box as="span" color={alien} fontWeight="semibold">
+                {trade.band_side ?? "—"}
+              </Box>{" "}
+              {trade.band_range}
+            </Text>
+          ) : null}
+        </Stack>
+      </Box>
+
       <Grid
-        templateColumns={{
-          base: "1fr auto",
-          md: "minmax(1.75rem,0.2fr) minmax(4.5rem,0.6fr) minmax(3.5rem,0.45fr) minmax(4.5rem,0.55fr) 1fr minmax(3.5rem,0.5fr) minmax(4rem,0.45fr)",
-        }}
-        gap={{ base: 2, md: 3 }}
+        display={{ base: "none", md: "grid" }}
+        templateColumns="minmax(1.75rem,0.2fr) minmax(4.5rem,0.6fr) minmax(3.5rem,0.45fr) minmax(4.5rem,0.55fr) 1fr minmax(3.5rem,0.5fr) minmax(4rem,0.45fr)"
+        gap={3}
         alignItems="center"
-        px={{ base: 3, md: 4 }}
+        px={4}
         py={3}
         borderLeftWidth="3px"
         borderLeftColor={sideColor}
       >
         {/* Profile */}
-        <Box display={{ base: "none", md: "block" }} textAlign="center">
+        <Box textAlign="center">
           <ProfileLetter profile={trade.profile} tokens={tokens} />
         </Box>
 
         {/* Pair */}
-        <Stack gap="0" minW="0">
-          <Flex align="center" gap="2" display={{ base: "flex", md: "none" }}>
-            <ProfileLetter profile={trade.profile} tokens={tokens} size="xs" />
-            <Text
-              fontFamily="mono"
-              fontSize="sm"
-              fontWeight="bold"
-              color={tokens.title}
-              letterSpacing="0.04em"
-              lineHeight="1.2"
-            >
-              {trade.base}
-            </Text>
-          </Flex>
-          <Text
-            display={{ base: "none", md: "block" }}
-            fontFamily="mono"
-            fontSize="sm"
-            fontWeight="bold"
-            color={tokens.title}
-            letterSpacing="0.04em"
-            lineHeight="1.2"
-          >
-            {trade.base}
-          </Text>
-          <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted} display={{ base: "block", md: "none" }}>
-            {formatShortDate(trade.closed_at ?? trade.executed_at)}
-          </Text>
-        </Stack>
-
-        {/* Side — desktop */}
         <Text
-          display={{ base: "none", md: "block" }}
+          fontFamily="mono"
+          fontSize="sm"
+          fontWeight="bold"
+          color={tokens.title}
+          letterSpacing="0.04em"
+          lineHeight="1.2"
+        >
+          {trade.base}
+        </Text>
+
+        {/* Side */}
+        <Text
           fontFamily="mono"
           fontSize="2xs"
           fontWeight="bold"
@@ -157,8 +219,8 @@ function TradeCard({
           {side.toUpperCase()}
         </Text>
 
-        {/* Outcome pill — desktop */}
-        <Box display={{ base: "none", md: "block" }}>
+        {/* Outcome pill */}
+        <Box>
           <Box
             as="span"
             display="inline-block"
@@ -181,15 +243,6 @@ function TradeCard({
         {/* Price journey */}
         <Stack gap="0.5" minW="0">
           <Flex align="center" gap="2" flexWrap="wrap">
-            <Text
-              display={{ base: "inline", md: "none" }}
-              fontFamily="mono"
-              fontSize="2xs"
-              color={sideColor}
-              fontWeight="bold"
-            >
-              {side.toUpperCase()}
-            </Text>
             <Text fontFamily="mono" fontSize="xs" color={tokens.panelBody}>
               {formatPrice(trade.entry_price)}
             </Text>
@@ -210,37 +263,20 @@ function TradeCard({
           ) : null}
         </Stack>
 
-        {/* R hero */}
-        <Stack align={{ base: "flex-end", md: "center" }} gap="0.5" minW="3.5rem">
-          <Text
-            fontFamily="mono"
-            fontSize={{ base: "xs", md: "sm" }}
-            fontWeight="semibold"
-            color={rColor(tokens, rVal)}
-            lineHeight="1"
-          >
-            {formatR(rVal)}
-          </Text>
-          <Box
-            display={{ base: "inline-block", md: "none" }}
-            px="1.5"
-            py="0.5"
-            fontFamily="mono"
-            fontSize="2xs"
-            fontWeight="bold"
-            borderWidth="1px"
-            borderColor={outcome.border}
-            color={outcome.color}
-            bg={outcome.bg}
-            rounded="sm"
-          >
-            {outcome.label}
-          </Box>
-        </Stack>
-
-        {/* Date — desktop */}
+        {/* R */}
         <Text
-          display={{ base: "none", md: "block" }}
+          fontFamily="mono"
+          fontSize="sm"
+          fontWeight="semibold"
+          color={rColor(tokens, rVal)}
+          lineHeight="1"
+          textAlign="center"
+        >
+          {formatR(rVal)}
+        </Text>
+
+        {/* Date */}
+        <Text
           fontFamily="mono"
           fontSize="2xs"
           color={tokens.panelMuted}
@@ -411,25 +447,30 @@ export default function JournalTradesTable({
   return (
     <Stack gap="0" position="relative">
       <Flex
-        px="4"
+        px={{ base: 3, md: 4 }}
         py="3"
         borderBottomWidth="1px"
         borderColor={tokens.panelBorder}
         align="center"
         justify="space-between"
         flexWrap="wrap"
-        gap="3"
+        gap="2"
         bg={tokens.tableHeaderBg}
       >
         <Text fontFamily="mono" fontSize="2xs" color={alien} letterSpacing="0.16em">
           ◈ TRADE LOG
         </Text>
-        <Flex gap="4">
+        <Flex gap={{ base: 3, md: 4 }}>
           {sortBtn("date", "RECENT")}
           {sortBtn("r", "BY R")}
           {sortBtn("symbol", "A→Z")}
         </Flex>
-        <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
+        <Text
+          fontFamily="mono"
+          fontSize="2xs"
+          color={tokens.panelMuted}
+          display={{ base: "none", sm: "block" }}
+        >
           {trades.length} closed · tap row for detail
         </Text>
       </Flex>
@@ -456,7 +497,7 @@ export default function JournalTradesTable({
         <Text textAlign="right">DATE</Text>
       </Grid>
 
-      <Stack gap="1" px="2" py="2">
+      <Stack gap="1" px={{ base: 1, md: 2 }} py="2">
         {sorted.map((trade, index) => {
           const rowKey = `${trade.journal_id ?? "x"}-${trade.base}-${trade.closed_at ?? index}`;
           return (
