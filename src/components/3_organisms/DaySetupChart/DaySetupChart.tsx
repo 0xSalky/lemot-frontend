@@ -135,8 +135,10 @@ export default function DaySetupChart({
     fpTimeframe === defaultFootprintTimeframe ? footprintPair : altTimeframePair;
   const showOrderflow = hasOrderflowData(pairForDisplay);
   const showFootprintLoading = expectsFootprint && footprintLoading && !showOrderflow;
-  const footprintSpotPrice =
-    pairForDisplay?.merged?.at(-1)?.close ?? price;
+  const footprintSpotPrice = chartSpotPrice(
+    pairForDisplay?.chart ?? null,
+    price,
+  );
   const restSpotPrice = chartSpotPrice(managedChart, price);
 
   if (showFootprintLoading) {

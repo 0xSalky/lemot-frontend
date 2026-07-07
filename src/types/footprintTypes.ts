@@ -151,6 +151,7 @@ export interface FootprintPairView {
   chart: {
     symbol: string;
     timeframe: string;
+    last?: number;
     candles: { time: number; open: number; high: number; low: number; close: number }[];
   } | null;
   merged: FootprintMergedBar[];

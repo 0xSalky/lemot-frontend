@@ -159,6 +159,9 @@ export async function fetchScannerChart(
       symbol: symbol.trim(),
       timeframe,
     });
+    if (options?.bustCache) {
+      params.set("fresh", "1");
+    }
     const res = await apiFetch(`/api/scanner/chart?${params.toString()}`, {
       cache: "no-store",
     });
@@ -229,6 +232,9 @@ export async function prefetchScannerCharts(
     symbols: unique.join(","),
     timeframe,
   });
+  if (options?.bustCache) {
+    params.set("fresh", "1");
+  }
   const res = await apiFetch(`/api/scanner/charts?${params.toString()}`, {
     cache: "no-store",
   });

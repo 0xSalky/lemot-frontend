@@ -17,6 +17,7 @@ export async function fetchFootprintView(
   options?: {
     timeframe?: FootprintTimeframe;
     profile?: FootprintProfile;
+    bustCache?: boolean;
   },
 ): Promise<FootprintViewPayload> {
   const key = [
@@ -24,6 +25,10 @@ export async function fetchFootprintView(
     options?.timeframe ?? "30m",
     [...symbols].sort().join(","),
   ].join("|");
+
+  if (options?.bustCache) {
+    footprintViewCache.delete(key);
+  }
 
   let pending = footprintViewCache.get(key);
   if (!pending) {
@@ -36,6 +41,9 @@ export async function fetchFootprintView(
       }
       if (options?.profile) {
         params.set("profile", options.profile);
+      }
+      if (options?.bustCache) {
+        params.set("fresh", "1");
       }
 
       const res = await apiFetch(`/api/footprint/view?${params.toString()}`, {

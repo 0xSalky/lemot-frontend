@@ -383,6 +383,7 @@ const ScannerResults = ({ profile, latestBatch, loading = false, active = true }
     const [footprintLoading, setFootprintLoading] = useState(false);
     const nextFootprintRefreshAtRef = useRef(0);
     const footprintLoadInFlight = useRef(false);
+    const pendingFootprintRefresh = useRef(false);
     const [footprintRefreshCountdownSec, setFootprintRefreshCountdownSec] = useState(
         Math.ceil(SCANNER_CHART_REFRESH_MS / 1000),
     );
@@ -453,12 +454,16 @@ const ScannerResults = ({ profile, latestBatch, loading = false, active = true }
 
         resetRefreshDeadline();
 
-        const loadFootprint = (initial: boolean) => {
-            if (footprintLoadInFlight.current) return;
+        const loadFootprint = (initial: boolean): Promise<void> => {
+            if (footprintLoadInFlight.current) {
+                pendingFootprintRefresh.current = true;
+                return Promise.resolve();
+            }
             footprintLoadInFlight.current = true;
-            void fetchFootprintView(symbols, {
+            return fetchFootprintView(symbols, {
                 profile,
                 timeframe: FOOTPRINT_PROFILE_DEFAULTS[profile].defaultTimeframe,
+                bustCache: !initial,
             })
                 .then((data) => {
                     if (!cancelled) {
@@ -472,14 +477,30 @@ const ScannerResults = ({ profile, latestBatch, loading = false, active = true }
                 .finally(() => {
                     footprintLoadInFlight.current = false;
                     if (!cancelled && initial) setFootprintLoading(false);
+                    if (!cancelled && pendingFootprintRefresh.current) {
+                        pendingFootprintRefresh.current = false;
+                        void loadFootprint(false);
+                    }
                 });
         };
 
-        loadFootprint(true);
-        const refreshId = window.setInterval(() => {
-            if (document.visibilityState !== "visible") return;
-            loadFootprint(false);
-        }, SCANNER_CHART_REFRESH_MS);
+        let refreshTimer: number | undefined;
+        const scheduleRefresh = () => {
+            refreshTimer = window.setTimeout(() => {
+                if (cancelled) return;
+                if (document.visibilityState !== "visible") {
+                    scheduleRefresh();
+                    return;
+                }
+                void loadFootprint(false).finally(() => {
+                    if (!cancelled) scheduleRefresh();
+                });
+            }, SCANNER_CHART_REFRESH_MS);
+        };
+
+        void loadFootprint(true).finally(() => {
+            if (!cancelled) scheduleRefresh();
+        });
 
         const tickId = window.setInterval(() => {
             const remaining = Math.max(
@@ -492,7 +513,8 @@ const ScannerResults = ({ profile, latestBatch, loading = false, active = true }
         return () => {
             cancelled = true;
             footprintLoadInFlight.current = false;
-            window.clearInterval(refreshId);
+            pendingFootprintRefresh.current = false;
+            if (refreshTimer != null) window.clearTimeout(refreshTimer);
             window.clearInterval(tickId);
         };
     }, [activeFootprintKey, pollingEnabled, profile]);
@@ -512,8 +534,8 @@ const ScannerResults = ({ profile, latestBatch, loading = false, active = true }
         resetRefreshDeadline();
         setManagedChartsLoading(true);
 
-        const loadCharts = (initial: boolean) => {
-            void prefetchScannerCharts(symbols, defaultChartTimeframe, { bustCache: !initial })
+        const loadCharts = (initial: boolean): Promise<void> =>
+            prefetchScannerCharts(symbols, defaultChartTimeframe, { bustCache: !initial })
                 .then((charts) => {
                     if (!cancelled) {
                         setManagedCharts(charts);
@@ -526,14 +548,24 @@ const ScannerResults = ({ profile, latestBatch, loading = false, active = true }
                 .finally(() => {
                     if (!cancelled && initial) setManagedChartsLoading(false);
                 });
+
+        let refreshTimer: number | undefined;
+        const scheduleRefresh = () => {
+            refreshTimer = window.setTimeout(() => {
+                if (cancelled) return;
+                if (document.visibilityState !== "visible") {
+                    scheduleRefresh();
+                    return;
+                }
+                void loadCharts(false).finally(() => {
+                    if (!cancelled) scheduleRefresh();
+                });
+            }, SCANNER_CHART_REFRESH_MS);
         };
 
-        loadCharts(true);
-
-        const refreshId = window.setInterval(() => {
-            if (document.visibilityState !== "visible") return;
-            loadCharts(false);
-        }, SCANNER_CHART_REFRESH_MS);
+        void loadCharts(true).finally(() => {
+            if (!cancelled) scheduleRefresh();
+        });
 
         const tickId = window.setInterval(() => {
             const remaining = Math.max(
@@ -545,7 +577,7 @@ const ScannerResults = ({ profile, latestBatch, loading = false, active = true }
 
         return () => {
             cancelled = true;
-            window.clearInterval(refreshId);
+            if (refreshTimer != null) window.clearTimeout(refreshTimer);
             window.clearInterval(tickId);
         };
     }, [defaultChartTimeframe, pollingEnabled, restChartSymbolsKey]);

@@ -171,8 +171,8 @@ function ScannerSetupChart({
 
     resetRefreshDeadline();
 
-    const loadChart = (background: boolean) => {
-      void fetchScannerChart(symbol, timeframe, { bustCache: background })
+    const loadChart = (background: boolean): Promise<void> =>
+      fetchScannerChart(symbol, timeframe, { bustCache: background })
         .then((payload) => {
           if (cancelled) return;
           if (!payload) {
@@ -204,14 +204,24 @@ function ScannerSetupChart({
             });
           }
         });
+
+    let refreshTimer: number | undefined;
+    const scheduleRefresh = () => {
+      refreshTimer = window.setTimeout(() => {
+        if (cancelled) return;
+        if (document.visibilityState !== "visible") {
+          scheduleRefresh();
+          return;
+        }
+        void loadChart(true).finally(() => {
+          if (!cancelled) scheduleRefresh();
+        });
+      }, CHART_REFRESH_MS);
     };
 
-    loadChart(false);
-
-    const refreshId = window.setInterval(() => {
-      if (document.visibilityState !== "visible") return;
-      loadChart(true);
-    }, CHART_REFRESH_MS);
+    void loadChart(false).finally(() => {
+      if (!cancelled) scheduleRefresh();
+    });
 
     const tickId = window.setInterval(() => {
       const remaining = Math.max(
@@ -223,7 +233,7 @@ function ScannerSetupChart({
 
     return () => {
       cancelled = true;
-      window.clearInterval(refreshId);
+      if (refreshTimer != null) window.clearTimeout(refreshTimer);
       window.clearInterval(tickId);
     };
   }, [fetchKey, pageVisible, symbol, timeframe, useManagedChart]);

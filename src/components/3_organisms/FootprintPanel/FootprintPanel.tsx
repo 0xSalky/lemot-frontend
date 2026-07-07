@@ -188,11 +188,15 @@ export default function FootprintPanel() {
     setTimeframe(FOOTPRINT_PROFILE_DEFAULTS[profile].defaultTimeframe);
   }, [profile]);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (options?: { bustCache?: boolean }) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchFootprintView(FOOTPRINT_SYMBOLS, { profile, timeframe });
+      const data = await fetchFootprintView(FOOTPRINT_SYMBOLS, {
+        profile,
+        timeframe,
+        bustCache: options?.bustCache,
+      });
       setPayload(data);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load footprint");
@@ -206,8 +210,16 @@ export default function FootprintPanel() {
   }, [load]);
 
   useEffect(() => {
-    const id = window.setInterval(() => void load(), REFRESH_MS);
-    return () => window.clearInterval(id);
+    let refreshTimer: number | undefined;
+    const scheduleRefresh = () => {
+      refreshTimer = window.setTimeout(() => {
+        void load({ bustCache: true }).finally(() => scheduleRefresh());
+      }, REFRESH_MS);
+    };
+    scheduleRefresh();
+    return () => {
+      if (refreshTimer != null) window.clearTimeout(refreshTimer);
+    };
   }, [load]);
 
   const sortedSymbols = useMemo(() => {
