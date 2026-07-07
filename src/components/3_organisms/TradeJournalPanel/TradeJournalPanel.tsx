@@ -174,6 +174,7 @@ export default function TradeJournalPanel({ active = true, refreshKey = 0 }: Tra
           <Box px="4" py="4" borderBottomWidth="1px" borderColor={tokens.panelBorder}>
             <JournalHistoryViz
               trades={journal.trades}
+              growth={journal.growth}
               journalCount={journal.journal_count}
               closedPnlRows={journal.closed_pnl_rows}
               openCount={openCount}

@@ -75,12 +75,31 @@ export type TradeJournalRow = {
   position_id: string | null;
 };
 
+export type TradeJournalGrowthPoint = {
+  time: string | null;
+  trade_pnl_usd?: number | null;
+  trade_r?: number | null;
+  cumulative_pnl_usd: number;
+  cumulative_r?: number | null;
+  equity_usd?: number | null;
+  mark?: string | null;
+};
+
+export type TradeJournalGrowth = {
+  baseline_equity_usd: number | null;
+  cumulative_trading_pnl_usd: number;
+  open_unrealized_pnl_usd: number;
+  points: TradeJournalGrowthPoint[];
+};
+
 export type TradeJournalPayload = {
   ready: boolean;
   fetched_at: string | null;
   exchange_available: boolean;
   exchange_error: string | null;
   equity_usd: number | null;
+  r_definition: string | null;
+  growth: TradeJournalGrowth;
   journal_count: number;
   closed_pnl_rows: number;
   overall: TradeJournalStats;
@@ -105,12 +124,21 @@ export const EMPTY_TRADE_JOURNAL_STATS: TradeJournalStats = {
   worst_r: null,
 };
 
+export const EMPTY_TRADE_JOURNAL_GROWTH: TradeJournalGrowth = {
+  baseline_equity_usd: null,
+  cumulative_trading_pnl_usd: 0,
+  open_unrealized_pnl_usd: 0,
+  points: [],
+};
+
 export const EMPTY_TRADE_JOURNAL: TradeJournalPayload = {
   ready: false,
   fetched_at: null,
   exchange_available: false,
   exchange_error: null,
   equity_usd: null,
+  r_definition: null,
+  growth: { ...EMPTY_TRADE_JOURNAL_GROWTH },
   journal_count: 0,
   closed_pnl_rows: 0,
   overall: { ...EMPTY_TRADE_JOURNAL_STATS },
@@ -230,6 +258,33 @@ function normalizeTrade(raw: unknown): TradeJournalRow | null {
   };
 }
 
+function normalizeGrowth(raw: unknown): TradeJournalGrowth {
+  const row = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const pointsRaw = Array.isArray(row.points) ? row.points : [];
+  return {
+    baseline_equity_usd: num(row.baseline_equity_usd),
+    cumulative_trading_pnl_usd: num(row.cumulative_trading_pnl_usd) ?? 0,
+    open_unrealized_pnl_usd: num(row.open_unrealized_pnl_usd) ?? 0,
+    points: pointsRaw
+      .map((point) => {
+        if (!point || typeof point !== "object") return null;
+        const p = point as Record<string, unknown>;
+        const cumulative = num(p.cumulative_pnl_usd);
+        if (cumulative == null) return null;
+        return {
+          time: str(p.time),
+          trade_pnl_usd: num(p.trade_pnl_usd),
+          trade_r: num(p.trade_r),
+          cumulative_pnl_usd: cumulative,
+          cumulative_r: num(p.cumulative_r),
+          equity_usd: num(p.equity_usd),
+          mark: str(p.mark),
+        } as TradeJournalGrowthPoint;
+      })
+      .filter((p): p is TradeJournalGrowthPoint => p != null),
+  };
+}
+
 export function normalizeTradeJournal(raw: unknown): TradeJournalPayload {
   if (!raw || typeof raw !== "object") return { ...EMPTY_TRADE_JOURNAL };
   const body = raw as Record<string, unknown>;
@@ -244,6 +299,8 @@ export function normalizeTradeJournal(raw: unknown): TradeJournalPayload {
     exchange_available: Boolean(body.exchange_available),
     exchange_error: str(body.exchange_error),
     equity_usd: num(body.equity_usd),
+    r_definition: str(body.r_definition),
+    growth: normalizeGrowth(body.growth),
     journal_count: num(body.journal_count) ?? 0,
     closed_pnl_rows: num(body.closed_pnl_rows) ?? 0,
     overall: normalizeStats(body.overall),

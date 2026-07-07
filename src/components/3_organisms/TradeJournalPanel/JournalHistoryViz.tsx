@@ -1,5 +1,6 @@
 "use client";
 
+import JournalGrowthChart from "@/components/3_organisms/TradeJournalPanel/JournalGrowthChart";
 import {
   computeClosedStats,
   type ClosedHistoryStats,
@@ -7,7 +8,7 @@ import {
 import { formatR } from "@/components/3_organisms/TradeJournalPanel/journalFormat";
 import { PairLabel } from "@/components/3_organisms/TradeJournalPanel/profileBadge";
 import type { ThemeTokens } from "@/components/ui/theme-color";
-import type { TradeJournalRow } from "@/types/tradeJournalTypes";
+import type { TradeJournalGrowth, TradeJournalRow } from "@/types/tradeJournalTypes";
 import { Box, Flex, Grid, Stack, Text } from "@chakra-ui/react";
 import { keyframes } from "@emotion/react";
 import { useMemo } from "react";
@@ -171,12 +172,14 @@ function ProfileStrip({
 
 export default function JournalHistoryViz({
   trades,
+  growth,
   journalCount,
   closedPnlRows,
   openCount,
   tokens,
 }: {
   trades: TradeJournalRow[];
+  growth: TradeJournalGrowth;
   journalCount: number;
   closedPnlRows: number;
   openCount: number;
@@ -213,6 +216,8 @@ export default function JournalHistoryViz({
       bg={`linear-gradient(135deg, ${tokens.blockquoteBg} 0%, ${tokens.panelBg} 60%, ${tokens.blockquoteBg} 100%)`}
     >
       <Stack gap="4" position="relative" zIndex={1}>
+        <JournalGrowthChart growth={growth} tokens={tokens} />
+
         <Text
           fontFamily="mono"
           fontSize="2xs"

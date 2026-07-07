@@ -50,6 +50,12 @@ export function formatShortDateTime(iso: string | null): string {
   }
 }
 
+export function formatUsd(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value)) return "—";
+  const sign = value > 0 ? "+" : value < 0 ? "−" : "";
+  return `${sign}$${Math.abs(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+}
+
 export function formatPresetLabel(raw: string | null): string {
   if (!raw) return "—";
   return raw.replace(/_/g, "·").replace(/^natr /i, "NATR ");
