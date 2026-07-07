@@ -7,6 +7,8 @@ import type {
   ScannerChartTimeframe,
   ScannerLatestBatchFetchResult,
   ScannerLatestBatchPayload,
+  ScannerViewFetchResult,
+  ScannerViewPayload,
   ScannerLevelRow,
   ScannerSetupRow,
 } from "@/types/scannerTypes";
@@ -117,6 +119,76 @@ export async function fetchLatestScannerBatch(
   return {
     batch: payload.batch,
     setups: Array.isArray(payload.setups) ? payload.setups : [],
+  };
+}
+
+export async function fetchScannerView(
+  profile: ScannerProfile = DEFAULT_SCANNER_PROFILE,
+): Promise<ScannerViewFetchResult> {
+  const params = new URLSearchParams({ profile });
+  const res = await apiFetch(`/api/scanner/view?${params.toString()}`, {
+    cache: "no-store",
+  });
+  const raw = await res.text();
+  let data: unknown;
+  try {
+    data = raw ? JSON.parse(raw) : {};
+  } catch {
+    return { message: raw || String(res.status) };
+  }
+
+  if (!res.ok) {
+    return { message: apiErrorMessage(data, res.status) };
+  }
+
+  const payload = data as Partial<ScannerViewPayload>;
+  if (!payload.batch) {
+    return { message: "Invalid scanner view response" };
+  }
+
+  return {
+    profile: String(payload.profile ?? profile),
+    batch: payload.batch,
+    setups: Array.isArray(payload.setups) ? payload.setups : [],
+    charts:
+      payload.charts && typeof payload.charts === "object"
+        ? {
+            timeframe: String(payload.charts.timeframe ?? SCANNER_PROFILE_CHART_TIMEFRAME[profile]),
+            by_symbol:
+              payload.charts.by_symbol && typeof payload.charts.by_symbol === "object"
+                ? (payload.charts.by_symbol as Record<string, ScannerChartPayload | null>)
+                : {},
+          }
+        : {
+            timeframe: SCANNER_PROFILE_CHART_TIMEFRAME[profile],
+            by_symbol: {},
+          },
+    footprint:
+      payload.footprint && typeof payload.footprint === "object"
+        ? {
+            timeframe: String(payload.footprint.timeframe ?? SCANNER_PROFILE_CHART_TIMEFRAME[profile]),
+            health:
+              payload.footprint.health && typeof payload.footprint.health === "object"
+                ? payload.footprint.health
+                : null,
+            pairs_by_base:
+              payload.footprint.pairs_by_base && typeof payload.footprint.pairs_by_base === "object"
+                ? payload.footprint.pairs_by_base
+                : {},
+          }
+        : {
+            timeframe: SCANNER_PROFILE_CHART_TIMEFRAME[profile],
+            health: null,
+            pairs_by_base: {},
+          },
+    sections:
+      payload.sections && typeof payload.sections === "object"
+        ? payload.sections
+        : {
+            batch: { ok: true },
+            charts: { ok: true },
+            footprint: { ok: true },
+          },
   };
 }
 
@@ -621,6 +693,15 @@ export function setupsFromBatch(
 ): ScannerSetupRow[] {
   if (latestBatch == null || "message" in latestBatch) return [];
   const setups = latestBatch.setups;
+  if (!Array.isArray(setups)) return [];
+  return [...setups].sort((a, b) => a.rank - b.rank);
+}
+
+export function setupsFromScannerView(
+  scannerView: ScannerViewFetchResult | null,
+): ScannerSetupRow[] {
+  if (scannerView == null || "message" in scannerView) return [];
+  const setups = scannerView.setups;
   if (!Array.isArray(setups)) return [];
   return [...setups].sort((a, b) => a.rank - b.rank);
 }

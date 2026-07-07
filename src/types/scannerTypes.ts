@@ -1,3 +1,5 @@
+import type { FootprintPairView, FootprintTimeframe, FootprintViewPayload } from "@/types/footprintTypes";
+
 /**
  * Mirrors `scanner_v2_batches` / `scanner_v2_setups` from the Python backend.
  */
@@ -104,6 +106,42 @@ export interface ScannerLatestBatchPayload {
 
 export type ScannerLatestBatchFetchResult =
   | ScannerLatestBatchPayload
+  | { message: string };
+
+export interface ScannerViewSections {
+  batch: { ok: boolean };
+  charts: { ok: boolean; requested?: number; ok_count?: number; elapsed_ms?: number };
+  footprint: {
+    ok: boolean;
+    requested?: number;
+    ok_count?: number;
+    elapsed_ms?: number;
+    errors?: Record<string, string>;
+  };
+}
+
+export interface ScannerViewFootprintPayload {
+  timeframe: FootprintTimeframe | string;
+  health?: FootprintViewPayload["health"] | Record<string, unknown> | null;
+  pairs_by_base: Record<string, FootprintPairView>;
+}
+
+export interface ScannerViewChartsPayload {
+  timeframe: ScannerChartTimeframe | string;
+  by_symbol: Record<string, ScannerChartPayload | null>;
+}
+
+export interface ScannerViewPayload {
+  profile: string;
+  batch: ScannerBatchRow;
+  setups: ScannerSetupRow[];
+  charts: ScannerViewChartsPayload;
+  footprint: ScannerViewFootprintPayload;
+  sections: ScannerViewSections;
+}
+
+export type ScannerViewFetchResult =
+  | ScannerViewPayload
   | { message: string };
 
 export interface ScannerChartCandle {
