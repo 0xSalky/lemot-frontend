@@ -20,7 +20,7 @@ type PlotPoint = {
   y: number;
   value: number;
   time: string | null;
-  mark?: string | null;
+  mark: string | null;
   cumulativeR: number | null;
   index: number;
 };
@@ -69,7 +69,7 @@ export default function JournalGrowthChart({
       maxY += span * 0.08;
     }
 
-    const plotPoints: PlotPoint[] = growth.points
+    const plotPoints = growth.points
       .map((point, index) => {
         const value = yValue(point, useEquity);
         if (value == null) return null;
@@ -83,7 +83,7 @@ export default function JournalGrowthChart({
           y,
           value,
           time: point.time,
-          mark: point.mark,
+          mark: point.mark ?? null,
           cumulativeR: point.cumulative_r ?? null,
           index,
         };

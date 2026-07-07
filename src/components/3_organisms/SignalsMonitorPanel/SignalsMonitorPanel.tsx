@@ -981,11 +981,11 @@ export default function SignalsMonitorPanel({ active = true, refreshKey = 0 }: S
             borderColor={tokens.panelBorder}
             gap="2"
           >
-            <ThemeTabTrigger value="watchlist">
+            <ThemeTabTrigger value="watchlist" currentTab={feedTab}>
               Watchlist
               {watchlistEntries.length > 0 ? ` · ${watchlistEntries.length}` : ""}
             </ThemeTabTrigger>
-            <ThemeTabTrigger value="historic">
+            <ThemeTabTrigger value="historic" currentTab={feedTab}>
               Historic{historicEvents.length > 0 ? ` · ${historicEvents.length}` : ""}
             </ThemeTabTrigger>
           </Tabs.List>
