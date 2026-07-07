@@ -224,6 +224,7 @@ const HomePage = () => {
                         profile="a"
                         scannerView={views.a}
                         loading={loading.a}
+                        active={activeTab === "scanner-a"}
                         refreshKey={tabRefreshKeys["scanner-a"]}
                     />
                 </Tabs.Content>
@@ -234,6 +235,7 @@ const HomePage = () => {
                             profile="b"
                             scannerView={views.b}
                             loading={loading.b}
+                            active={activeTab === "scanner-b"}
                             refreshKey={tabRefreshKeys["scanner-b"]}
                         />
                     </Tabs.Content>

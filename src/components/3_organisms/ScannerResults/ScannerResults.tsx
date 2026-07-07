@@ -41,6 +41,7 @@ type ScannerResultsProps = {
     profile: ScannerProfile;
     scannerView: ScannerViewFetchResult | null;
     loading?: boolean;
+    active?: boolean;
     refreshKey?: number;
 };
 
@@ -366,10 +367,17 @@ function BandBlock({ band }: { band: ScannerBandRow }) {
     );
 }
 
-const ScannerResults = ({ profile, scannerView, loading = false, refreshKey = 0 }: ScannerResultsProps) => {
+const ScannerResults = ({
+    profile,
+    scannerView,
+    loading = false,
+    active = true,
+    refreshKey = 0,
+}: ScannerResultsProps) => {
     const { palette } = useThemeColor();
     const tokens = useThemeTokens(palette);
     const pageVisible = usePageVisible();
+    const polling = active && pageVisible;
     const setups = setupsFromScannerView(scannerView);
     const profileLabel = scannerProfileLabel(profile);
     const defaultChartTimeframe = SCANNER_PROFILE_CHART_TIMEFRAME[profile];
@@ -379,12 +387,16 @@ const ScannerResults = ({ profile, scannerView, loading = false, refreshKey = 0 
     const [refreshDeadline, setRefreshDeadline] = useState(() => Date.now() + SCANNER_CHART_REFRESH_MS);
     const [chartRefreshCountdownSec, setChartRefreshCountdownSec] = useState(chartRefreshSec);
     const nextFullRefreshAtRef = useRef(refreshDeadline);
+    const fullRefreshRunningRef = useRef(false);
+    const patchRunningRef = useRef(false);
 
     const chartSymbols = useMemo(
         () => setups.map((setup) => setup.symbol),
         [setups],
     );
     const chartSymbolsKey = chartSymbols.slice().sort().join(",");
+    const chartSymbolsRef = useRef(chartSymbols);
+    chartSymbolsRef.current = chartSymbols;
 
     const batchMeta =
         scannerView != null && !("message" in scannerView) ? scannerView.batch : null;
@@ -446,7 +458,7 @@ const ScannerResults = ({ profile, scannerView, loading = false, refreshKey = 0 
     }, [refreshDeadline]);
 
     useEffect(() => {
-        if (loading || !pageVisible || !chartSymbolsKey) return;
+        if (loading || !polling || !chartSymbolsKey) return;
 
         let cancelled = false;
         let refreshTimer: number | undefined;
@@ -459,7 +471,12 @@ const ScannerResults = ({ profile, scannerView, loading = false, refreshKey = 0 
                     scheduleFullRefresh();
                     return;
                 }
-                void prefetchScannerCharts(chartSymbols, defaultChartTimeframe, { bustCache: true })
+                if (fullRefreshRunningRef.current) {
+                    scheduleFullRefresh();
+                    return;
+                }
+                fullRefreshRunningRef.current = true;
+                void prefetchScannerCharts(chartSymbolsRef.current, defaultChartTimeframe, { bustCache: true })
                     .then((charts) => {
                         if (cancelled) return;
                         setPrefetchedCharts((prev) => {
@@ -477,6 +494,7 @@ const ScannerResults = ({ profile, scannerView, loading = false, refreshKey = 0 
                         console.warn("[scanner charts] full refresh failed", { profile });
                     })
                     .finally(() => {
+                        fullRefreshRunningRef.current = false;
                         if (!cancelled) scheduleFullRefresh();
                     });
             }, delay);
@@ -488,24 +506,27 @@ const ScannerResults = ({ profile, scannerView, loading = false, refreshKey = 0 
             if (refreshTimer != null) window.clearTimeout(refreshTimer);
         };
     }, [
-        chartSymbols,
         chartSymbolsKey,
         defaultChartTimeframe,
         loading,
-        pageVisible,
+        polling,
         profile,
         refreshKey,
     ]);
 
     useEffect(() => {
-        if (loading || !pageVisible || !chartSymbolsKey) return;
+        if (loading || !polling || !chartSymbolsKey) return;
 
         let cancelled = false;
         const patchLive = () => {
             if (cancelled || document.visibilityState !== "visible") return;
-            void patchScannerCharts(chartSymbols, defaultChartTimeframe)
+            if (fullRefreshRunningRef.current || patchRunningRef.current) return;
+            patchRunningRef.current = true;
+            void patchScannerCharts(chartSymbolsRef.current, defaultChartTimeframe)
                 .then((charts) => {
                     if (cancelled) return;
+                    const updates = Object.values(charts).some(Boolean);
+                    if (!updates) return;
                     setPrefetchedCharts((prev) => {
                         const next = { ...prev };
                         for (const [symbol, chart] of Object.entries(charts)) {
@@ -516,17 +537,20 @@ const ScannerResults = ({ profile, scannerView, loading = false, refreshKey = 0 
                 })
                 .catch(() => {
                     console.warn("[scanner charts] live patch failed", { profile });
+                })
+                .finally(() => {
+                    patchRunningRef.current = false;
                 });
         };
 
-        const initial = window.setTimeout(patchLive, 0);
+        const initial = window.setTimeout(patchLive, SCANNER_CHART_LIVE_PATCH_MS);
         const id = window.setInterval(patchLive, SCANNER_CHART_LIVE_PATCH_MS);
         return () => {
             cancelled = true;
             window.clearTimeout(initial);
             window.clearInterval(id);
         };
-    }, [chartSymbols, chartSymbolsKey, defaultChartTimeframe, loading, pageVisible, profile, refreshKey]);
+    }, [chartSymbolsKey, defaultChartTimeframe, loading, polling, profile, refreshKey]);
 
     useEffect(() => {
         setPrefetchedCharts({});

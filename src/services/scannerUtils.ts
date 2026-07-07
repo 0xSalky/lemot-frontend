@@ -227,6 +227,19 @@ const chartPayloadCache = new Map<
   { expiresAt: number; promise: Promise<ScannerChartPayload | null> }
 >();
 
+const chartsBatchInflight = new Map<
+  string,
+  Promise<Record<string, ScannerChartPayload | null>>
+>();
+
+function chartsBatchInflightKey(
+  symbols: readonly string[],
+  timeframe: ScannerChartTimeframe,
+  mode: "full" | "patch",
+): string {
+  return `${mode}|${timeframe}|${[...symbols].sort().join(",")}`;
+}
+
 /** Prefer fresh chart mark/close over stale scanner-batch setup price. */
 export function chartSpotPrice(
   chart: ScannerChartPayload | null | undefined,
@@ -383,78 +396,97 @@ export async function prefetchScannerCharts(
     return { [symbol]: chart };
   }
 
-  if (options?.bustCache) {
-    for (const symbol of unique) {
-      chartPayloadCache.delete(`${symbol}|${timeframe}`);
-    }
-  } else {
-    const allCached = unique.every((symbol) => {
-      const cached = chartPayloadCache.get(`${symbol}|${timeframe}`);
-      return cached && Date.now() < cached.expiresAt;
-    });
-    if (allCached) {
-      const entries = await Promise.all(
-        unique.map(
-          async (symbol) =>
-            [symbol, await fetchScannerChart(symbol, timeframe)] as const,
-        ),
-      );
-      return Object.fromEntries(entries);
-    }
-  }
-
-  const params = new URLSearchParams({
-    symbols: unique.join(","),
+  const inflightKey = chartsBatchInflightKey(
+    unique,
     timeframe,
-  });
-  if (options?.bustCache) {
-    params.set("fresh", "1");
-  }
-  const res = await apiFetch(`/api/scanner/charts?${params.toString()}`, {
-    cache: "no-store",
-  });
-  const raw = await res.text();
-  let data: unknown;
-  try {
-    data = raw ? JSON.parse(raw) : {};
-  } catch {
-    console.warn("[scanner charts] non-JSON response", {
-      symbols: unique,
-      timeframe,
-      raw,
-    });
-    return Object.fromEntries(unique.map((symbol) => [symbol, null]));
-  }
-  if (!res.ok) {
-    console.warn("[scanner charts] request failed", {
-      symbols: unique,
-      timeframe,
-      status: res.status,
-      data,
-    });
-    return Object.fromEntries(unique.map((symbol) => [symbol, null]));
-  }
+    options?.bustCache ? "full" : "full",
+  );
+  const pending = chartsBatchInflight.get(inflightKey);
+  if (pending) return pending;
 
-  const record = data as {
-    charts?: Record<string, ScannerChartPayload | null>;
-  };
-  const charts = record.charts ?? {};
-  const out: Record<string, ScannerChartPayload | null> = {};
-  for (const symbol of unique) {
-    const payload = charts[symbol] ?? null;
-    out[symbol] = payload;
-    if (
-      payload &&
-      Array.isArray(payload.candles) &&
-      payload.candles.length > 0
-    ) {
-      chartPayloadCache.set(`${symbol}|${timeframe}`, {
-        expiresAt: Date.now() + CHART_CLIENT_CACHE_TTL_MS,
-        promise: Promise.resolve(payload),
+  const promise = (async (): Promise<Record<string, ScannerChartPayload | null>> => {
+    if (options?.bustCache) {
+      for (const symbol of unique) {
+        chartPayloadCache.delete(`${symbol}|${timeframe}`);
+      }
+    } else {
+      const allCached = unique.every((symbol) => {
+        const cached = chartPayloadCache.get(`${symbol}|${timeframe}`);
+        return cached && Date.now() < cached.expiresAt;
       });
+      if (allCached) {
+        const entries = await Promise.all(
+          unique.map(
+            async (symbol) =>
+              [symbol, await fetchScannerChart(symbol, timeframe)] as const,
+          ),
+        );
+        return Object.fromEntries(entries);
+      }
+    }
+
+    const params = new URLSearchParams({
+      symbols: unique.join(","),
+      timeframe,
+    });
+    if (options?.bustCache) {
+      params.set("fresh", "1");
+    }
+    const res = await apiFetch(`/api/scanner/charts?${params.toString()}`, {
+      cache: "no-store",
+    });
+    const raw = await res.text();
+    let data: unknown;
+    try {
+      data = raw ? JSON.parse(raw) : {};
+    } catch {
+      console.warn("[scanner charts] non-JSON response", {
+        symbols: unique,
+        timeframe,
+        raw,
+      });
+      return Object.fromEntries(unique.map((symbol) => [symbol, null]));
+    }
+    if (!res.ok) {
+      console.warn("[scanner charts] request failed", {
+        symbols: unique,
+        timeframe,
+        status: res.status,
+        data,
+      });
+      return Object.fromEntries(unique.map((symbol) => [symbol, null]));
+    }
+
+    const record = data as {
+      charts?: Record<string, ScannerChartPayload | null>;
+    };
+    const charts = record.charts ?? {};
+    const out: Record<string, ScannerChartPayload | null> = {};
+    for (const symbol of unique) {
+      const payload = charts[symbol] ?? null;
+      out[symbol] = payload;
+      if (
+        payload &&
+        Array.isArray(payload.candles) &&
+        payload.candles.length > 0
+      ) {
+        chartPayloadCache.set(`${symbol}|${timeframe}`, {
+          expiresAt: Date.now() + CHART_CLIENT_CACHE_TTL_MS,
+          promise: Promise.resolve(payload),
+        });
+      }
+    }
+    return out;
+  })();
+
+  chartsBatchInflight.set(inflightKey, promise);
+  try {
+    return await promise;
+  } finally {
+    if (chartsBatchInflight.get(inflightKey) === promise) {
+      chartsBatchInflight.delete(inflightKey);
     }
   }
-  return out;
 }
 
 /** Ticker + last-bar patch only — cheap between full OHLCV reloads. */
@@ -465,51 +497,66 @@ export async function patchScannerCharts(
   const unique = [...new Set(symbols.map((s) => s.trim()).filter(Boolean))];
   if (unique.length === 0) return {};
 
-  if (unique.length === 1) {
-    const symbol = unique[0];
-    const chart = await fetchScannerChart(symbol, timeframe, { patch: true });
-    return { [symbol]: chart };
-  }
+  const inflightKey = chartsBatchInflightKey(unique, timeframe, "patch");
+  const pending = chartsBatchInflight.get(inflightKey);
+  if (pending) return pending;
 
-  const params = new URLSearchParams({
-    symbols: unique.join(","),
-    timeframe,
-    patch: "1",
-  });
-  const res = await apiFetch(`/api/scanner/charts?${params.toString()}`, {
-    cache: "no-store",
-  });
-  const raw = await res.text();
-  let data: unknown;
+  const promise = (async (): Promise<Record<string, ScannerChartPayload | null>> => {
+    if (unique.length === 1) {
+      const symbol = unique[0];
+      const chart = await fetchScannerChart(symbol, timeframe, { patch: true });
+      return chart ? { [symbol]: chart } : { [symbol]: null };
+    }
+
+    const params = new URLSearchParams({
+      symbols: unique.join(","),
+      timeframe,
+      patch: "1",
+    });
+    const res = await apiFetch(`/api/scanner/charts?${params.toString()}`, {
+      cache: "no-store",
+    });
+    const raw = await res.text();
+    let data: unknown;
+    try {
+      data = raw ? JSON.parse(raw) : {};
+    } catch {
+      return Object.fromEntries(unique.map((symbol) => [symbol, null]));
+    }
+    if (!res.ok) {
+      return Object.fromEntries(unique.map((symbol) => [symbol, null]));
+    }
+
+    const record = data as { charts?: Record<string, ScannerChartPayload | null> };
+    const charts = record.charts ?? {};
+    const out: Record<string, ScannerChartPayload | null> = {};
+    for (const symbol of unique) {
+      const payload = charts[symbol] ?? null;
+      out[symbol] = payload;
+      if (payload?.candles?.length) {
+        const key = `${symbol}|${timeframe}`;
+        const existing = chartPayloadCache.get(key);
+        const merged = existing
+          ? mergeChartLivePatch(await existing.promise.catch(() => null), payload)
+          : payload;
+        chartPayloadCache.set(key, {
+          expiresAt: Date.now() + CHART_CLIENT_CACHE_TTL_MS,
+          promise: Promise.resolve(merged),
+        });
+        out[symbol] = merged;
+      }
+    }
+    return out;
+  })();
+
+  chartsBatchInflight.set(inflightKey, promise);
   try {
-    data = raw ? JSON.parse(raw) : {};
-  } catch {
-    return Object.fromEntries(unique.map((symbol) => [symbol, null]));
-  }
-  if (!res.ok) {
-    return Object.fromEntries(unique.map((symbol) => [symbol, null]));
-  }
-
-  const record = data as { charts?: Record<string, ScannerChartPayload | null> };
-  const charts = record.charts ?? {};
-  const out: Record<string, ScannerChartPayload | null> = {};
-  for (const symbol of unique) {
-    const payload = charts[symbol] ?? null;
-    out[symbol] = payload;
-    if (payload?.candles?.length) {
-      const key = `${symbol}|${timeframe}`;
-      const existing = chartPayloadCache.get(key);
-      const merged = existing
-        ? mergeChartLivePatch(await existing.promise.catch(() => null), payload)
-        : payload;
-      chartPayloadCache.set(key, {
-        expiresAt: Date.now() + CHART_CLIENT_CACHE_TTL_MS,
-        promise: Promise.resolve(merged),
-      });
-      out[symbol] = merged;
+    return await promise;
+  } finally {
+    if (chartsBatchInflight.get(inflightKey) === promise) {
+      chartsBatchInflight.delete(inflightKey);
     }
   }
-  return out;
 }
 
 export type ScannerRunResult =
