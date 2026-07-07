@@ -390,6 +390,8 @@ const ScannerResults = ({ profile, latestBatch, loading = false, active = true }
     const [managedCharts, setManagedCharts] = useState<Record<string, ScannerChartPayload | null>>({});
     const [managedChartsLoading, setManagedChartsLoading] = useState(false);
     const nextChartRefreshAtRef = useRef(0);
+    const managedChartsLoadInFlight = useRef(false);
+    const pendingManagedChartsRefresh = useRef(false);
     const [managedRefreshCountdownSec, setManagedRefreshCountdownSec] = useState(
         Math.ceil(SCANNER_CHART_REFRESH_MS / 1000),
     );
@@ -556,8 +558,13 @@ const ScannerResults = ({ profile, latestBatch, loading = false, active = true }
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setManagedChartsLoading(true);
 
-        const loadCharts = (initial: boolean): Promise<void> =>
-            prefetchScannerCharts(symbols, defaultChartTimeframe, { bustCache: !initial })
+        const loadCharts = (initial: boolean): Promise<void> => {
+            if (managedChartsLoadInFlight.current) {
+                pendingManagedChartsRefresh.current = true;
+                return Promise.resolve();
+            }
+            managedChartsLoadInFlight.current = true;
+            return prefetchScannerCharts(symbols, defaultChartTimeframe, { bustCache: !initial })
                 .then((charts) => {
                     if (!cancelled) {
                         setManagedCharts(charts);
@@ -573,8 +580,14 @@ const ScannerResults = ({ profile, latestBatch, loading = false, active = true }
                     if (!cancelled) setManagedCharts({});
                 })
                 .finally(() => {
+                    managedChartsLoadInFlight.current = false;
                     if (!cancelled && initial) setManagedChartsLoading(false);
+                    if (!cancelled && pendingManagedChartsRefresh.current) {
+                        pendingManagedChartsRefresh.current = false;
+                        void loadCharts(false);
+                    }
                 });
+        };
 
         let refreshTimer: number | undefined;
         const scheduleRefresh = () => {
@@ -604,6 +617,8 @@ const ScannerResults = ({ profile, latestBatch, loading = false, active = true }
 
         return () => {
             cancelled = true;
+            managedChartsLoadInFlight.current = false;
+            pendingManagedChartsRefresh.current = false;
             if (refreshTimer != null) window.clearTimeout(refreshTimer);
             window.clearInterval(tickId);
         };
