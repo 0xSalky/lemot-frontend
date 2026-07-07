@@ -122,77 +122,101 @@ export async function fetchLatestScannerBatch(
   };
 }
 
+const scannerViewInflight = new Map<
+  ScannerProfile,
+  Promise<ScannerViewFetchResult>
+>();
+
 export async function fetchScannerView(
   profile: ScannerProfile = DEFAULT_SCANNER_PROFILE,
   options?: { fresh?: boolean; reload?: boolean },
 ): Promise<ScannerViewFetchResult> {
+  if (!options?.fresh) {
+    const pending = scannerViewInflight.get(profile);
+    if (pending) return pending;
+  }
+
   const params = new URLSearchParams({ profile });
   if (options?.fresh) params.set("fresh", "1");
   if (options?.reload) params.set("reload", "1");
-  const res = await apiFetch(`/api/scanner/view?${params.toString()}`, {
-    cache: "no-store",
-  });
-  const raw = await res.text();
-  let data: unknown;
-  try {
-    data = raw ? JSON.parse(raw) : {};
-  } catch {
-    return { message: raw || String(res.status) };
+
+  const promise = (async (): Promise<ScannerViewFetchResult> => {
+    const res = await apiFetch(`/api/scanner/view?${params.toString()}`, {
+      cache: "no-store",
+    });
+    const raw = await res.text();
+    let data: unknown;
+    try {
+      data = raw ? JSON.parse(raw) : {};
+    } catch {
+      return { message: raw || String(res.status) };
+    }
+
+    if (!res.ok) {
+      return { message: apiErrorMessage(data, res.status) };
+    }
+
+    const payload = data as Partial<ScannerViewPayload>;
+    if (!payload.batch) {
+      return { message: "Invalid scanner view response" };
+    }
+
+    return {
+      profile: String(payload.profile ?? profile),
+      batch: payload.batch,
+      setups: Array.isArray(payload.setups) ? payload.setups : [],
+      charts:
+        payload.charts && typeof payload.charts === "object"
+          ? {
+              timeframe: String(payload.charts.timeframe ?? SCANNER_PROFILE_CHART_TIMEFRAME[profile]),
+              by_symbol:
+                payload.charts.by_symbol && typeof payload.charts.by_symbol === "object"
+                  ? (payload.charts.by_symbol as Record<string, ScannerChartPayload | null>)
+                  : {},
+            }
+          : {
+              timeframe: SCANNER_PROFILE_CHART_TIMEFRAME[profile],
+              by_symbol: {},
+            },
+      footprint:
+        payload.footprint && typeof payload.footprint === "object"
+          ? {
+              timeframe: String(payload.footprint.timeframe ?? SCANNER_PROFILE_CHART_TIMEFRAME[profile]),
+              health:
+                payload.footprint.health && typeof payload.footprint.health === "object"
+                  ? payload.footprint.health
+                  : null,
+              pairs_by_base:
+                payload.footprint.pairs_by_base && typeof payload.footprint.pairs_by_base === "object"
+                  ? payload.footprint.pairs_by_base
+                  : {},
+            }
+          : {
+              timeframe: SCANNER_PROFILE_CHART_TIMEFRAME[profile],
+              health: null,
+              pairs_by_base: {},
+            },
+      sections:
+        payload.sections && typeof payload.sections === "object"
+          ? payload.sections
+          : {
+              batch: { ok: true },
+              charts: { ok: true },
+              footprint: { ok: true },
+            },
+    };
+  })();
+
+  if (!options?.fresh) {
+    scannerViewInflight.set(profile, promise);
+    void promise.finally(() => {
+      if (scannerViewInflight.get(profile) === promise) {
+        scannerViewInflight.delete(profile);
+      }
+    });
   }
 
-  if (!res.ok) {
-    return { message: apiErrorMessage(data, res.status) };
-  }
-
-  const payload = data as Partial<ScannerViewPayload>;
-  if (!payload.batch) {
-    return { message: "Invalid scanner view response" };
-  }
-
-  return {
-    profile: String(payload.profile ?? profile),
-    batch: payload.batch,
-    setups: Array.isArray(payload.setups) ? payload.setups : [],
-    charts:
-      payload.charts && typeof payload.charts === "object"
-        ? {
-            timeframe: String(payload.charts.timeframe ?? SCANNER_PROFILE_CHART_TIMEFRAME[profile]),
-            by_symbol:
-              payload.charts.by_symbol && typeof payload.charts.by_symbol === "object"
-                ? (payload.charts.by_symbol as Record<string, ScannerChartPayload | null>)
-                : {},
-          }
-        : {
-            timeframe: SCANNER_PROFILE_CHART_TIMEFRAME[profile],
-            by_symbol: {},
-          },
-    footprint:
-      payload.footprint && typeof payload.footprint === "object"
-        ? {
-            timeframe: String(payload.footprint.timeframe ?? SCANNER_PROFILE_CHART_TIMEFRAME[profile]),
-            health:
-              payload.footprint.health && typeof payload.footprint.health === "object"
-                ? payload.footprint.health
-                : null,
-            pairs_by_base:
-              payload.footprint.pairs_by_base && typeof payload.footprint.pairs_by_base === "object"
-                ? payload.footprint.pairs_by_base
-                : {},
-          }
-        : {
-            timeframe: SCANNER_PROFILE_CHART_TIMEFRAME[profile],
-            health: null,
-            pairs_by_base: {},
-          },
-    sections:
-      payload.sections && typeof payload.sections === "object"
-        ? payload.sections
-        : {
-            batch: { ok: true },
-            charts: { ok: true },
-            footprint: { ok: true },
-          },
-  };
+  return promise;
 }
 
 const chartPayloadCache = new Map<

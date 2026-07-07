@@ -406,7 +406,7 @@ const ScannerResults = ({ profile, scannerView, loading = false }: ScannerResult
     }, [batchId, profile]);
 
     useEffect(() => {
-        if (!missingChartKey) {
+        if (loading || !missingChartKey) {
             setChartsLoading(false);
             return;
         }
@@ -429,7 +429,7 @@ const ScannerResults = ({ profile, scannerView, loading = false }: ScannerResult
         return () => {
             cancelled = true;
         };
-    }, [defaultChartTimeframe, missingChartKey, profile]);
+    }, [defaultChartTimeframe, loading, missingChartKey, profile]);
 
     const wsConnected =
         footprintHealth &&

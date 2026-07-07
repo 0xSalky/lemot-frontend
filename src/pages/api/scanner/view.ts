@@ -9,5 +9,5 @@ export default async function handler(
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Expires", "0");
 
-  await proxyTradingGet(req, res, "/scanner/view", { upstreamTimeoutMs: 120_000 });
+  await proxyTradingGet(req, res, "/scanner/view", { upstreamTimeoutMs: 180_000 });
 }

@@ -9,8 +9,9 @@ import TradeJournalPanel from "@/components/3_organisms/TradeJournalPanel/TradeJ
 import ResponsiveCardGrid from "@/components/4_layouts/ResponsiveCardGrid/ResponsiveCardGrid";
 import { useThemeColor, useThemeTokens } from "@/components/ui/theme-color";
 import { TRADING_PAIRS, CONTENT_MAX_WIDTH, IS_PROFILE_B_ACTIVE } from "@/services/config";
-import type { ScannerViewFetchResult } from "@/types/scannerTypes";
+import type { ScannerSetupRow, ScannerViewFetchResult } from "@/types/scannerTypes";
 import {
+    fetchLatestScannerBatch,
     fetchScannerView,
     scannerSymbolToBase,
     SCANNER_PROFILES,
@@ -53,6 +54,10 @@ const HomePage = () => {
         b: null,
         a: null,
     });
+    const [batchSetups, setBatchSetups] = useState<Record<ScannerProfile, ScannerSetupRow[]>>({
+        b: [],
+        a: [],
+    });
     const [loading, setLoading] = useState<Record<ScannerProfile, boolean>>(INITIAL_SCANNER_LOADING);
     const loadIdRef = useRef<Record<ScannerProfile, number>>({ b: 0, a: 0 });
     const [activeTab, setActiveTab] = useState("pairs");
@@ -70,7 +75,12 @@ const HomePage = () => {
 
     useEffect(() => {
         for (const profile of SCANNER_PROFILES) {
-            void runScannerViewFetch(profile, loadIdRef, setViews, setLoading);
+            void fetchLatestScannerBatch(profile)
+                .then((result) => {
+                    if ("message" in result) return;
+                    setBatchSetups((prev) => ({ ...prev, [profile]: result.setups }));
+                })
+                .catch((e) => console.error(`[scanner batch ${profile}]`, e));
         }
     }, []);
 
@@ -89,13 +99,14 @@ const HomePage = () => {
         const bases: string[] = [];
         for (const profile of SCANNER_PROFILES) {
             const view = views[profile];
-            if (view == null || "message" in view) continue;
-            for (const setup of view.setups) {
+            const setups =
+                view != null && !("message" in view) ? view.setups : batchSetups[profile];
+            for (const setup of setups) {
                 bases.push(scannerSymbolToBase(setup.symbol));
             }
         }
         return [...new Set(bases)];
-    }, [views]);
+    }, [batchSetups, views]);
 
     const tradingPairs = useMemo(() => {
         const combined = [...new Set([...TRADING_PAIRS, ...scannerPairs])];
