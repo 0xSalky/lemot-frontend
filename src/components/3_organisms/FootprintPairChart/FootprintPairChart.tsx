@@ -284,7 +284,8 @@ export default function FootprintPairChart({
       .join(" ");
 
     const barWidth = Math.max(2, innerW / Math.max(visible.length, 1) - 1);
-    const candleShapes = candleGeometries(visible, xAt, clampYPrice, innerW, priceInnerH);
+    // Use raw yPrice for candles — clampYPrice pins out-of-range wicks to pane edges (giant spikes).
+    const candleShapes = candleGeometries(visible, xAt, yPrice, innerW, priceInnerH);
 
     const bandRects = bands.flatMap((band, i) => {
       const low = Math.min(band.low, band.high);

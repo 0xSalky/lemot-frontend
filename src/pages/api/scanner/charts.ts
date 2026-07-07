@@ -16,5 +16,5 @@ export default async function handler(
     return;
   }
 
-  await proxyTradingGet(req, res, "/scanner/charts");
+  await proxyTradingGet(req, res, "/scanner/charts", { upstreamTimeoutMs: 90_000 });
 }

@@ -396,9 +396,12 @@ const ScannerResults = ({ profile, scannerView, loading = false }: ScannerResult
 
     const missingChartKey = missingChartSymbols.slice().sort().join(",");
 
+    const batchId =
+        scannerView != null && !("message" in scannerView) ? scannerView.batch?.id : null;
+
     useEffect(() => {
         setPrefetchedCharts({});
-    }, [scannerView]);
+    }, [batchId, profile]);
 
     useEffect(() => {
         if (!missingChartKey) {

@@ -159,6 +159,12 @@ export async function proxyTradingGet(
     }
     await forwardUpstreamResponse(res, upstream);
   } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      res.status(504).json({
+        detail: `Upstream ${path} timed out. Try again — chart data may still be warming in cache.`,
+      });
+      return;
+    }
     console.error("[trading proxy] upstream GET failed", {
       path,
       source: creds.source,
