@@ -13,19 +13,10 @@ import type {
   ScannerSetupRow,
 } from "@/types/scannerTypes";
 
-/** Auto-refresh interval for scanner/footprint charts (5 minutes). */
-export const SCANNER_CHART_REFRESH_MS = 5 * 60 * 1000;
-
-/** Live mark + forming-bar patch between full candle reloads. */
+/** Chart live-update interval (ticker + tail candles + footprint). */
 export const SCANNER_CHART_LIVE_PATCH_MS = 30 * 1000;
 
 const CHART_CLIENT_CACHE_TTL_MS = 300_000;
-
-export function formatRefreshCountdown(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
 
 /** CCXT-style unified symbol, e.g. `BTC/USDT:USDT` → base `BTC`. */
 export function scannerSymbolToBase(symbol: string): string {
@@ -253,6 +244,13 @@ export function chartSpotPrice(
     return fallbackPrice;
   }
   return 0;
+}
+
+function cloneChartPayload(chart: ScannerChartPayload): ScannerChartPayload {
+  return {
+    ...chart,
+    candles: chart.candles.map((c) => ({ ...c })),
+  };
 }
 
 function mergeChartLivePatch(
@@ -539,11 +537,12 @@ export async function patchScannerCharts(
         const merged = existing
           ? mergeChartLivePatch(await existing.promise.catch(() => null), payload)
           : payload;
+        const cloned = cloneChartPayload(merged);
         chartPayloadCache.set(key, {
           expiresAt: Date.now() + CHART_CLIENT_CACHE_TTL_MS,
-          promise: Promise.resolve(merged),
+          promise: Promise.resolve(cloned),
         });
-        out[symbol] = merged;
+        out[symbol] = cloned;
       }
     }
     return out;

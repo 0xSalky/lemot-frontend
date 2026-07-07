@@ -18,7 +18,6 @@ import {
     prefetchScannerCharts,
     scannerProfileLabel,
     SCANNER_CHART_LIVE_PATCH_MS,
-    SCANNER_CHART_REFRESH_MS,
     SCANNER_PROFILE_CHART_TIMEFRAME,
     scannerSymbolToBase,
     setupsFromScannerView,
@@ -31,11 +30,12 @@ import DaySetupChart from "@/components/3_organisms/DaySetupChart/DaySetupChart"
 import { usePageVisible } from "@/hooks/usePageVisible";
 import { useThemeColor, useThemeTokens, type ThemeTokens } from "@/components/ui/theme-color";
 import { themedPanelStyle } from "@/components/ui/themed-panel";
-import { expectsFootprintSymbol, hasFootprintChartCandles, hasOrderflowData, hasScannerChartCandles, isFootprintCollectorOnline } from "@/services/footprintUtils";
+import { expectsFootprintSymbol, fetchFootprintView, hasFootprintChartCandles, hasOrderflowData, hasScannerChartCandles, isFootprintCollectorOnline } from "@/services/footprintUtils";
 import { Box, Badge, Flex, Stack, Text } from "@chakra-ui/react";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { FootprintPairView } from "@/types/footprintTypes";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { FootprintPairView, FootprintTimeframe } from "@/types/footprintTypes";
+import { FOOTPRINT_PROFILE_DEFAULTS } from "@/types/footprintTypes";
 
 type ScannerResultsProps = {
     profile: ScannerProfile;
@@ -241,7 +241,6 @@ function SetupCard({
     footprintPair,
     managedChart,
     managedChartLoading,
-    chartRefreshCountdownSec,
 }: {
     setup: ScannerSetupRow;
     tokens: ThemeTokens;
@@ -250,7 +249,6 @@ function SetupCard({
     footprintPair?: FootprintPairView | null;
     managedChart?: ScannerChartPayload | null;
     managedChartLoading?: boolean;
-    chartRefreshCountdownSec?: number;
 }) {
     const bands = orderedBands(Array.isArray(setup.bands) ? setup.bands : []);
 
@@ -279,8 +277,6 @@ function SetupCard({
                 defaultChartTimeframe={defaultChartTimeframe}
                 managedChart={managedChart}
                 managedChartLoading={managedChartLoading}
-                footprintRefreshCountdownSec={chartRefreshCountdownSec}
-                managedRefreshCountdownSec={chartRefreshCountdownSec}
             />
             <Stack gap="3" mt="2">
                 {bands.map((band, bandIdx) => (
@@ -381,15 +377,11 @@ const ScannerResults = ({
     const setups = setupsFromScannerView(scannerView);
     const profileLabel = scannerProfileLabel(profile);
     const defaultChartTimeframe = SCANNER_PROFILE_CHART_TIMEFRAME[profile];
+    const defaultFootprintTimeframe = FOOTPRINT_PROFILE_DEFAULTS[profile].defaultTimeframe;
     const [prefetchedCharts, setPrefetchedCharts] = useState<Record<string, ScannerChartPayload | null>>({});
+    const [liveFootprintPairs, setLiveFootprintPairs] = useState<Record<string, FootprintPairView>>({});
     const [chartsLoading, setChartsLoading] = useState(false);
-    const chartRefreshSec = Math.ceil(SCANNER_CHART_REFRESH_MS / 1000);
-    const [refreshDeadline, setRefreshDeadline] = useState(() => Date.now() + SCANNER_CHART_REFRESH_MS);
-    const [chartRefreshCountdownSec, setChartRefreshCountdownSec] = useState(chartRefreshSec);
-    const nextFullRefreshAtRef = useRef(refreshDeadline);
-    const fullRefreshRunningRef = useRef(false);
     const patchRunningRef = useRef(false);
-    const countdownZeroHandledRef = useRef(false);
 
     const chartSymbols = useMemo(
         () => setups.map((setup) => setup.symbol),
@@ -399,34 +391,19 @@ const ScannerResults = ({
     const chartSymbolsRef = useRef(chartSymbols);
     chartSymbolsRef.current = chartSymbols;
 
-    const runFullChartRefresh = useCallback(() => {
-        if (fullRefreshRunningRef.current || !chartSymbolsRef.current.length) {
-            return Promise.resolve();
-        }
-        fullRefreshRunningRef.current = true;
-        return prefetchScannerCharts(chartSymbolsRef.current, defaultChartTimeframe, {
-            bustCache: true,
-        })
-            .then((charts) => {
-                setPrefetchedCharts((prev) => {
-                    const next = { ...prev };
-                    for (const [symbol, chart] of Object.entries(charts)) {
-                        if (chart) next[symbol] = chart;
-                    }
-                    return next;
-                });
-                const deadline = Date.now() + SCANNER_CHART_REFRESH_MS;
-                nextFullRefreshAtRef.current = deadline;
-                setRefreshDeadline(deadline);
-                countdownZeroHandledRef.current = false;
-            })
-            .catch(() => {
-                console.warn("[scanner charts] full refresh failed", { profile });
-            })
-            .finally(() => {
-                fullRefreshRunningRef.current = false;
-            });
-    }, [defaultChartTimeframe, profile]);
+    const footprintBases = useMemo(
+        () => [
+            ...new Set(
+                setups
+                    .map((setup) => scannerSymbolToBase(setup.symbol))
+                    .filter(expectsFootprintSymbol),
+            ),
+        ],
+        [setups],
+    );
+    const footprintBasesKey = footprintBases.slice().sort().join(",");
+    const footprintBasesRef = useRef(footprintBases);
+    footprintBasesRef.current = footprintBases;
 
     const batchMeta =
         scannerView != null && !("message" in scannerView) ? scannerView.batch : null;
@@ -436,10 +413,14 @@ const ScannerResults = ({
         () => ({ ...viewChartsBySymbol, ...prefetchedCharts }),
         [prefetchedCharts, viewChartsBySymbol],
     );
-    const footprintPairs =
+    const footprintPairsFromView =
         scannerView != null && !("message" in scannerView)
             ? scannerView.footprint.pairs_by_base
             : {};
+    const footprintPairs = useMemo(
+        () => ({ ...footprintPairsFromView, ...liveFootprintPairs }),
+        [footprintPairsFromView, liveFootprintPairs],
+    );
     const footprintHealth =
         scannerView != null && !("message" in scannerView) ? scannerView.footprint.health : null;
 
@@ -468,111 +449,72 @@ const ScannerResults = ({
         scannerView != null && !("message" in scannerView) ? scannerView.batch?.id : null;
 
     useEffect(() => {
-        if (!loading && scannerView != null && !("message" in scannerView)) {
-            const next = Date.now() + SCANNER_CHART_REFRESH_MS;
-            nextFullRefreshAtRef.current = next;
-            setRefreshDeadline(next);
-            setChartRefreshCountdownSec(chartRefreshSec);
-            countdownZeroHandledRef.current = false;
-        }
-    }, [batchId, chartRefreshSec, loading, profile, refreshKey, scannerView]);
+        if (loading || !polling || !chartSymbolsKey) return;
 
-    useEffect(() => {
+        let cancelled = false;
         const tick = () => {
-            setChartRefreshCountdownSec(
-                Math.max(0, Math.ceil((refreshDeadline - Date.now()) / 1000)),
-            );
-        };
-        tick();
-        const id = window.setInterval(tick, 1000);
-        return () => window.clearInterval(id);
-    }, [refreshDeadline]);
-
-    useEffect(() => {
-        if (chartRefreshCountdownSec > 0) {
-            countdownZeroHandledRef.current = false;
-            return;
-        }
-        if (!polling || loading || countdownZeroHandledRef.current) return;
-        countdownZeroHandledRef.current = true;
-        void runFullChartRefresh();
-    }, [chartRefreshCountdownSec, loading, polling, runFullChartRefresh]);
-
-    useEffect(() => {
-        if (loading || !polling || !chartSymbolsKey) return;
-
-        let cancelled = false;
-        let refreshTimer: number | undefined;
-
-        const scheduleFullRefresh = () => {
-            const delay = Math.max(0, nextFullRefreshAtRef.current - Date.now());
-            refreshTimer = window.setTimeout(() => {
-                if (cancelled) return;
-                if (document.visibilityState !== "visible") {
-                    scheduleFullRefresh();
-                    return;
-                }
-                void runFullChartRefresh().finally(() => {
-                    if (!cancelled) scheduleFullRefresh();
-                });
-            }, delay);
-        };
-
-        scheduleFullRefresh();
-        return () => {
-            cancelled = true;
-            if (refreshTimer != null) window.clearTimeout(refreshTimer);
-        };
-    }, [
-        chartSymbolsKey,
-        loading,
-        polling,
-        profile,
-        refreshKey,
-        runFullChartRefresh,
-    ]);
-
-    useEffect(() => {
-        if (loading || !polling || !chartSymbolsKey) return;
-
-        let cancelled = false;
-        const patchLive = () => {
-            if (cancelled || document.visibilityState !== "visible") return;
-            if (fullRefreshRunningRef.current || patchRunningRef.current) return;
+            if (cancelled || document.visibilityState !== "visible" || patchRunningRef.current) return;
             patchRunningRef.current = true;
-            void patchScannerCharts(chartSymbolsRef.current, defaultChartTimeframe)
-                .then((charts) => {
+
+            const chartPromise = patchScannerCharts(
+                chartSymbolsRef.current,
+                defaultChartTimeframe,
+            );
+            const footprintPromise =
+                footprintBasesRef.current.length > 0
+                    ? fetchFootprintView(footprintBasesRef.current, {
+                          profile,
+                          timeframe: defaultFootprintTimeframe,
+                          bustCache: true,
+                      })
+                    : Promise.resolve(null);
+
+            void Promise.all([chartPromise, footprintPromise])
+                .then(([charts, footprint]) => {
                     if (cancelled) return;
                     setPrefetchedCharts((prev) => {
                         const next = { ...prev };
-                        let changed = false;
                         for (const [symbol, chart] of Object.entries(charts)) {
                             if (!chart) continue;
-                            next[symbol] = chart;
-                            changed = true;
+                            next[symbol] = {
+                                ...chart,
+                                candles: chart.candles.map((c) => ({ ...c })),
+                            };
                         }
-                        return changed ? next : prev;
+                        return next;
                     });
+                    if (footprint?.pairs) {
+                        setLiveFootprintPairs((prev) => ({ ...prev, ...footprint.pairs }));
+                    }
                 })
                 .catch(() => {
-                    console.warn("[scanner charts] live patch failed", { profile });
+                    console.warn("[scanner live tick] patch failed", { profile });
                 })
                 .finally(() => {
                     patchRunningRef.current = false;
                 });
         };
 
-        const initial = window.setTimeout(patchLive, SCANNER_CHART_LIVE_PATCH_MS);
-        const id = window.setInterval(patchLive, SCANNER_CHART_LIVE_PATCH_MS);
+        tick();
+        const id = window.setInterval(tick, SCANNER_CHART_LIVE_PATCH_MS);
         return () => {
             cancelled = true;
-            window.clearTimeout(initial);
             window.clearInterval(id);
         };
-    }, [chartSymbolsKey, defaultChartTimeframe, loading, polling, profile, refreshKey]);
+    }, [
+        chartSymbolsKey,
+        defaultChartTimeframe,
+        footprintBasesKey,
+        defaultFootprintTimeframe,
+        loading,
+        polling,
+        profile,
+        refreshKey,
+    ]);
 
     useEffect(() => {
         setPrefetchedCharts({});
+        setLiveFootprintPairs({});
     }, [batchId, profile]);
 
     useEffect(() => {
@@ -674,7 +616,6 @@ const ScannerResults = ({
                             footprintPair={footprintPair}
                             managedChart={managedChart}
                             managedChartLoading={chartsLoading && managedChart == null}
-                            chartRefreshCountdownSec={chartRefreshCountdownSec}
                         />
                     );
                 })}

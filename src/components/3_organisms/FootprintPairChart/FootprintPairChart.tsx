@@ -17,7 +17,7 @@ import {
   formatOiChange,
   formatOiLevel,
 } from "@/services/footprintUtils";
-import { formatLevelPrice, formatRefreshCountdown, formatVolDollar } from "@/services/scannerUtils";
+import { formatLevelPrice, formatVolDollar } from "@/services/scannerUtils";
 import type { FootprintMergedBar, FootprintTimeframe } from "@/types/footprintTypes";
 import { FOOTPRINT_TIMEFRAMES } from "@/types/footprintTypes";
 import type { ScannerBandRow } from "@/types/scannerTypes";
@@ -47,7 +47,6 @@ type FootprintPairChartProps = {
   timeframe: FootprintTimeframe;
   onTimeframeChange?: (timeframe: FootprintTimeframe) => void;
   loading?: boolean;
-  refreshCountdownSec?: number;
   tokens: ThemeTokens;
   bands?: ScannerBandRow[];
   embedded?: boolean;
@@ -140,7 +139,6 @@ export default function FootprintPairChart({
   timeframe,
   onTimeframeChange,
   loading = false,
-  refreshCountdownSec,
   tokens,
   bands = [],
   embedded = false,
@@ -444,7 +442,7 @@ export default function FootprintPairChart({
           />
         </Flex>
 
-        {(onTimeframeChange != null || refreshCountdownSec != null) ? (
+        {onTimeframeChange ? (
           <Flex
             position="absolute"
             top="2"
@@ -453,19 +451,7 @@ export default function FootprintPairChart({
             align="center"
             gap="1.5"
           >
-            {refreshCountdownSec != null ? (
-              <Text
-                fontFamily="mono"
-                fontSize="2xs"
-                lineHeight="1.5rem"
-                color={tokens.panelMuted}
-                title="Next chart refresh"
-              >
-                {formatRefreshCountdown(refreshCountdownSec)}
-              </Text>
-            ) : null}
-            {onTimeframeChange ? (
-              <NativeSelect.Root size="xs" width={{ base: "2.25rem", md: "3rem" }} maxW={{ base: "2.25rem", md: "3rem" }}>
+            <NativeSelect.Root size="xs" width={{ base: "2.25rem", md: "3rem" }} maxW={{ base: "2.25rem", md: "3rem" }}>
                 <NativeSelect.Field
                   className="chart-tf-select"
                   value={timeframe}
@@ -492,7 +478,6 @@ export default function FootprintPairChart({
                   ))}
                 </NativeSelect.Field>
               </NativeSelect.Root>
-            ) : null}
           </Flex>
         ) : null}
 

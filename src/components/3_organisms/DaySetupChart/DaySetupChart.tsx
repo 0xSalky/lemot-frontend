@@ -36,10 +36,8 @@ type DaySetupChartProps = {
   defaultChartTimeframe?: ScannerChartTimeframe;
   /** When true, try footprint/orderflow chart first for tracked symbols (day + swing). */
   footprintEnabled?: boolean;
-  footprintRefreshCountdownSec?: number;
   managedChart?: ScannerChartPayload | null;
   managedChartLoading?: boolean;
-  managedRefreshCountdownSec?: number;
 };
 
 const FOOTPRINT_CHART_HEIGHT = FOOTPRINT_CHART_TOTAL_HEIGHT;
@@ -95,10 +93,8 @@ export default function DaySetupChart({
   footprintLoading = false,
   defaultChartTimeframe = "30m",
   footprintEnabled = true,
-  footprintRefreshCountdownSec,
   managedChart,
   managedChartLoading,
-  managedRefreshCountdownSec,
 }: DaySetupChartProps) {
   const base = scannerSymbolToBase(symbol);
   const expectsFootprint = footprintEnabled && expectsFootprintSymbol(base);
@@ -169,7 +165,6 @@ export default function DaySetupChart({
           timeframe={fpTimeframe}
           onTimeframeChange={handleFootprintTimeframeChange}
           loading={fpLoading}
-          refreshCountdownSec={footprintRefreshCountdownSec}
           tokens={tokens}
           bands={bands}
           embedded
@@ -191,7 +186,6 @@ export default function DaySetupChart({
         embedded
         managedChart={managedChart}
         managedChartLoading={managedChartLoading}
-        managedRefreshCountdownSec={managedRefreshCountdownSec}
       />
     </DayChartBleed>
   );

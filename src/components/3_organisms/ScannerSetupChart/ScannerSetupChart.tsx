@@ -6,7 +6,7 @@ import {
   type ScannerChartPayload,
   type ScannerChartTimeframe,
 } from "@/types/scannerTypes";
-import { fetchScannerChart, chartSpotPrice, formatLevelPrice, formatRefreshCountdown, SCANNER_CHART_REFRESH_MS } from "@/services/scannerUtils";
+import { fetchScannerChart, chartSpotPrice, formatLevelPrice, SCANNER_CHART_LIVE_PATCH_MS } from "@/services/scannerUtils";
 import ChartPriceModeToggle from "@/components/2_molecules/ChartPriceModeToggle/ChartPriceModeToggle";
 import { ChartCandleSvg } from "@/components/2_molecules/ChartCandleSvg/ChartCandleSvg";
 import { usePageVisible } from "@/hooks/usePageVisible";
@@ -23,7 +23,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 const CHART_HEIGHT = 250;
 
 export { CHART_HEIGHT as SETUP_CHART_HEIGHT };
-const CHART_REFRESH_MS = SCANNER_CHART_REFRESH_MS;
+const CHART_REFRESH_MS = SCANNER_CHART_LIVE_PATCH_MS;
 const ZOOM_FACTOR = 1.2;
 const ZOOM_MIN = 0.3;
 const ZOOM_MAX = 5;
@@ -48,10 +48,9 @@ type ScannerSetupChartProps = {
   defaultTimeframe?: ScannerChartTimeframe;
   /** When true, outer bleed margins are omitted (parent card handles layout). */
   embedded?: boolean;
-  /** Batched chart from ScannerResults — skips per-card polling when timeframe matches default. */
+  /** Batched chart from ScannerResults — parent handles live updates. */
   managedChart?: ScannerChartPayload | null;
   managedChartLoading?: boolean;
-  managedRefreshCountdownSec?: number;
 };
 
 function computeChartBounds(
@@ -99,19 +98,14 @@ function ScannerSetupChart({
   embedded = false,
   managedChart,
   managedChartLoading = false,
-  managedRefreshCountdownSec,
 }: ScannerSetupChartProps) {
   const pageVisible = usePageVisible();
   const containerRef = useRef<HTMLDivElement>(null);
-  const nextRefreshAtRef = useRef(0);
   const [containerWidth, setContainerWidth] = useState(0);
   const [timeframe, setTimeframe] = useState<ScannerChartTimeframe>(defaultTimeframe);
   const [priceMode, setPriceMode] = useState<ChartPriceMode>("candle");
   const candleTheme = useMemo(() => chartCandleTheme(tokens), [tokens]);
   const [zoomStep, setZoomStep] = useState(0);
-  const [refreshCountdownSec, setRefreshCountdownSec] = useState(
-    Math.ceil(CHART_REFRESH_MS / 1000),
-  );
   const [fetchState, setFetchState] = useState<ChartFetchState>({
     key: "",
     status: "error",
@@ -135,9 +129,6 @@ function ScannerSetupChart({
     : fetchState.key === fetchKey
       ? fetchState.error
       : null;
-  const countdownSec = useManagedChart
-    ? managedRefreshCountdownSec ?? refreshCountdownSec
-    : refreshCountdownSec;
 
   useEffect(() => {
     setTimeframe(defaultTimeframe);
@@ -162,21 +153,13 @@ function ScannerSetupChart({
     if (useManagedChart || !pageVisible) return;
 
     let cancelled = false;
-    const totalSec = Math.ceil(CHART_REFRESH_MS / 1000);
 
-    const resetRefreshDeadline = () => {
-      nextRefreshAtRef.current = Date.now() + CHART_REFRESH_MS;
-      setRefreshCountdownSec(totalSec);
-    };
-
-    resetRefreshDeadline();
-
-    const loadChart = (background: boolean): Promise<void> =>
-      fetchScannerChart(symbol, timeframe, { bustCache: background })
+    const loadChart = (patch: boolean): Promise<void> =>
+      fetchScannerChart(symbol, timeframe, patch ? { patch: true } : undefined)
         .then((payload) => {
           if (cancelled) return;
           if (!payload) {
-            if (!background) {
+            if (!patch) {
               setFetchState({
                 key: fetchKey,
                 status: "error",
@@ -192,10 +175,9 @@ function ScannerSetupChart({
             chart: payload,
             error: null,
           });
-          resetRefreshDeadline();
         })
         .catch(() => {
-          if (!cancelled && !background) {
+          if (!cancelled && !patch) {
             setFetchState({
               key: fetchKey,
               status: "error",
@@ -223,18 +205,9 @@ function ScannerSetupChart({
       if (!cancelled) scheduleRefresh();
     });
 
-    const tickId = window.setInterval(() => {
-      const remaining = Math.max(
-        0,
-        Math.ceil((nextRefreshAtRef.current - Date.now()) / 1000),
-      );
-      setRefreshCountdownSec(remaining);
-    }, 1000);
-
     return () => {
       cancelled = true;
       if (refreshTimer != null) window.clearTimeout(refreshTimer);
-      window.clearInterval(tickId);
     };
   }, [fetchKey, pageVisible, symbol, timeframe, useManagedChart]);
 
@@ -416,15 +389,6 @@ function ScannerSetupChart({
               align="center"
               gap="1.5"
             >
-              <Text
-                fontFamily="mono"
-                fontSize="2xs"
-                lineHeight="1.5rem"
-                color={tokens.panelMuted}
-                title="Next chart refresh"
-              >
-                {formatRefreshCountdown(countdownSec)}
-              </Text>
               <NativeSelect.Root size="xs" width={{ base: "2.25rem", md: "3rem" }} maxW={{ base: "2.25rem", md: "3rem" }}>
                 <NativeSelect.Field
                   className="chart-tf-select"
