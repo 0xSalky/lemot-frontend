@@ -68,7 +68,7 @@ export const SCANNER_PROFILES: readonly ScannerProfile[] = IS_PROFILE_B_ACTIVE
   ? ["b", "a"]
   : ["a"];
 
-export const DEFAULT_SCANNER_PROFILE: ScannerProfile = "b";
+export const DEFAULT_SCANNER_PROFILE: ScannerProfile = SCANNER_PROFILES[0];
 
 /** @deprecated use DEFAULT_SCANNER_PROFILE or pass profile explicitly */
 export const SCANNER_PROFILE = DEFAULT_SCANNER_PROFILE;

@@ -426,6 +426,7 @@ const ScannerResults = ({ profile, latestBatch, loading = false, active = true }
                 })
                 .map((setup) => setup.symbol);
         }
+        return [];
     }, [activeFootprintKey, footprintLoading, footprintPayload, pollingEnabled, setups]);
 
     const restChartSymbolsKey = useMemo(
