@@ -400,6 +400,7 @@ const ScannerResults = ({ profile, latestBatch, loading = false, active = true }
     const footprintSymbolsKey = useMemo(() => {
         if (latestBatch == null || "message" in latestBatch) return "";
         return [...new Set(latestBatch.setups.map((setup) => scannerSymbolToBase(setup.symbol)))]
+            .filter((base) => expectsFootprintSymbol(base))
             .sort()
             .join(",");
     }, [latestBatch]);
