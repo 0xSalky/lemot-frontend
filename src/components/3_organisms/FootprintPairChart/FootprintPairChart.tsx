@@ -190,6 +190,19 @@ export default function FootprintPairChart({
       livePrice != null && Number.isFinite(livePrice) && livePrice > 0
         ? livePrice
         : lastClose;
+
+    const visibleWithLive = visible.map((bar, index) => {
+      if (index !== visible.length - 1) return bar;
+      if (Math.abs(spotPrice - (bar.close ?? 0)) <= 1e-9) return bar;
+      const high = bar.high ?? spotPrice;
+      const low = bar.low ?? spotPrice;
+      return {
+        ...bar,
+        close: spotPrice,
+        high: Math.max(high, spotPrice),
+        low: Math.min(low, spotPrice),
+      };
+    });
     const closes = visible.map((b) => b.close);
     const [baseMin, baseMax] = computePriceBounds(closes, spotPrice, visible);
     const [minPrice, maxPrice] = applyZoomBounds(baseMin, baseMax, zoomScale, spotPrice);
@@ -258,11 +271,11 @@ export default function FootprintPairChart({
     const yLiqShort = (notional: number) =>
       liqMidY - (notional / maxAbsLiq) * (liqInnerH / 2 - 2);
 
-    const closePoints = visible
+    const closePoints = visibleWithLive
       .map((bar, i) => `${xAt(i).toFixed(1)},${clampYPrice(bar.close).toFixed(1)}`)
       .concat(
         Math.abs(spotPrice - lastClose) > 1e-9
-          ? [`${xAt(visible.length - 1).toFixed(1)},${clampYPrice(spotPrice).toFixed(1)}`]
+          ? [`${xAt(visibleWithLive.length - 1).toFixed(1)},${clampYPrice(spotPrice).toFixed(1)}`]
           : [],
       )
       .join(" ");
@@ -285,7 +298,7 @@ export default function FootprintPairChart({
 
     const barWidth = Math.max(2, innerW / Math.max(visible.length, 1) - 1);
     // Use raw yPrice for candles — clampYPrice pins out-of-range wicks to pane edges (giant spikes).
-    const candleShapes = candleGeometries(visible, xAt, yPrice, innerW, priceInnerH);
+    const candleShapes = candleGeometries(visibleWithLive, xAt, yPrice, innerW, priceInnerH);
 
     const bandRects = bands.flatMap((band, i) => {
       const low = Math.min(band.low, band.high);
@@ -308,7 +321,7 @@ export default function FootprintPairChart({
 
     return {
       chartWidth,
-      visible,
+      visible: visibleWithLive,
       closePoints,
       candleShapes,
       cvdPoints,
@@ -330,7 +343,7 @@ export default function FootprintPairChart({
       barWidth,
       spotPrice,
       spotY: clampYPrice(spotPrice),
-      lastX: xAt(visible.length - 1),
+      lastX: xAt(visibleWithLive.length - 1),
       clipIds: {
         price: `${clipUid}-price`,
         delta: `${clipUid}-delta`,

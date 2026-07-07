@@ -235,7 +235,7 @@ const chartsBatchInflight = new Map<
 function chartsBatchInflightKey(
   symbols: readonly string[],
   timeframe: ScannerChartTimeframe,
-  mode: "full" | "patch",
+  mode: "full-cached" | "full-fresh" | "patch",
 ): string {
   return `${mode}|${timeframe}|${[...symbols].sort().join(",")}`;
 }
@@ -399,7 +399,7 @@ export async function prefetchScannerCharts(
   const inflightKey = chartsBatchInflightKey(
     unique,
     timeframe,
-    options?.bustCache ? "full" : "full",
+    options?.bustCache ? "full-fresh" : "full-cached",
   );
   const pending = chartsBatchInflight.get(inflightKey);
   if (pending) return pending;

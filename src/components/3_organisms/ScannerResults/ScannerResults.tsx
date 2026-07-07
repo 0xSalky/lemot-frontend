@@ -34,7 +34,7 @@ import { themedPanelStyle } from "@/components/ui/themed-panel";
 import { expectsFootprintSymbol, hasFootprintChartCandles, hasOrderflowData, hasScannerChartCandles, isFootprintCollectorOnline } from "@/services/footprintUtils";
 import { Box, Badge, Flex, Stack, Text } from "@chakra-ui/react";
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FootprintPairView } from "@/types/footprintTypes";
 
 type ScannerResultsProps = {
@@ -389,6 +389,7 @@ const ScannerResults = ({
     const nextFullRefreshAtRef = useRef(refreshDeadline);
     const fullRefreshRunningRef = useRef(false);
     const patchRunningRef = useRef(false);
+    const countdownZeroHandledRef = useRef(false);
 
     const chartSymbols = useMemo(
         () => setups.map((setup) => setup.symbol),
@@ -397,6 +398,35 @@ const ScannerResults = ({
     const chartSymbolsKey = chartSymbols.slice().sort().join(",");
     const chartSymbolsRef = useRef(chartSymbols);
     chartSymbolsRef.current = chartSymbols;
+
+    const runFullChartRefresh = useCallback(() => {
+        if (fullRefreshRunningRef.current || !chartSymbolsRef.current.length) {
+            return Promise.resolve();
+        }
+        fullRefreshRunningRef.current = true;
+        return prefetchScannerCharts(chartSymbolsRef.current, defaultChartTimeframe, {
+            bustCache: true,
+        })
+            .then((charts) => {
+                setPrefetchedCharts((prev) => {
+                    const next = { ...prev };
+                    for (const [symbol, chart] of Object.entries(charts)) {
+                        if (chart) next[symbol] = chart;
+                    }
+                    return next;
+                });
+                const deadline = Date.now() + SCANNER_CHART_REFRESH_MS;
+                nextFullRefreshAtRef.current = deadline;
+                setRefreshDeadline(deadline);
+                countdownZeroHandledRef.current = false;
+            })
+            .catch(() => {
+                console.warn("[scanner charts] full refresh failed", { profile });
+            })
+            .finally(() => {
+                fullRefreshRunningRef.current = false;
+            });
+    }, [defaultChartTimeframe, profile]);
 
     const batchMeta =
         scannerView != null && !("message" in scannerView) ? scannerView.batch : null;
@@ -443,6 +473,7 @@ const ScannerResults = ({
             nextFullRefreshAtRef.current = next;
             setRefreshDeadline(next);
             setChartRefreshCountdownSec(chartRefreshSec);
+            countdownZeroHandledRef.current = false;
         }
     }, [batchId, chartRefreshSec, loading, profile, refreshKey, scannerView]);
 
@@ -458,6 +489,16 @@ const ScannerResults = ({
     }, [refreshDeadline]);
 
     useEffect(() => {
+        if (chartRefreshCountdownSec > 0) {
+            countdownZeroHandledRef.current = false;
+            return;
+        }
+        if (!polling || loading || countdownZeroHandledRef.current) return;
+        countdownZeroHandledRef.current = true;
+        void runFullChartRefresh();
+    }, [chartRefreshCountdownSec, loading, polling, runFullChartRefresh]);
+
+    useEffect(() => {
         if (loading || !polling || !chartSymbolsKey) return;
 
         let cancelled = false;
@@ -471,32 +512,9 @@ const ScannerResults = ({
                     scheduleFullRefresh();
                     return;
                 }
-                if (fullRefreshRunningRef.current) {
-                    scheduleFullRefresh();
-                    return;
-                }
-                fullRefreshRunningRef.current = true;
-                void prefetchScannerCharts(chartSymbolsRef.current, defaultChartTimeframe, { bustCache: true })
-                    .then((charts) => {
-                        if (cancelled) return;
-                        setPrefetchedCharts((prev) => {
-                            const next = { ...prev };
-                            for (const [symbol, chart] of Object.entries(charts)) {
-                                if (chart) next[symbol] = chart;
-                            }
-                            return next;
-                        });
-                        const deadline = Date.now() + SCANNER_CHART_REFRESH_MS;
-                        nextFullRefreshAtRef.current = deadline;
-                        setRefreshDeadline(deadline);
-                    })
-                    .catch(() => {
-                        console.warn("[scanner charts] full refresh failed", { profile });
-                    })
-                    .finally(() => {
-                        fullRefreshRunningRef.current = false;
-                        if (!cancelled) scheduleFullRefresh();
-                    });
+                void runFullChartRefresh().finally(() => {
+                    if (!cancelled) scheduleFullRefresh();
+                });
             }, delay);
         };
 
@@ -507,11 +525,11 @@ const ScannerResults = ({
         };
     }, [
         chartSymbolsKey,
-        defaultChartTimeframe,
         loading,
         polling,
         profile,
         refreshKey,
+        runFullChartRefresh,
     ]);
 
     useEffect(() => {
@@ -525,14 +543,15 @@ const ScannerResults = ({
             void patchScannerCharts(chartSymbolsRef.current, defaultChartTimeframe)
                 .then((charts) => {
                     if (cancelled) return;
-                    const updates = Object.values(charts).some(Boolean);
-                    if (!updates) return;
                     setPrefetchedCharts((prev) => {
                         const next = { ...prev };
+                        let changed = false;
                         for (const [symbol, chart] of Object.entries(charts)) {
-                            if (chart) next[symbol] = chart;
+                            if (!chart) continue;
+                            next[symbol] = chart;
+                            changed = true;
                         }
-                        return next;
+                        return changed ? next : prev;
                     });
                 })
                 .catch(() => {

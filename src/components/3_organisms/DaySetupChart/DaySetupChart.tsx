@@ -8,6 +8,7 @@ import ScannerSetupChart, {
 } from "@/components/3_organisms/ScannerSetupChart/ScannerSetupChart";
 import type { ThemeTokens } from "@/components/ui/theme-color";
 import {
+  applyLivePriceToMergedBars,
   expectsFootprintSymbol,
   fetchFootprintView,
   hasOrderflowData,
@@ -136,27 +137,24 @@ export default function DaySetupChart({
   const pairForDisplay =
     fpTimeframe === defaultFootprintTimeframe ? footprintPair : altTimeframePair;
 
-  const exchangeCandles =
-    pairForDisplay?.chart?.candles ?? managedChart?.candles ?? [];
+  const liveChart = managedChart ?? pairForDisplay?.chart ?? null;
+  const exchangeCandles = managedChart?.candles ?? pairForDisplay?.chart?.candles ?? [];
 
-  const displayBars = useMemo(
-    () =>
-      overlayExchangeOhlcOnMerged(
-        pairForDisplay?.merged ?? [],
-        exchangeCandles,
-        fpTimeframe,
-      ),
-    [exchangeCandles, fpTimeframe, pairForDisplay?.merged],
-  );
+  const displayBars = useMemo(() => {
+    const overlaid = overlayExchangeOhlcOnMerged(
+      pairForDisplay?.merged ?? [],
+      exchangeCandles,
+      fpTimeframe,
+    );
+    const spot = chartSpotPrice(liveChart, price);
+    return applyLivePriceToMergedBars(overlaid, spot);
+  }, [exchangeCandles, fpTimeframe, liveChart, pairForDisplay?.merged, price]);
 
   const showOrderflow =
     hasOrderflowData(pairForDisplay) &&
     displayBars.filter(hasRealOhlc).length >= 2;
   const showFootprintLoading = expectsFootprint && footprintLoading && !showOrderflow;
-  const footprintSpotPrice = chartSpotPrice(
-    pairForDisplay?.chart ?? managedChart ?? null,
-    price,
-  );
+  const footprintSpotPrice = chartSpotPrice(liveChart, price);
   const restSpotPrice = chartSpotPrice(managedChart, price);
 
   if (showFootprintLoading) {

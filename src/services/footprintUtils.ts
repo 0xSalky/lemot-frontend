@@ -155,6 +155,28 @@ export function overlayExchangeOhlcOnMerged(
   });
 }
 
+/** Move the forming bar to the live mark when ticker updates between full reloads. */
+export function applyLivePriceToMergedBars(
+  bars: FootprintMergedBar[],
+  livePrice: number | null | undefined,
+): FootprintMergedBar[] {
+  if (bars.length === 0) return bars;
+  if (livePrice == null || !Number.isFinite(livePrice) || livePrice <= 0) return bars;
+
+  const last = bars[bars.length - 1];
+  const high = last.high ?? livePrice;
+  const low = last.low ?? livePrice;
+  return [
+    ...bars.slice(0, -1),
+    {
+      ...last,
+      close: livePrice,
+      high: Math.max(high, livePrice),
+      low: Math.min(low, livePrice),
+    },
+  ];
+}
+
 export function hasScannerChartCandles(chart?: ScannerChartPayload | null): boolean {
   return (chart?.candles ?? []).some(hasRealOhlc);
 }
