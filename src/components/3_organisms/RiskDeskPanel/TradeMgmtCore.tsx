@@ -46,6 +46,7 @@ function formatPrice(value: number | null | undefined): string {
 function milestoneColor(tokens: ThemeTokens, m: TradeMgmtMilestone, accent: string): string {
   if (m.reached) return tokens.tagGreen.color;
   if (m.kind === "tp") return tokens.tagAccent.color;
+  if (m.kind === "trail") return tokens.warn;
   return accent;
 }
 
@@ -82,6 +83,7 @@ function ExitChip({
 
 function milestoneLegendLabel(m: TradeMgmtMilestone): string {
   if (m.kind === "tp") return `TP ${m.r}R`;
+  if (m.kind === "trail" && m.lock_r != null) return `trail +${m.lock_r}R @${m.r}R`;
   if (m.lock_r != null) return `lock +${m.lock_r}R @${m.r}R`;
   return m.label;
 }
@@ -154,8 +156,8 @@ function RRail({
           title={milestoneLegendLabel(m)}
         >
           <Box
-            w={m.kind === "tp" ? "10px" : "8px"}
-            h={m.kind === "tp" ? "10px" : "8px"}
+            w={m.kind === "tp" ? "10px" : m.kind === "trail" ? "9px" : "8px"}
+            h={m.kind === "tp" ? "10px" : m.kind === "trail" ? "9px" : "8px"}
             rounded="full"
             borderWidth="2px"
             borderColor={milestoneColor(tokens, m, accent)}

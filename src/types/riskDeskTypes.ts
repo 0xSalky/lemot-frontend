@@ -80,7 +80,7 @@ export interface TradeMgmtMilestone {
   r: number;
   pct: number;
   reached: boolean;
-  kind: "tp" | "lock";
+  kind: "tp" | "lock" | "trail";
   lock_r?: number;
 }
 
@@ -454,7 +454,7 @@ function normalizeTradeMgmtProgress(raw: Record<string, unknown> | null): TradeM
           r: num(row.r) ?? 0,
           pct: num(row.pct) ?? 0,
           reached: Boolean(row.reached),
-          kind: (kind === "tp" ? "tp" : "lock") as TradeMgmtMilestone["kind"],
+          kind: (kind === "tp" ? "tp" : kind === "trail" ? "trail" : "lock") as TradeMgmtMilestone["kind"],
           lock_r: num(row.lock_r) ?? undefined,
         };
       })
