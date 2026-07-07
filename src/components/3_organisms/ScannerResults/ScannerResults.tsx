@@ -27,7 +27,7 @@ import SetupHeaderTags from "@/components/2_molecules/SetupHeaderTags/SetupHeade
 import DaySetupChart from "@/components/3_organisms/DaySetupChart/DaySetupChart";
 import { useThemeColor, useThemeTokens, type ThemeTokens } from "@/components/ui/theme-color";
 import { themedPanelStyle } from "@/components/ui/themed-panel";
-import { expectsFootprintSymbol, hasFootprintChartCandles, hasOrderflowData } from "@/services/footprintUtils";
+import { expectsFootprintSymbol, hasFootprintChartCandles, hasOrderflowData, hasScannerChartCandles } from "@/services/footprintUtils";
 import { Box, Badge, Flex, Stack, Text } from "@chakra-ui/react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -387,11 +387,15 @@ const ScannerResults = ({ profile, scannerView, loading = false }: ScannerResult
             .filter((setup) => {
                 const base = scannerSymbolToBase(setup.symbol);
                 const footprintPair = footprintPairs[base] ?? null;
+                const managedChart = chartsBySymbol[setup.symbol] ?? null;
+                const footprintReady =
+                    hasOrderflowData(footprintPair) &&
+                    (hasFootprintChartCandles(footprintPair) || hasScannerChartCandles(managedChart));
                 const usesManagedChart =
                     !expectsFootprintSymbol(base)
                     || !hasOrderflowData(footprintPair)
-                    || !hasFootprintChartCandles(footprintPair);
-                return usesManagedChart && chartsBySymbol[setup.symbol] == null;
+                    || !footprintReady;
+                return usesManagedChart && managedChart == null;
             })
             .map((setup) => setup.symbol);
     }, [chartsBySymbol, footprintPairs, scannerView, setups]);
@@ -495,10 +499,6 @@ const ScannerResults = ({ profile, scannerView, loading = false }: ScannerResult
                     const base = scannerSymbolToBase(setup.symbol);
                     const footprintPair = footprintPairs[base] ?? null;
                     const managedChart = chartsBySymbol[setup.symbol] ?? null;
-                    const usesManagedChart =
-                        !expectsFootprintSymbol(base)
-                        || !hasOrderflowData(footprintPair)
-                        || !hasFootprintChartCandles(footprintPair);
 
                     return (
                         <SetupCard
@@ -508,8 +508,8 @@ const ScannerResults = ({ profile, scannerView, loading = false }: ScannerResult
                             profile={profile}
                             defaultChartTimeframe={defaultChartTimeframe}
                             footprintPair={footprintPair}
-                            managedChart={usesManagedChart ? managedChart : undefined}
-                            managedChartLoading={usesManagedChart ? chartsLoading && managedChart == null : false}
+                            managedChart={managedChart}
+                            managedChartLoading={chartsLoading && managedChart == null}
                         />
                     );
                 })}

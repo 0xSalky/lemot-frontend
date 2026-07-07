@@ -10,8 +10,9 @@ import type { ThemeTokens } from "@/components/ui/theme-color";
 import {
   expectsFootprintSymbol,
   fetchFootprintView,
-  hasFootprintChartCandles,
   hasOrderflowData,
+  hasRealOhlc,
+  overlayExchangeOhlcOnMerged,
 } from "@/services/footprintUtils";
 import { scannerSymbolToBase, chartSpotPrice, type ScannerProfile } from "@/services/scannerUtils";
 import {
@@ -21,7 +22,7 @@ import {
 } from "@/types/footprintTypes";
 import type { ScannerBandRow, ScannerChartPayload, ScannerChartTimeframe } from "@/types/scannerTypes";
 import { Box, Text } from "@chakra-ui/react";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 type DaySetupChartProps = {
   symbol: string;
@@ -134,11 +135,26 @@ export default function DaySetupChart({
 
   const pairForDisplay =
     fpTimeframe === defaultFootprintTimeframe ? footprintPair : altTimeframePair;
+
+  const exchangeCandles =
+    pairForDisplay?.chart?.candles ?? managedChart?.candles ?? [];
+
+  const displayBars = useMemo(
+    () =>
+      overlayExchangeOhlcOnMerged(
+        pairForDisplay?.merged ?? [],
+        exchangeCandles,
+        fpTimeframe,
+      ),
+    [exchangeCandles, fpTimeframe, pairForDisplay?.merged],
+  );
+
   const showOrderflow =
-    hasOrderflowData(pairForDisplay) && hasFootprintChartCandles(pairForDisplay);
+    hasOrderflowData(pairForDisplay) &&
+    displayBars.filter(hasRealOhlc).length >= 2;
   const showFootprintLoading = expectsFootprint && footprintLoading && !showOrderflow;
   const footprintSpotPrice = chartSpotPrice(
-    pairForDisplay?.chart ?? null,
+    pairForDisplay?.chart ?? managedChart ?? null,
     price,
   );
   const restSpotPrice = chartSpotPrice(managedChart, price);
@@ -151,7 +167,7 @@ export default function DaySetupChart({
     return (
       <DayChartBleed tokens={tokens} minHeight={FOOTPRINT_CHART_HEIGHT}>
         <FootprintPairChart
-          bars={pairForDisplay.merged}
+          bars={displayBars}
           timeframe={fpTimeframe}
           onTimeframeChange={handleFootprintTimeframeChange}
           loading={fpLoading}

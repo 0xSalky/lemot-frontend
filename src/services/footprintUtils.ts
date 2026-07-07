@@ -1,6 +1,7 @@
 import { apiFetch } from "@/services/apiFetch";
 import { formatVolDollar } from "@/services/scannerUtils";
 import type {
+  FootprintMergedBar,
   FootprintPairView,
   FootprintProfile,
   FootprintSignalSeverity,
@@ -8,6 +9,7 @@ import type {
   FootprintTimeframe,
   FootprintViewPayload,
 } from "@/types/footprintTypes";
+import type { ScannerChartPayload } from "@/types/scannerTypes";
 import { FOOTPRINT_SYMBOLS } from "@/types/footprintTypes";
 
 const footprintViewCache = new Map<string, Promise<FootprintViewPayload>>();
@@ -70,19 +72,98 @@ export function hasFootprintData(pair?: FootprintPairView | null): boolean {
   return Boolean(pair?.orderflow?.bars?.length);
 }
 
+type OhlcCandle = {
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+};
+
+const TIMEFRAME_MATCH_SLACK_SEC: Record<string, number> = {
+  "5m": 300,
+  "15m": 900,
+  "30m": 1800,
+  "1h": 3600,
+  "2h": 7200,
+  "4h": 14400,
+};
+
+/** True when a bar has exchange-grade OHLC (not a flat mark-price dot). */
+export function hasRealOhlc(bar: {
+  high?: number | null;
+  low?: number | null;
+  open?: number | null;
+  close?: number | null;
+}): boolean {
+  const high = bar.high ?? 0;
+  const low = bar.low ?? 0;
+  const open = bar.open ?? 0;
+  const close = bar.close ?? 0;
+  if (high <= 0 || low <= 0) return false;
+  return Math.abs(high - low) > 1e-9 || Math.abs(open - close) > 1e-9;
+}
+
+function findCandleForTime(
+  ts: number,
+  candleByTime: Map<number, OhlcCandle>,
+  sortedTimes: number[],
+  slackSec: number,
+): OhlcCandle | null {
+  const direct = candleByTime.get(ts);
+  if (direct) return direct;
+
+  for (const offset of [60, -60, 120, -120, 300, -300, 900, -900]) {
+    const hit = candleByTime.get(ts + offset);
+    if (hit) return hit;
+  }
+
+  let best: number | null = null;
+  let bestDist = slackSec + 1;
+  for (const candidate of sortedTimes) {
+    const dist = Math.abs(candidate - ts);
+    if (dist <= slackSec && dist < bestDist) {
+      best = candidate;
+      bestDist = dist;
+    }
+  }
+  return best != null ? candleByTime.get(best) ?? null : null;
+}
+
+/** Replace mark-only merged OHLC with exchange candles while keeping orderflow fields. */
+export function overlayExchangeOhlcOnMerged(
+  merged: FootprintMergedBar[],
+  candles: OhlcCandle[] | undefined | null,
+  timeframe = "30m",
+): FootprintMergedBar[] {
+  if (!merged.length || !candles?.length) return merged;
+
+  const candleByTime = new Map(candles.map((candle) => [candle.time, candle]));
+  const sortedTimes = candles.map((candle) => candle.time).sort((a, b) => a - b);
+  const slackSec = TIMEFRAME_MATCH_SLACK_SEC[timeframe] ?? 1800;
+
+  return merged.map((bar) => {
+    const candle = findCandleForTime(bar.time, candleByTime, sortedTimes, slackSec);
+    if (!candle || !hasRealOhlc(candle)) return bar;
+    return {
+      ...bar,
+      open: candle.open,
+      high: candle.high,
+      low: candle.low,
+      close: candle.close,
+    };
+  });
+}
+
+export function hasScannerChartCandles(chart?: ScannerChartPayload | null): boolean {
+  return (chart?.candles ?? []).some(hasRealOhlc);
+}
+
 /** True when merged bars or chart payload include real OHLC range (not flat mark-only dots). */
 export function hasFootprintChartCandles(pair?: FootprintPairView | null): boolean {
-  const candles = pair?.chart?.candles;
-  if (Array.isArray(candles) && candles.length >= 2) return true;
   const merged = pair?.merged ?? [];
-  return merged.some((bar) => {
-    const high = bar.high ?? 0;
-    const low = bar.low ?? 0;
-    const open = bar.open ?? 0;
-    const close = bar.close ?? 0;
-    if (high <= 0 || low <= 0) return false;
-    return Math.abs(high - low) > 1e-9 || Math.abs(open - close) > 1e-9;
-  });
+  if (merged.some(hasRealOhlc)) return true;
+  return (pair?.chart?.candles ?? []).some(hasRealOhlc);
 }
 
 /** True when WS orderflow bars exist — gates footprint chart + orderflow tags in day scan UI. */
