@@ -124,8 +124,10 @@ export async function fetchLatestScannerBatch(
 
 export async function fetchScannerView(
   profile: ScannerProfile = DEFAULT_SCANNER_PROFILE,
+  options?: { fresh?: boolean },
 ): Promise<ScannerViewFetchResult> {
   const params = new URLSearchParams({ profile });
+  if (options?.fresh) params.set("fresh", "1");
   const res = await apiFetch(`/api/scanner/view?${params.toString()}`, {
     cache: "no-store",
   });
