@@ -1,10 +1,9 @@
 "use client";
 
 import ConfigPanel from "@/components/3_organisms/ConfigPanel/ConfigPanel";
-import RiskDesk from "@/components/3_organisms/RiskDesk/RiskDesk";
+import RiskDeskPanel from "@/components/3_organisms/RiskDeskPanel/RiskDeskPanel";
 import ScannerChat from "@/components/3_organisms/ScannerChat/ScannerChat";
 import ScannerResults from "@/components/3_organisms/ScannerResults/ScannerResults";
-import TradingAccess from "@/components/3_organisms/TradingAccess/TradingAccess";
 import { useThemeColor, useThemeTokens } from "@/components/ui/theme-color";
 import { themedPanelStyle } from "@/components/ui/themed-panel";
 import { TRADING_PAIRS, CONTENT_MAX_WIDTH, IS_PROFILE_B_ACTIVE } from "@/services/config";
@@ -67,8 +66,7 @@ export default function HomePage() {
     }, [loadScannerView]);
 
     return (
-        <TradingAccess>
-            <Flex
+        <Flex
                 direction={{ base: "column", lg: "row" }}
                 gap={{ base: "4", lg: "6" }}
                 align="stretch"
@@ -103,7 +101,7 @@ export default function HomePage() {
                         </Tabs.List>
 
                         <Tabs.Content value="risk-desk" pt="0">
-                            <RiskDesk />
+                            <RiskDeskPanel active={activeTab === "risk-desk"} />
                         </Tabs.Content>
 
                         <Tabs.Content value="scanner-a" pt="0" />
@@ -162,6 +160,5 @@ export default function HomePage() {
                     </Box>
                 </Box>
             </Flex>
-        </TradingAccess>
     );
 }
