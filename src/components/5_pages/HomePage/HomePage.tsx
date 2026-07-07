@@ -9,9 +9,9 @@ import TradeJournalPanel from "@/components/3_organisms/TradeJournalPanel/TradeJ
 import ResponsiveCardGrid from "@/components/4_layouts/ResponsiveCardGrid/ResponsiveCardGrid";
 import { useThemeColor, useThemeTokens } from "@/components/ui/theme-color";
 import { TRADING_PAIRS, CONTENT_MAX_WIDTH, IS_PROFILE_B_ACTIVE } from "@/services/config";
-import type { ScannerViewFetchResult } from "@/types/scannerTypes";
+import type { ScannerLatestBatchFetchResult } from "@/types/scannerTypes";
 import {
-    fetchScannerView,
+    fetchLatestScannerBatch,
     scannerSymbolToBase,
     SCANNER_PROFILES,
     type ScannerProfile,
@@ -27,15 +27,15 @@ const INITIAL_SCANNER_LOADING: Record<ScannerProfile, boolean> = {
 function runScannerBatchFetch(
     profile: ScannerProfile,
     loadIdRef: MutableRefObject<Record<ScannerProfile, number>>,
-    setViews: Dispatch<SetStateAction<Record<ScannerProfile, ScannerViewFetchResult | null>>>,
+    setBatches: Dispatch<SetStateAction<Record<ScannerProfile, ScannerLatestBatchFetchResult | null>>>,
     setLoading: Dispatch<SetStateAction<Record<ScannerProfile, boolean>>>,
 ) {
     const loadId = ++loadIdRef.current[profile];
 
-    return fetchScannerView(profile)
-        .then((view) => {
+    return fetchLatestScannerBatch(profile)
+        .then((batch) => {
             if (loadId !== loadIdRef.current[profile]) return;
-            setViews((prev) => ({ ...prev, [profile]: view }));
+            setBatches((prev) => ({ ...prev, [profile]: batch }));
         })
         .catch((e) => console.error(`[scanner refresh ${profile}]`, e))
         .finally(() => {
@@ -47,7 +47,7 @@ function runScannerBatchFetch(
 const HomePage = () => {
     const { palette } = useThemeColor();
     const tokens = useThemeTokens(palette);
-    const [views, setViews] = useState<Record<ScannerProfile, ScannerViewFetchResult | null>>({
+    const [batches, setBatches] = useState<Record<ScannerProfile, ScannerLatestBatchFetchResult | null>>({
         b: null,
         a: null,
     });
@@ -57,37 +57,26 @@ const HomePage = () => {
 
     const loadScanner = useCallback((profile: ScannerProfile) => {
         setLoading((prev) => ({ ...prev, [profile]: true }));
-        void runScannerBatchFetch(profile, loadIdRef, setViews, setLoading);
+        void runScannerBatchFetch(profile, loadIdRef, setBatches, setLoading);
     }, []);
 
     useEffect(() => {
         for (const profile of SCANNER_PROFILES) {
-            void runScannerBatchFetch(profile, loadIdRef, setViews, setLoading);
+            void runScannerBatchFetch(profile, loadIdRef, setBatches, setLoading);
         }
     }, []);
-
-    useEffect(() => {
-        const profile: ScannerProfile | null =
-            activeTab === "scanner-a" ? "a" : activeTab === "scanner-b" ? "b" : null;
-        if (!profile) return;
-
-        const frameId = requestAnimationFrame(() => {
-            loadScanner(profile);
-        });
-        return () => cancelAnimationFrame(frameId);
-    }, [activeTab, loadScanner]);
 
     const scannerPairs = useMemo(() => {
         const bases: string[] = [];
         for (const profile of SCANNER_PROFILES) {
-            const view = views[profile];
-            if (view == null || "message" in view) continue;
-            for (const setup of view.setups) {
+            const batch = batches[profile];
+            if (batch == null || "message" in batch) continue;
+            for (const setup of batch.setups) {
                 bases.push(scannerSymbolToBase(setup.symbol));
             }
         }
         return [...new Set(bases)];
-    }, [views]);
+    }, [batches]);
 
     const tradingPairs = useMemo(() => {
         const combined = [...new Set([...TRADING_PAIRS, ...scannerPairs])];
@@ -140,26 +129,22 @@ const HomePage = () => {
                 </Tabs.Content>
 
                 <Tabs.Content value="scanner-a">
-                    {activeTab === "scanner-a" ? (
-                        <ScannerResults
-                            profile="a"
-                            scannerView={views.a}
-                            loading={loading.a}
-                            active
-                        />
-                    ) : null}
+                    <ScannerResults
+                        profile="a"
+                        latestBatch={batches.a}
+                        loading={loading.a}
+                        active={activeTab === "scanner-a"}
+                    />
                 </Tabs.Content>
 
                 {IS_PROFILE_B_ACTIVE && (
                     <Tabs.Content value="scanner-b">
-                        {activeTab === "scanner-b" ? (
-                            <ScannerResults
-                                profile="b"
-                                scannerView={views.b}
-                                loading={loading.b}
-                                active
-                            />
-                        ) : null}
+                        <ScannerResults
+                            profile="b"
+                            latestBatch={batches.b}
+                            loading={loading.b}
+                            active={activeTab === "scanner-b"}
+                        />
                     </Tabs.Content>
                 )}
 

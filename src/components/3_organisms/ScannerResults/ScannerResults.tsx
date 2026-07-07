@@ -3,8 +3,8 @@ import type {
     ScannerBandRow,
     ScannerChartPayload,
     ScannerChartTimeframe,
+    ScannerLatestBatchFetchResult,
     ScannerSetupRow,
-    ScannerViewFetchResult,
 } from "@/types/scannerTypes";
 import {
     bandLineMarker,
@@ -14,10 +14,12 @@ import {
     isLevelAnchor,
     levelsHighToLow,
     orderedBands,
+    prefetchScannerCharts,
     scannerProfileLabel,
     SCANNER_PROFILE_CHART_TIMEFRAME,
     scannerSymbolToBase,
-    setupsFromScannerView,
+    setupsFromBatch,
+    SCANNER_CHART_REFRESH_MS,
     type ScannerProfile,
 } from "@/services/scannerUtils";
 import ResponsiveCardGrid from "@/components/4_layouts/ResponsiveCardGrid/ResponsiveCardGrid";
@@ -26,14 +28,17 @@ import SetupHeaderTags from "@/components/2_molecules/SetupHeaderTags/SetupHeade
 import DaySetupChart from "@/components/3_organisms/DaySetupChart/DaySetupChart";
 import { useThemeColor, useThemeTokens, type ThemeTokens } from "@/components/ui/theme-color";
 import { themedPanelStyle } from "@/components/ui/themed-panel";
-import { expectsFootprintSymbol, hasOrderflowData } from "@/services/footprintUtils";
+import { usePageVisible } from "@/hooks/usePageVisible";
+import { expectsFootprintSymbol, fetchFootprintView, hasOrderflowData } from "@/services/footprintUtils";
+import { FOOTPRINT_PROFILE_DEFAULTS } from "@/types/footprintTypes";
 import { Box, Badge, Flex, Stack, Text } from "@chakra-ui/react";
 import type { ReactNode } from "react";
-import type { FootprintPairView } from "@/types/footprintTypes";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { FootprintPairView, FootprintViewPayload } from "@/types/footprintTypes";
 
 type ScannerResultsProps = {
     profile: ScannerProfile;
-    scannerView: ScannerViewFetchResult | null;
+    latestBatch: ScannerLatestBatchFetchResult | null;
     loading?: boolean;
     /** False when scanner tab is hidden — pauses chart/footprint polling. */
     active?: boolean;
@@ -366,31 +371,257 @@ function BandBlock({ band }: { band: ScannerBandRow }) {
     );
 }
 
-const ScannerResults = ({ profile, scannerView, loading = false }: ScannerResultsProps) => {
+const ScannerResults = ({ profile, latestBatch, loading = false, active = true }: ScannerResultsProps) => {
     const { palette } = useThemeColor();
     const tokens = useThemeTokens(palette);
-    const setups = setupsFromScannerView(scannerView);
+    const pageVisible = usePageVisible();
+    const pollingEnabled = active && pageVisible;
+    const setups = setupsFromBatch(latestBatch);
     const profileLabel = scannerProfileLabel(profile);
     const defaultChartTimeframe = SCANNER_PROFILE_CHART_TIMEFRAME[profile];
-    const batchMeta =
-        scannerView != null && !("message" in scannerView) ? scannerView.batch : null;
-    const footprintPairsByBase =
-        scannerView != null && !("message" in scannerView)
-            ? scannerView.footprint?.pairs_by_base ?? {}
-            : {};
-    const managedCharts =
-        scannerView != null && !("message" in scannerView)
-            ? scannerView.charts?.by_symbol ?? {}
-            : {};
-    const managedChartsLoading = loading;
-    const footprintLoading = loading;
-    const wsConnected =
-        scannerView != null &&
-        !("message" in scannerView) &&
-        scannerView.footprint?.health &&
-        Number((scannerView.footprint.health as { ws_connected?: number }).ws_connected) === 1;
+    const [footprintPayload, setFootprintPayload] = useState<FootprintViewPayload | null>(null);
+    const [footprintLoading, setFootprintLoading] = useState(false);
+    const nextFootprintRefreshAtRef = useRef(0);
+    const footprintLoadInFlight = useRef(false);
+    const pendingFootprintRefresh = useRef(false);
+    const [footprintRefreshCountdownSec, setFootprintRefreshCountdownSec] = useState(
+        Math.ceil(SCANNER_CHART_REFRESH_MS / 1000),
+    );
+    const [managedCharts, setManagedCharts] = useState<Record<string, ScannerChartPayload | null>>({});
+    const [managedChartsLoading, setManagedChartsLoading] = useState(false);
+    const nextChartRefreshAtRef = useRef(0);
+    const [managedRefreshCountdownSec, setManagedRefreshCountdownSec] = useState(
+        Math.ceil(SCANNER_CHART_REFRESH_MS / 1000),
+    );
 
-    if (loading && scannerView == null) {
+    const batchMeta =
+        latestBatch != null && !("message" in latestBatch) ? latestBatch.batch : null;
+
+    const footprintSymbolsKey = useMemo(() => {
+        if (latestBatch == null || "message" in latestBatch) return "";
+        return [...new Set(latestBatch.setups.map((setup) => scannerSymbolToBase(setup.symbol)))]
+            .filter((base) => expectsFootprintSymbol(base))
+            .sort()
+            .join(",");
+    }, [latestBatch]);
+
+    const activeFootprintKey = footprintSymbolsKey;
+    const [prevFootprintKey, setPrevFootprintKey] = useState<string | null>(null);
+
+    const restChartSymbols = useMemo(() => {
+        if (!pollingEnabled || setups.length === 0) return [];
+        if (!activeFootprintKey) {
+            return setups.map((setup) => setup.symbol);
+        }
+        if (footprintLoading) {
+            // Keep plain REST charts loading while footprint data is still warming up.
+            return setups.map((setup) => setup.symbol);
+        }
+        if (!footprintLoading) {
+            return setups
+                .filter((setup) => {
+                    const base = scannerSymbolToBase(setup.symbol);
+                    if (!expectsFootprintSymbol(base)) return true;
+                    const pair = footprintPayload?.pairs[base];
+                    return !hasOrderflowData(pair);
+                })
+                .map((setup) => setup.symbol);
+        }
+        return [];
+    }, [activeFootprintKey, footprintLoading, footprintPayload, pollingEnabled, setups]);
+
+    const restChartSymbolsKey = useMemo(
+        () => restChartSymbols.slice().sort().join(","),
+        [restChartSymbols],
+    );
+
+    if (activeFootprintKey !== prevFootprintKey) {
+        setPrevFootprintKey(activeFootprintKey);
+        if (!activeFootprintKey) {
+            setFootprintPayload(null);
+            setFootprintLoading(false);
+        } else {
+            setFootprintLoading(true);
+        }
+    }
+
+    useEffect(() => {
+        if (!activeFootprintKey || !pollingEnabled) return;
+
+        const symbols = activeFootprintKey.split(",");
+        let cancelled = false;
+        const totalSec = Math.ceil(SCANNER_CHART_REFRESH_MS / 1000);
+
+        const resetRefreshDeadline = () => {
+            nextFootprintRefreshAtRef.current = Date.now() + SCANNER_CHART_REFRESH_MS;
+            setFootprintRefreshCountdownSec(totalSec);
+        };
+
+        resetRefreshDeadline();
+
+        const loadFootprint = (initial: boolean): Promise<void> => {
+            if (footprintLoadInFlight.current) {
+                pendingFootprintRefresh.current = true;
+                return Promise.resolve();
+            }
+            footprintLoadInFlight.current = true;
+            return fetchFootprintView(symbols, {
+                profile,
+                timeframe: FOOTPRINT_PROFILE_DEFAULTS[profile].defaultTimeframe,
+                bustCache: !initial,
+            })
+                .then((data) => {
+                    if (!cancelled) {
+                        setFootprintPayload(data);
+                        resetRefreshDeadline();
+                    }
+                })
+                .catch(() => {
+                    console.warn("[scanner footprint] request failed", {
+                        profile,
+                        symbols,
+                    });
+                    if (!cancelled) setFootprintPayload(null);
+                })
+                .finally(() => {
+                    footprintLoadInFlight.current = false;
+                    if (!cancelled && initial) setFootprintLoading(false);
+                    if (!cancelled && pendingFootprintRefresh.current) {
+                        pendingFootprintRefresh.current = false;
+                        void loadFootprint(false);
+                    }
+                });
+        };
+
+        let refreshTimer: number | undefined;
+        const scheduleRefresh = () => {
+            refreshTimer = window.setTimeout(() => {
+                if (cancelled) return;
+                if (document.visibilityState !== "visible") {
+                    scheduleRefresh();
+                    return;
+                }
+                void loadFootprint(false).finally(() => {
+                    if (!cancelled) scheduleRefresh();
+                });
+            }, SCANNER_CHART_REFRESH_MS);
+        };
+
+        void loadFootprint(true).finally(() => {
+            if (!cancelled) scheduleRefresh();
+        });
+
+        const tickId = window.setInterval(() => {
+            const remaining = Math.max(
+                0,
+                Math.ceil((nextFootprintRefreshAtRef.current - Date.now()) / 1000),
+            );
+            setFootprintRefreshCountdownSec(remaining);
+        }, 1000);
+
+        return () => {
+            cancelled = true;
+            footprintLoadInFlight.current = false;
+            pendingFootprintRefresh.current = false;
+            if (refreshTimer != null) window.clearTimeout(refreshTimer);
+            window.clearInterval(tickId);
+        };
+    }, [activeFootprintKey, pollingEnabled, profile]);
+
+    useEffect(() => {
+        if (!restChartSymbolsKey || !pollingEnabled) {
+            if (pollingEnabled && setups.length > 0) {
+                console.debug("[scanner charts] skipped", {
+                    profile,
+                    restChartSymbolsKey,
+                    footprintLoading,
+                    activeFootprintKey,
+                    setupCount: setups.length,
+                });
+            }
+            return;
+        }
+
+        const symbols = restChartSymbolsKey.split(",").filter(Boolean);
+        let cancelled = false;
+        const totalSec = Math.ceil(SCANNER_CHART_REFRESH_MS / 1000);
+
+        const resetRefreshDeadline = () => {
+            nextChartRefreshAtRef.current = Date.now() + SCANNER_CHART_REFRESH_MS;
+            setManagedRefreshCountdownSec(totalSec);
+        };
+
+        resetRefreshDeadline();
+        // Safe here: this marks the start of a network sync cycle for managed chart data.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setManagedChartsLoading(true);
+
+        const loadCharts = (initial: boolean): Promise<void> =>
+            prefetchScannerCharts(symbols, defaultChartTimeframe, { bustCache: !initial })
+                .then((charts) => {
+                    if (!cancelled) {
+                        setManagedCharts(charts);
+                        resetRefreshDeadline();
+                    }
+                })
+                .catch(() => {
+                    console.warn("[scanner charts] request failed", {
+                        profile,
+                        symbols,
+                        timeframe: defaultChartTimeframe,
+                    });
+                    if (!cancelled) setManagedCharts({});
+                })
+                .finally(() => {
+                    if (!cancelled && initial) setManagedChartsLoading(false);
+                });
+
+        let refreshTimer: number | undefined;
+        const scheduleRefresh = () => {
+            refreshTimer = window.setTimeout(() => {
+                if (cancelled) return;
+                if (document.visibilityState !== "visible") {
+                    scheduleRefresh();
+                    return;
+                }
+                void loadCharts(false).finally(() => {
+                    if (!cancelled) scheduleRefresh();
+                });
+            }, SCANNER_CHART_REFRESH_MS);
+        };
+
+        void loadCharts(true).finally(() => {
+            if (!cancelled) scheduleRefresh();
+        });
+
+        const tickId = window.setInterval(() => {
+            const remaining = Math.max(
+                0,
+                Math.ceil((nextChartRefreshAtRef.current - Date.now()) / 1000),
+            );
+            setManagedRefreshCountdownSec(remaining);
+        }, 1000);
+
+        return () => {
+            cancelled = true;
+            if (refreshTimer != null) window.clearTimeout(refreshTimer);
+            window.clearInterval(tickId);
+        };
+    }, [
+        activeFootprintKey,
+        defaultChartTimeframe,
+        footprintLoading,
+        pollingEnabled,
+        profile,
+        restChartSymbolsKey,
+        setups.length,
+    ]);
+
+    const wsConnected =
+        footprintPayload?.health &&
+        Number((footprintPayload.health as { ws_connected?: number }).ws_connected) === 1;
+
+    if (loading && latestBatch == null) {
         return (
             <Text fontSize="sm" color="fg.muted" mt="1rem" fontFamily="mono">
                 Loading {profileLabel} scanner results…
@@ -398,10 +629,10 @@ const ScannerResults = ({ profile, scannerView, loading = false }: ScannerResult
         );
     }
 
-    if (scannerView != null && "message" in scannerView) {
+    if (latestBatch != null && "message" in latestBatch) {
         return (
             <Text fontSize="sm" color="fg.muted" mt="1rem" fontFamily="mono">
-                {scannerView.message}
+                {latestBatch.message}
             </Text>
         );
     }
@@ -428,7 +659,7 @@ const ScannerResults = ({ profile, scannerView, loading = false }: ScannerResult
                                 ? ` · ai ${formatUtcIsoLocal(batchMetaLine.ai_generated_at)}`
                                 : ""}
                         </Text>
-                        {Object.keys(footprintPairsByBase).length > 0 ? (
+                        {activeFootprintKey ? (
                             footprintLoading ? (
                                 <Badge
                                     colorPalette="blue"
@@ -458,7 +689,7 @@ const ScannerResults = ({ profile, scannerView, loading = false }: ScannerResult
             <ResponsiveCardGrid>
                 {setups.map((setup) => {
                     const base = scannerSymbolToBase(setup.symbol);
-                    const footprintPair = footprintPairsByBase[base] ?? null;
+                    const footprintPair = footprintPayload?.pairs[base] ?? null;
                     const usesManagedChart =
                         !expectsFootprintSymbol(base) || !hasOrderflowData(footprintPair);
 
@@ -471,10 +702,12 @@ const ScannerResults = ({ profile, scannerView, loading = false }: ScannerResult
                         defaultChartTimeframe={defaultChartTimeframe}
                         footprintPair={footprintPair}
                         footprintLoading={footprintLoading}
-                        footprintRefreshCountdownSec={undefined}
+                        footprintRefreshCountdownSec={footprintRefreshCountdownSec}
                         managedChart={usesManagedChart ? managedCharts[setup.symbol] ?? null : undefined}
                         managedChartLoading={usesManagedChart ? managedChartsLoading : false}
-                        managedRefreshCountdownSec={undefined}
+                        managedRefreshCountdownSec={
+                            usesManagedChart ? managedRefreshCountdownSec : undefined
+                        }
                     />
                     );
                 })}
