@@ -70,6 +70,21 @@ export function hasFootprintData(pair?: FootprintPairView | null): boolean {
   return Boolean(pair?.orderflow?.bars?.length);
 }
 
+/** True when merged bars or chart payload include real OHLC range (not flat mark-only dots). */
+export function hasFootprintChartCandles(pair?: FootprintPairView | null): boolean {
+  const candles = pair?.chart?.candles;
+  if (Array.isArray(candles) && candles.length >= 2) return true;
+  const merged = pair?.merged ?? [];
+  return merged.some((bar) => {
+    const high = bar.high ?? 0;
+    const low = bar.low ?? 0;
+    const open = bar.open ?? 0;
+    const close = bar.close ?? 0;
+    if (high <= 0 || low <= 0) return false;
+    return Math.abs(high - low) > 1e-9 || Math.abs(open - close) > 1e-9;
+  });
+}
+
 /** True when WS orderflow bars exist — gates footprint chart + orderflow tags in day scan UI. */
 export function hasOrderflowData(pair?: FootprintPairView | null): boolean {
   return hasFootprintData(pair);

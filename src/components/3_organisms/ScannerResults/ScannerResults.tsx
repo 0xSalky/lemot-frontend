@@ -27,7 +27,7 @@ import SetupHeaderTags from "@/components/2_molecules/SetupHeaderTags/SetupHeade
 import DaySetupChart from "@/components/3_organisms/DaySetupChart/DaySetupChart";
 import { useThemeColor, useThemeTokens, type ThemeTokens } from "@/components/ui/theme-color";
 import { themedPanelStyle } from "@/components/ui/themed-panel";
-import { expectsFootprintSymbol, hasOrderflowData } from "@/services/footprintUtils";
+import { expectsFootprintSymbol, hasFootprintChartCandles, hasOrderflowData } from "@/services/footprintUtils";
 import { Box, Badge, Flex, Stack, Text } from "@chakra-ui/react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -388,7 +388,9 @@ const ScannerResults = ({ profile, scannerView, loading = false }: ScannerResult
                 const base = scannerSymbolToBase(setup.symbol);
                 const footprintPair = footprintPairs[base] ?? null;
                 const usesManagedChart =
-                    !expectsFootprintSymbol(base) || !hasOrderflowData(footprintPair);
+                    !expectsFootprintSymbol(base)
+                    || !hasOrderflowData(footprintPair)
+                    || !hasFootprintChartCandles(footprintPair);
                 return usesManagedChart && chartsBySymbol[setup.symbol] == null;
             })
             .map((setup) => setup.symbol);
@@ -494,7 +496,9 @@ const ScannerResults = ({ profile, scannerView, loading = false }: ScannerResult
                     const footprintPair = footprintPairs[base] ?? null;
                     const managedChart = chartsBySymbol[setup.symbol] ?? null;
                     const usesManagedChart =
-                        !expectsFootprintSymbol(base) || !hasOrderflowData(footprintPair);
+                        !expectsFootprintSymbol(base)
+                        || !hasOrderflowData(footprintPair)
+                        || !hasFootprintChartCandles(footprintPair);
 
                     return (
                         <SetupCard

@@ -20,8 +20,8 @@ import { Stack, Tabs } from "@chakra-ui/react";
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 
 const INITIAL_SCANNER_LOADING: Record<ScannerProfile, boolean> = {
-    b: true,
-    a: true,
+    b: false,
+    a: false,
 };
 
 function runScannerViewFetch(
@@ -30,8 +30,9 @@ function runScannerViewFetch(
     setViews: Dispatch<SetStateAction<Record<ScannerProfile, ScannerViewFetchResult | null>>>,
     setLoading: Dispatch<SetStateAction<Record<ScannerProfile, boolean>>>,
     options?: { fresh?: boolean; reload?: boolean },
-) {
+): Promise<void> {
     const loadId = ++loadIdRef.current[profile];
+    setLoading((prev) => ({ ...prev, [profile]: true }));
 
     return fetchScannerView(profile, options)
         .then((view) => {
@@ -56,10 +57,16 @@ const HomePage = () => {
     const loadIdRef = useRef<Record<ScannerProfile, number>>({ b: 0, a: 0 });
     const [activeTab, setActiveTab] = useState("pairs");
 
-    const loadScanner = useCallback((profile: ScannerProfile, options?: { fresh?: boolean; reload?: boolean }) => {
-        setLoading((prev) => ({ ...prev, [profile]: true }));
-        void runScannerViewFetch(profile, loadIdRef, setViews, setLoading, options);
-    }, []);
+    const loadScanner = useCallback(
+        (profile: ScannerProfile, options?: { fresh?: boolean; reload?: boolean }) =>
+            runScannerViewFetch(profile, loadIdRef, setViews, setLoading, options),
+        [],
+    );
+
+    const refreshScannerFromConfig = useCallback(
+        (profile: ScannerProfile) => loadScanner(profile, { reload: true }),
+        [loadScanner],
+    );
 
     useEffect(() => {
         for (const profile of SCANNER_PROFILES) {
@@ -175,10 +182,7 @@ const HomePage = () => {
                 </Tabs.Content>
 
                 <Tabs.Content value="config">
-                    <ConfigPanel
-                        scannerLoading={loading}
-                        onScannerRefresh={(profile) => loadScanner(profile, { fresh: true })}
-                    />
+                    <ConfigPanel onScannerRefresh={refreshScannerFromConfig} />
                 </Tabs.Content>
             </Tabs.Root>
         </Stack>

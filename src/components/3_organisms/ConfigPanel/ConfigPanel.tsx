@@ -13,9 +13,9 @@ import {
   scannerProfileLabel,
   type ScannerProfile,
 } from "@/services/scannerUtils";
+import { IS_PROFILE_B_ACTIVE } from "@/services/config";
 import { Box, Button, Separator, Stack, Text } from "@chakra-ui/react";
 import { useCallback, useState, type ReactNode } from "react";
-import { IS_PROFILE_B_ACTIVE } from "@/services/config";
 
 type PendingScan = {
   profile: ScannerProfile;
@@ -99,15 +99,28 @@ function ScannerConfigPanel({
 }
 
 export type ConfigPanelProps = {
-  scannerLoading: Record<ScannerProfile, boolean>;
-  onScannerRefresh: (profile: ScannerProfile) => void;
+  onScannerRefresh: (profile: ScannerProfile) => Promise<void>;
 };
 
-export default function ConfigPanel({ scannerLoading, onScannerRefresh }: ConfigPanelProps) {
+export default function ConfigPanel({ onScannerRefresh }: ConfigPanelProps) {
   const { palette } = useThemeColor();
   const tokens = useThemeTokens();
   const { serverConfigured, signOut } = useTradingAccess();
   const [pendingScan, setPendingScan] = useState<PendingScan | null>(null);
+  const [refreshing, setRefreshing] = useState<Record<ScannerProfile, boolean>>({
+    a: false,
+    b: false,
+  });
+
+  const handleRefresh = useCallback(
+    (profile: ScannerProfile) => {
+      setRefreshing((prev) => ({ ...prev, [profile]: true }));
+      void onScannerRefresh(profile).finally(() => {
+        setRefreshing((prev) => ({ ...prev, [profile]: false }));
+      });
+    },
+    [onScannerRefresh],
+  );
 
   const runScannerJob = useCallback((profile: ScannerProfile, withAi: boolean) => {
     const label = scannerProfileLabel(profile);
@@ -203,8 +216,8 @@ export default function ConfigPanel({ scannerLoading, onScannerRefresh }: Config
           <ConfigSection title="Day">
             <ScannerConfigPanel
               profile="a"
-              loading={scannerLoading.a}
-              onRefresh={() => onScannerRefresh("a")}
+              loading={refreshing.a}
+              onRefresh={() => handleRefresh("a")}
               onRequestScan={() => setPendingScan({ profile: "a", withAi: false })}
               onRequestScanWithAi={() => setPendingScan({ profile: "a", withAi: true })}
             />
@@ -216,8 +229,8 @@ export default function ConfigPanel({ scannerLoading, onScannerRefresh }: Config
               <ConfigSection title="Scalper">
                 <ScannerConfigPanel
                   profile="b"
-                  loading={scannerLoading.b}
-                  onRefresh={() => onScannerRefresh("b")}
+                  loading={refreshing.b}
+                  onRefresh={() => handleRefresh("b")}
                   onRequestScan={() => setPendingScan({ profile: "b", withAi: false })}
                   onRequestScanWithAi={() => setPendingScan({ profile: "b", withAi: true })}
                 />

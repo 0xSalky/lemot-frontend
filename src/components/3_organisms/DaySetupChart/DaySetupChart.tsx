@@ -10,6 +10,7 @@ import type { ThemeTokens } from "@/components/ui/theme-color";
 import {
   expectsFootprintSymbol,
   fetchFootprintView,
+  hasFootprintChartCandles,
   hasOrderflowData,
 } from "@/services/footprintUtils";
 import { scannerSymbolToBase, chartSpotPrice, type ScannerProfile } from "@/services/scannerUtils";
@@ -133,7 +134,8 @@ export default function DaySetupChart({
 
   const pairForDisplay =
     fpTimeframe === defaultFootprintTimeframe ? footprintPair : altTimeframePair;
-  const showOrderflow = hasOrderflowData(pairForDisplay);
+  const showOrderflow =
+    hasOrderflowData(pairForDisplay) && hasFootprintChartCandles(pairForDisplay);
   const showFootprintLoading = expectsFootprint && footprintLoading && !showOrderflow;
   const footprintSpotPrice = chartSpotPrice(
     pairForDisplay?.chart ?? null,
