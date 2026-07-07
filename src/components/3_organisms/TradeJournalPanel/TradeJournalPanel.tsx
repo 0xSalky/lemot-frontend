@@ -44,9 +44,10 @@ function formatTime(iso: string | null): string {
 
 type TradeJournalPanelProps = {
   active?: boolean;
+  refreshKey?: number;
 };
 
-export default function TradeJournalPanel({ active = true }: TradeJournalPanelProps) {
+export default function TradeJournalPanel({ active = true, refreshKey = 0 }: TradeJournalPanelProps) {
   const { palette } = useThemeColor();
   const tokens = useThemeTokens(palette);
   const pageVisible = usePageVisible();
@@ -55,6 +56,7 @@ export default function TradeJournalPanel({ active = true }: TradeJournalPanelPr
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
+    setLoading(true);
     const data = await fetchTradeJournal();
     setJournal(data);
     setLoading(false);
@@ -67,7 +69,7 @@ export default function TradeJournalPanel({ active = true }: TradeJournalPanelPr
       if (document.visibilityState === "visible") void load();
     }, POLL_MS);
     return () => window.clearInterval(id);
-  }, [load, polling]);
+  }, [load, polling, refreshKey]);
 
   const closedTrades = useMemo(
     () => closedTradesOnly(journal?.trades ?? []),

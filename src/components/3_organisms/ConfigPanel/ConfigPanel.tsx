@@ -100,9 +100,10 @@ function ScannerConfigPanel({
 
 export type ConfigPanelProps = {
   onScannerRefresh: (profile: ScannerProfile) => Promise<void>;
+  refreshKey?: number;
 };
 
-export default function ConfigPanel({ onScannerRefresh }: ConfigPanelProps) {
+export default function ConfigPanel({ onScannerRefresh, refreshKey = 0 }: ConfigPanelProps) {
   const { palette } = useThemeColor();
   const tokens = useThemeTokens();
   const { serverConfigured, signOut } = useTradingAccess();
@@ -241,7 +242,7 @@ export default function ConfigPanel({ onScannerRefresh }: ConfigPanelProps) {
           <Separator borderColor={tokens.panelBorder} />
 
           <ConfigSection title="Signals (live)">
-            <SignalsConfigPanel tokens={tokens} />
+            <SignalsConfigPanel tokens={tokens} refreshKey={refreshKey} />
           </ConfigSection>
 
           {!serverConfigured ? (

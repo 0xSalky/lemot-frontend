@@ -258,7 +258,13 @@ function ProfileBookSection({
   );
 }
 
-export default function RiskDeskPanel({ active }: { active: boolean }) {
+export default function RiskDeskPanel({
+  active,
+  refreshKey = 0,
+}: {
+  active: boolean;
+  refreshKey?: number;
+}) {
   const { palette } = useThemeColor();
   const tokens = useThemeTokens(palette);
   const pageVisible = usePageVisible();
@@ -268,6 +274,7 @@ export default function RiskDeskPanel({ active }: { active: boolean }) {
   useEffect(() => {
     if (!active || !pageVisible) return;
     let cancelled = false;
+    setLoading(true);
 
     const poll = () => {
       void fetchRiskDesk().then((deskData) => {
@@ -284,7 +291,7 @@ export default function RiskDeskPanel({ active }: { active: boolean }) {
       window.clearTimeout(initial);
       window.clearInterval(id);
     };
-  }, [active, pageVisible]);
+  }, [active, pageVisible, refreshKey]);
 
   const gateNodes = useMemo(
     () => (desk?.global?.gates ?? desk?.gates ?? []).map(riskGateToMatrixNode),

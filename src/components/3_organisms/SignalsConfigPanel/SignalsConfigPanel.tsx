@@ -70,9 +70,10 @@ function RuntimeSwitchRow({
 
 type SignalsConfigPanelProps = {
   tokens: ThemeTokens;
+  refreshKey?: number;
 };
 
-export default function SignalsConfigPanel({ tokens }: SignalsConfigPanelProps) {
+export default function SignalsConfigPanel({ tokens, refreshKey = 0 }: SignalsConfigPanelProps) {
   const { palette } = useThemeColor();
   const [controls, setControls] = useState<SignalsRuntimeControls | null>(null);
   const [loading, setLoading] = useState(true);
@@ -93,7 +94,7 @@ export default function SignalsConfigPanel({ tokens }: SignalsConfigPanelProps) 
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, refreshKey]);
 
   const update = useCallback(
     async (patch: Partial<SignalsRuntimeControls>, key: string) => {

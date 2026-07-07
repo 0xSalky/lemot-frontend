@@ -25,6 +25,29 @@ const INITIAL_SCANNER_LOADING: Record<ScannerProfile, boolean> = {
     a: false,
 };
 
+type HomeTabId =
+    | "pairs"
+    | "scanner-a"
+    | "scanner-b"
+    | "scanner-chat"
+    | "signals"
+    | "risk"
+    | "journal"
+    | "config";
+
+function initialTabRefreshKeys(): Record<HomeTabId, number> {
+    return {
+        pairs: 0,
+        "scanner-a": 0,
+        "scanner-b": 0,
+        "scanner-chat": 0,
+        signals: 0,
+        risk: 0,
+        journal: 0,
+        config: 0,
+    };
+}
+
 function runScannerViewFetch(
     profile: ScannerProfile,
     loadIdRef: MutableRefObject<Record<ScannerProfile, number>>,
@@ -60,7 +83,8 @@ const HomePage = () => {
     });
     const [loading, setLoading] = useState<Record<ScannerProfile, boolean>>(INITIAL_SCANNER_LOADING);
     const loadIdRef = useRef<Record<ScannerProfile, number>>({ b: 0, a: 0 });
-    const [activeTab, setActiveTab] = useState("pairs");
+    const [activeTab, setActiveTab] = useState<HomeTabId>("pairs");
+    const [tabRefreshKeys, setTabRefreshKeys] = useState(initialTabRefreshKeys);
 
     const loadScanner = useCallback(
         (profile: ScannerProfile, options?: { fresh?: boolean; reload?: boolean }) =>
@@ -73,7 +97,20 @@ const HomePage = () => {
         [loadScanner],
     );
 
-    useEffect(() => {
+    const bumpTabRefresh = useCallback((tab: string) => {
+        const key = tab as HomeTabId;
+        setTabRefreshKeys((prev) => ({ ...prev, [key]: prev[key] + 1 }));
+    }, []);
+
+    const handleTabChange = useCallback(
+        (value: string) => {
+            setActiveTab(value as HomeTabId);
+            bumpTabRefresh(value);
+        },
+        [bumpTabRefresh],
+    );
+
+    const refreshPairs = useCallback(() => {
         for (const profile of SCANNER_PROFILES) {
             void fetchLatestScannerBatch(profile)
                 .then((result) => {
@@ -84,16 +121,24 @@ const HomePage = () => {
         }
     }, []);
 
-    useEffect(() => {
-        const profile: ScannerProfile | null =
-            activeTab === "scanner-a" ? "a" : activeTab === "scanner-b" ? "b" : null;
-        if (!profile) return;
+    const pairsRefreshKey = tabRefreshKeys.pairs;
+    const scannerARefreshKey = tabRefreshKeys["scanner-a"];
+    const scannerBRefreshKey = tabRefreshKeys["scanner-b"];
 
-        const frameId = requestAnimationFrame(() => {
-            loadScanner(profile, { reload: true });
-        });
-        return () => cancelAnimationFrame(frameId);
-    }, [activeTab, loadScanner]);
+    useEffect(() => {
+        if (activeTab !== "pairs") return;
+        refreshPairs();
+    }, [activeTab, refreshPairs, pairsRefreshKey]);
+
+    useEffect(() => {
+        if (activeTab !== "scanner-a") return;
+        void loadScanner("a", { reload: true });
+    }, [activeTab, loadScanner, scannerARefreshKey]);
+
+    useEffect(() => {
+        if (activeTab !== "scanner-b") return;
+        void loadScanner("b", { reload: true });
+    }, [activeTab, loadScanner, scannerBRefreshKey]);
 
     const scannerPairs = useMemo(() => {
         const bases: string[] = [];
@@ -125,7 +170,7 @@ const HomePage = () => {
         >
             <Tabs.Root
                 value={activeTab}
-                onValueChange={(event) => setActiveTab(event.value)}
+                onValueChange={(event) => handleTabChange(event.value)}
                 defaultValue="pairs"
                 colorPalette={palette}
             >
@@ -138,16 +183,32 @@ const HomePage = () => {
                     w="100%"
                     pb="1"
                 >
-                    <ThemeTabTrigger value="pairs">Pairs</ThemeTabTrigger>
-                    <ThemeTabTrigger value="scanner-a">Scanner</ThemeTabTrigger>
+                    <ThemeTabTrigger value="pairs" currentTab={activeTab} onReselect={bumpTabRefresh}>
+                        Pairs
+                    </ThemeTabTrigger>
+                    <ThemeTabTrigger value="scanner-a" currentTab={activeTab} onReselect={bumpTabRefresh}>
+                        Scanner
+                    </ThemeTabTrigger>
                     {IS_PROFILE_B_ACTIVE && (
-                        <ThemeTabTrigger value="scanner-b">Scanner B</ThemeTabTrigger>
+                        <ThemeTabTrigger value="scanner-b" currentTab={activeTab} onReselect={bumpTabRefresh}>
+                            Scanner B
+                        </ThemeTabTrigger>
                     )}
-                    <ThemeTabTrigger value="scanner-chat">AI Chat</ThemeTabTrigger>
-                    <ThemeTabTrigger value="signals">Signals</ThemeTabTrigger>
-                    <ThemeTabTrigger value="risk">Risk desk</ThemeTabTrigger>
-                    <ThemeTabTrigger value="journal">Journal</ThemeTabTrigger>
-                    <ThemeTabTrigger value="config">Config</ThemeTabTrigger>
+                    <ThemeTabTrigger value="scanner-chat" currentTab={activeTab} onReselect={bumpTabRefresh}>
+                        AI Chat
+                    </ThemeTabTrigger>
+                    <ThemeTabTrigger value="signals" currentTab={activeTab} onReselect={bumpTabRefresh}>
+                        Signals
+                    </ThemeTabTrigger>
+                    <ThemeTabTrigger value="risk" currentTab={activeTab} onReselect={bumpTabRefresh}>
+                        Risk desk
+                    </ThemeTabTrigger>
+                    <ThemeTabTrigger value="journal" currentTab={activeTab} onReselect={bumpTabRefresh}>
+                        Journal
+                    </ThemeTabTrigger>
+                    <ThemeTabTrigger value="config" currentTab={activeTab} onReselect={bumpTabRefresh}>
+                        Config
+                    </ThemeTabTrigger>
                 </Tabs.List>
 
                 <Tabs.Content value="pairs">
@@ -163,6 +224,7 @@ const HomePage = () => {
                         profile="a"
                         scannerView={views.a}
                         loading={loading.a}
+                        refreshKey={tabRefreshKeys["scanner-a"]}
                     />
                 </Tabs.Content>
 
@@ -172,28 +234,44 @@ const HomePage = () => {
                             profile="b"
                             scannerView={views.b}
                             loading={loading.b}
+                            refreshKey={tabRefreshKeys["scanner-b"]}
                         />
                     </Tabs.Content>
                 )}
 
                 <Tabs.Content value="scanner-chat">
-                    <ScannerChat />
+                    <ScannerChat
+                        active={activeTab === "scanner-chat"}
+                        refreshKey={tabRefreshKeys["scanner-chat"]}
+                    />
                 </Tabs.Content>
 
                 <Tabs.Content value="signals">
-                    {activeTab === "signals" ? <SignalsMonitorPanel active /> : null}
+                    <SignalsMonitorPanel
+                        active={activeTab === "signals"}
+                        refreshKey={tabRefreshKeys.signals}
+                    />
                 </Tabs.Content>
 
                 <Tabs.Content value="risk">
-                    {activeTab === "risk" ? <RiskDeskPanel active /> : null}
+                    <RiskDeskPanel
+                        active={activeTab === "risk"}
+                        refreshKey={tabRefreshKeys.risk}
+                    />
                 </Tabs.Content>
 
                 <Tabs.Content value="journal">
-                    {activeTab === "journal" ? <TradeJournalPanel active /> : null}
+                    <TradeJournalPanel
+                        active={activeTab === "journal"}
+                        refreshKey={tabRefreshKeys.journal}
+                    />
                 </Tabs.Content>
 
                 <Tabs.Content value="config">
-                    <ConfigPanel onScannerRefresh={refreshScannerFromConfig} />
+                    <ConfigPanel
+                        onScannerRefresh={refreshScannerFromConfig}
+                        refreshKey={tabRefreshKeys.config}
+                    />
                 </Tabs.Content>
             </Tabs.Root>
         </Stack>

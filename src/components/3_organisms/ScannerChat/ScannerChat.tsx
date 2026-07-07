@@ -347,7 +347,13 @@ function ChatHistoryMenu({
     );
 }
 
-const ScannerChat = () => {
+const ScannerChat = ({
+    active = true,
+    refreshKey = 0,
+}: {
+    active?: boolean;
+    refreshKey?: number;
+}) => {
     const { palette } = useThemeColor();
     const tokens = useThemeTokens(palette);
     const [threads, setThreads] = useState<ScannerChatThreadRow[]>([]);
@@ -396,7 +402,10 @@ const ScannerChat = () => {
     }, []);
 
     useEffect(() => {
+        if (!active) return;
+
         let cancelled = false;
+        setBootLoading(true);
 
         void fetchScannerChatThreads()
             .then((payload) => {
@@ -412,7 +421,7 @@ const ScannerChat = () => {
         return () => {
             cancelled = true;
         };
-    }, []);
+    }, [active, refreshKey]);
 
     useEffect(() => {
         scrollToBottom();

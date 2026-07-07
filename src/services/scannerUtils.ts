@@ -131,7 +131,7 @@ export async function fetchScannerView(
   profile: ScannerProfile = DEFAULT_SCANNER_PROFILE,
   options?: { fresh?: boolean; reload?: boolean },
 ): Promise<ScannerViewFetchResult> {
-  if (!options?.fresh) {
+  if (!options?.fresh && !options?.reload) {
     const pending = scannerViewInflight.get(profile);
     if (pending) return pending;
   }
@@ -207,7 +207,7 @@ export async function fetchScannerView(
     };
   })();
 
-  if (!options?.fresh) {
+  if (!options?.fresh && !options?.reload) {
     scannerViewInflight.set(profile, promise);
     void promise.finally(() => {
       if (scannerViewInflight.get(profile) === promise) {

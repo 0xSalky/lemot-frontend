@@ -38,6 +38,7 @@ type ScannerResultsProps = {
     profile: ScannerProfile;
     scannerView: ScannerViewFetchResult | null;
     loading?: boolean;
+    refreshKey?: number;
 };
 
 const AI_TEXT = {
@@ -362,7 +363,7 @@ function BandBlock({ band }: { band: ScannerBandRow }) {
     );
 }
 
-const ScannerResults = ({ profile, scannerView, loading = false }: ScannerResultsProps) => {
+const ScannerResults = ({ profile, scannerView, loading = false, refreshKey = 0 }: ScannerResultsProps) => {
     const { palette } = useThemeColor();
     const tokens = useThemeTokens(palette);
     const setups = setupsFromScannerView(scannerView);
@@ -418,7 +419,7 @@ const ScannerResults = ({ profile, scannerView, loading = false }: ScannerResult
             setRefreshDeadline(Date.now() + SCANNER_CHART_REFRESH_MS);
             setChartRefreshCountdownSec(chartRefreshSec);
         }
-    }, [batchId, chartRefreshSec, loading, profile, scannerView]);
+    }, [batchId, chartRefreshSec, loading, profile, refreshKey, scannerView]);
 
     useEffect(() => {
         const tick = () => {

@@ -699,6 +699,7 @@ function StatsStrip({
 
 type SignalsMonitorPanelProps = {
   active?: boolean;
+  refreshKey?: number;
 };
 
 async function fetchMonitorSnapshot() {
@@ -720,7 +721,7 @@ async function fetchMonitorSnapshot() {
   };
 }
 
-export default function SignalsMonitorPanel({ active = true }: SignalsMonitorPanelProps) {
+export default function SignalsMonitorPanel({ active = true, refreshKey = 0 }: SignalsMonitorPanelProps) {
   const { palette } = useThemeColor();
   const tokens = useThemeTokens(palette);
   const eventStyles = useMemo(() => buildEventStyles(tokens), [tokens]);
@@ -738,6 +739,7 @@ export default function SignalsMonitorPanel({ active = true }: SignalsMonitorPan
     if (!active || !pageVisible) return;
 
     let cancelled = false;
+    setLoading(true);
 
     const poll = () => {
       void (async () => {
@@ -760,7 +762,7 @@ export default function SignalsMonitorPanel({ active = true }: SignalsMonitorPan
       window.clearTimeout(initial);
       window.clearInterval(id);
     };
-  }, [active, pageVisible]);
+  }, [active, pageVisible, refreshKey]);
 
   useEffect(() => {
     if (!active) return;
