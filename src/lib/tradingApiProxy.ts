@@ -127,6 +127,7 @@ export async function proxyTradingGet(
   req: NextApiRequest,
   res: NextApiResponse,
   path: string,
+  options?: { upstreamTimeoutMs?: number },
 ): Promise<void> {
   const creds = resolveTradingCredentials(req);
   if (!creds) {
@@ -134,12 +135,39 @@ export async function proxyTradingGet(
     return;
   }
 
-  const upstream = await fetch(`${creds.baseUrl}${path}${upstreamQuery(req)}`, {
-    method: "GET",
-    headers: { "X-API-Key": creds.apiKey },
-  });
+  const controller = options?.upstreamTimeoutMs
+    ? new AbortController()
+    : null;
+  const timer =
+    controller && options?.upstreamTimeoutMs
+      ? setTimeout(() => controller.abort(), options.upstreamTimeoutMs)
+      : null;
 
-  await forwardUpstreamResponse(res, upstream);
+  try {
+    const url = `${creds.baseUrl}${path}${upstreamQuery(req)}`;
+    const upstream = await fetch(url, {
+      method: "GET",
+      headers: { "X-API-Key": creds.apiKey },
+      signal: controller?.signal,
+    });
+    if (!upstream.ok) {
+      console.warn("[trading proxy] upstream GET not ok", {
+        path,
+        status: upstream.status,
+        source: creds.source,
+      });
+    }
+    await forwardUpstreamResponse(res, upstream);
+  } catch (error) {
+    console.error("[trading proxy] upstream GET failed", {
+      path,
+      source: creds.source,
+      error,
+    });
+    throw error;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 export async function proxyTradingPost(

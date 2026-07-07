@@ -412,6 +412,10 @@ const ScannerResults = ({ profile, latestBatch, loading = false, active = true }
         if (!activeFootprintKey) {
             return setups.map((setup) => setup.symbol);
         }
+        if (footprintLoading) {
+            // Keep plain REST charts loading while footprint data is still warming up.
+            return setups.map((setup) => setup.symbol);
+        }
         if (!footprintLoading) {
             return setups
                 .filter((setup) => {
@@ -422,7 +426,6 @@ const ScannerResults = ({ profile, latestBatch, loading = false, active = true }
                 })
                 .map((setup) => setup.symbol);
         }
-        return [];
     }, [activeFootprintKey, footprintLoading, footprintPayload, pollingEnabled, setups]);
 
     const restChartSymbolsKey = useMemo(
@@ -472,6 +475,10 @@ const ScannerResults = ({ profile, latestBatch, loading = false, active = true }
                     }
                 })
                 .catch(() => {
+                    console.warn("[scanner footprint] request failed", {
+                        profile,
+                        symbols,
+                    });
                     if (!cancelled) setFootprintPayload(null);
                 })
                 .finally(() => {
@@ -520,7 +527,18 @@ const ScannerResults = ({ profile, latestBatch, loading = false, active = true }
     }, [activeFootprintKey, pollingEnabled, profile]);
 
     useEffect(() => {
-        if (!restChartSymbolsKey || !pollingEnabled) return;
+        if (!restChartSymbolsKey || !pollingEnabled) {
+            if (pollingEnabled && setups.length > 0) {
+                console.debug("[scanner charts] skipped", {
+                    profile,
+                    restChartSymbolsKey,
+                    footprintLoading,
+                    activeFootprintKey,
+                    setupCount: setups.length,
+                });
+            }
+            return;
+        }
 
         const symbols = restChartSymbolsKey.split(",").filter(Boolean);
         let cancelled = false;
@@ -532,6 +550,8 @@ const ScannerResults = ({ profile, latestBatch, loading = false, active = true }
         };
 
         resetRefreshDeadline();
+        // Safe here: this marks the start of a network sync cycle for managed chart data.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setManagedChartsLoading(true);
 
         const loadCharts = (initial: boolean): Promise<void> =>
@@ -543,6 +563,11 @@ const ScannerResults = ({ profile, latestBatch, loading = false, active = true }
                     }
                 })
                 .catch(() => {
+                    console.warn("[scanner charts] request failed", {
+                        profile,
+                        symbols,
+                        timeframe: defaultChartTimeframe,
+                    });
                     if (!cancelled) setManagedCharts({});
                 })
                 .finally(() => {
@@ -580,7 +605,15 @@ const ScannerResults = ({ profile, latestBatch, loading = false, active = true }
             if (refreshTimer != null) window.clearTimeout(refreshTimer);
             window.clearInterval(tickId);
         };
-    }, [defaultChartTimeframe, pollingEnabled, restChartSymbolsKey]);
+    }, [
+        activeFootprintKey,
+        defaultChartTimeframe,
+        footprintLoading,
+        pollingEnabled,
+        profile,
+        restChartSymbolsKey,
+        setups.length,
+    ]);
 
     const wsConnected =
         footprintPayload?.health &&

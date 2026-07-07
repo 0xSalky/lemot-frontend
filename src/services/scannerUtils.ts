@@ -1,4 +1,5 @@
 import { apiFetch } from "@/services/apiFetch";
+import { IS_PROFILE_B_ACTIVE } from "@/services/config";
 import type {
   ScannerBandRow,
   ScannerAiBatchSummary,
@@ -62,8 +63,10 @@ function apiErrorMessage(data: unknown, status: number): string {
 }
 
 /** Scanner profiles supported by the backend. */
-export const SCANNER_PROFILES = ["b", "a"] as const;
-export type ScannerProfile = (typeof SCANNER_PROFILES)[number];
+export type ScannerProfile = "a" | "b";
+export const SCANNER_PROFILES: readonly ScannerProfile[] = IS_PROFILE_B_ACTIVE
+  ? ["b", "a"]
+  : ["a"];
 
 export const DEFAULT_SCANNER_PROFILE: ScannerProfile = "b";
 
@@ -170,9 +173,13 @@ export async function fetchScannerChart(
     try {
       data = raw ? JSON.parse(raw) : {};
     } catch {
+      console.warn("[scanner chart] non-JSON response", { symbol, timeframe, raw });
       return null;
     }
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn("[scanner chart] request failed", { symbol, timeframe, status: res.status, data });
+      return null;
+    }
     const payload = data as Partial<ScannerChartPayload>;
     if (!Array.isArray(payload.candles) || payload.candles.length === 0) {
       return null;
@@ -243,9 +250,20 @@ export async function prefetchScannerCharts(
   try {
     data = raw ? JSON.parse(raw) : {};
   } catch {
+    console.warn("[scanner charts] non-JSON response", {
+      symbols: unique,
+      timeframe,
+      raw,
+    });
     return Object.fromEntries(unique.map((symbol) => [symbol, null]));
   }
   if (!res.ok) {
+    console.warn("[scanner charts] request failed", {
+      symbols: unique,
+      timeframe,
+      status: res.status,
+      data,
+    });
     return Object.fromEntries(unique.map((symbol) => [symbol, null]));
   }
 
