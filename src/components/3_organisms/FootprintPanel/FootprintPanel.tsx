@@ -6,6 +6,7 @@ import { themedPanelStyle } from "@/components/ui/themed-panel";
 import {
   biasPalette,
   displaySignals,
+  fetchFootprintMeta,
   fetchFootprintView,
   formatFlowBiasLabel,
   formatFootprintLiqLine,
@@ -25,7 +26,6 @@ import type {
 import {
   FOOTPRINT_PROFILE_DEFAULTS,
   FOOTPRINT_SIGNAL_SEVERITY_ORDER,
-  FOOTPRINT_SYMBOLS,
   FOOTPRINT_TIMEFRAMES,
 } from "@/types/footprintTypes";
 import {
@@ -182,6 +182,7 @@ export default function FootprintPanel() {
     FOOTPRINT_PROFILE_DEFAULTS.a.defaultTimeframe,
   );
   const [payload, setPayload] = useState<FootprintViewPayload | null>(null);
+  const [watchlist, setWatchlist] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -189,28 +190,48 @@ export default function FootprintPanel() {
     setTimeframe(FOOTPRINT_PROFILE_DEFAULTS[profile].defaultTimeframe);
   }, [profile]);
 
+  useEffect(() => {
+    let cancelled = false;
+    void fetchFootprintMeta()
+      .then((meta) => {
+        if (!cancelled) setWatchlist(meta.watchlist ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setWatchlist([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const load = useCallback(async (options?: { bustCache?: boolean }) => {
+    if (watchlist.length === 0) return;
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchFootprintView(FOOTPRINT_SYMBOLS, {
+      const data = await fetchFootprintView(watchlist, {
         profile,
         timeframe,
         bustCache: options?.bustCache,
       });
       setPayload(data);
+      if (data.watchlist?.length) {
+        setWatchlist(data.watchlist);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load footprint");
     } finally {
       setLoading(false);
     }
-  }, [profile, timeframe]);
+  }, [profile, timeframe, watchlist]);
 
   useEffect(() => {
+    if (watchlist.length === 0) return;
     void load();
-  }, [load]);
+  }, [load, watchlist.length]);
 
   useEffect(() => {
+    if (watchlist.length === 0) return;
     let refreshTimer: number | undefined;
     const scheduleRefresh = () => {
       refreshTimer = window.setTimeout(() => {
@@ -221,17 +242,18 @@ export default function FootprintPanel() {
     return () => {
       if (refreshTimer != null) window.clearTimeout(refreshTimer);
     };
-  }, [load]);
+  }, [load, watchlist.length]);
 
   const sortedSymbols = useMemo(() => {
-    if (!payload) return FOOTPRINT_SYMBOLS;
-    return [...FOOTPRINT_SYMBOLS].sort((a, b) => {
+    const bases = payload?.watchlist?.length ? payload.watchlist : watchlist;
+    if (!payload || bases.length === 0) return bases;
+    return [...bases].sort((a, b) => {
       const pairA = payload.pairs[a];
       const pairB = payload.pairs[b];
       if (!pairA || !pairB) return 0;
       return pairSignalRank(pairA) - pairSignalRank(pairB);
     });
-  }, [payload]);
+  }, [payload, watchlist]);
 
   const wsConnected = isFootprintCollectorOnline(
     payload?.health as Record<string, unknown> | null | undefined,
@@ -243,7 +265,7 @@ export default function FootprintPanel() {
       <Flex gap="3" flexWrap="wrap" align="flex-end" justify="space-between">
         <Stack gap="2">
           <Text fontSize="xs" fontFamily="mono" color={tokens.panelMuted}>
-            {FOOTPRINT_SYMBOLS.join(", ")} · read-only · config: bot/footprint/analysis/
+            {(payload?.watchlist ?? watchlist).join(", ")} · read-only · config: bot/footprint/analysis/
             {profile}.yaml
           </Text>
           <Flex gap="2" flexWrap="wrap">

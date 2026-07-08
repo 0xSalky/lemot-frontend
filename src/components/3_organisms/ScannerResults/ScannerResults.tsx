@@ -30,7 +30,16 @@ import DaySetupChart from "@/components/3_organisms/DaySetupChart/DaySetupChart"
 import { usePageVisible } from "@/hooks/usePageVisible";
 import { useThemeColor, useThemeTokens, type ThemeTokens } from "@/components/ui/theme-color";
 import { themedPanelStyle } from "@/components/ui/themed-panel";
-import { expectsFootprintSymbol, fetchFootprintView, hasFootprintChartCandles, hasOrderflowData, hasScannerChartCandles, isFootprintCollectorOnline } from "@/services/footprintUtils";
+import {
+    fetchFootprintView,
+    footprintBasesForSetups,
+    footprintWatchlistBases,
+    hasFootprintChartCandles,
+    hasOrderflowData,
+    hasScannerChartCandles,
+    isFootprintWatchSymbol,
+    isFootprintCollectorOnline,
+} from "@/services/footprintUtils";
 import { Box, Badge, Flex, Stack, Text } from "@chakra-ui/react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -241,6 +250,7 @@ function SetupCard({
     footprintPair,
     managedChart,
     managedChartLoading,
+    footprintWatchlist,
 }: {
     setup: ScannerSetupRow;
     tokens: ThemeTokens;
@@ -249,8 +259,10 @@ function SetupCard({
     footprintPair?: FootprintPairView | null;
     managedChart?: ScannerChartPayload | null;
     managedChartLoading?: boolean;
+    footprintWatchlist: readonly string[];
 }) {
     const bands = orderedBands(Array.isArray(setup.bands) ? setup.bands : []);
+    const base = scannerSymbolToBase(setup.symbol);
 
     return (
         <Box
@@ -273,7 +285,7 @@ function SetupCard({
                 tokens={tokens}
                 profile={profile}
                 footprintPair={footprintPair}
-                footprintEnabled={expectsFootprintSymbol(scannerSymbolToBase(setup.symbol))}
+                footprintEnabled={isFootprintWatchSymbol(base, footprintWatchlist)}
                 defaultChartTimeframe={defaultChartTimeframe}
                 managedChart={managedChart}
                 managedChartLoading={managedChartLoading}
@@ -391,15 +403,25 @@ const ScannerResults = ({
     const chartSymbolsRef = useRef(chartSymbols);
     chartSymbolsRef.current = chartSymbols;
 
-    const footprintBases = useMemo(
-        () => [
-            ...new Set(
-                setups
-                    .map((setup) => scannerSymbolToBase(setup.symbol))
-                    .filter(expectsFootprintSymbol),
+    const footprintHealth =
+        scannerView != null && !("message" in scannerView) ? scannerView.footprint.health : null;
+    const footprintWatchlist = useMemo(
+        () =>
+            footprintWatchlistBases(
+                scannerView != null && !("message" in scannerView)
+                    ? {
+                          watchlist: scannerView.footprint.watchlist,
+                          health: scannerView.footprint.health,
+                      }
+                    : { health: footprintHealth },
             ),
-        ],
-        [setups],
+        [footprintHealth, scannerView],
+    );
+    const footprintWatchlistKey = footprintWatchlist.slice().sort().join(",");
+
+    const footprintBases = useMemo(
+        () => footprintBasesForSetups(setups, footprintWatchlist),
+        [footprintWatchlist, setups],
     );
     const footprintBasesKey = footprintBases.slice().sort().join(",");
     const footprintBasesRef = useRef(footprintBases);
@@ -421,8 +443,6 @@ const ScannerResults = ({
         () => ({ ...footprintPairsFromView, ...liveFootprintPairs }),
         [footprintPairsFromView, liveFootprintPairs],
     );
-    const footprintHealth =
-        scannerView != null && !("message" in scannerView) ? scannerView.footprint.health : null;
 
     const missingChartSymbols = useMemo(() => {
         if (scannerView == null || "message" in scannerView) return [];
@@ -435,13 +455,13 @@ const ScannerResults = ({
                     hasOrderflowData(footprintPair) &&
                     (hasFootprintChartCandles(footprintPair) || hasScannerChartCandles(managedChart));
                 const usesManagedChart =
-                    !expectsFootprintSymbol(base)
+                    !isFootprintWatchSymbol(base, footprintWatchlist)
                     || !hasOrderflowData(footprintPair)
                     || !footprintReady;
                 return usesManagedChart && managedChart == null;
             })
             .map((setup) => setup.symbol);
-    }, [chartsBySymbol, footprintPairs, scannerView, setups]);
+    }, [chartsBySymbol, footprintPairs, footprintWatchlist, scannerView, setups]);
 
     const missingChartKey = missingChartSymbols.slice().sort().join(",");
 
@@ -460,30 +480,34 @@ const ScannerResults = ({
                 chartSymbolsRef.current,
                 defaultChartTimeframe,
             );
-            const footprintPromise =
-                footprintBasesRef.current.length > 0
-                    ? fetchFootprintView(footprintBasesRef.current, {
-                          profile,
-                          timeframe: defaultFootprintTimeframe,
-                          bustCache: true,
-                      })
-                    : Promise.resolve(null);
 
-            void Promise.all([chartPromise, footprintPromise])
-                .then(([charts, footprint]) => {
+            void chartPromise
+                .then((charts) => {
                     if (cancelled) return;
                     setPrefetchedCharts((prev) => {
                         const next = { ...prev };
                         for (const [symbol, chart] of Object.entries(charts)) {
                             if (!chart) continue;
+                            const existing = next[symbol] ?? null;
                             next[symbol] = {
+                                ...(existing ?? chart),
                                 ...chart,
+                                last: chart.last ?? existing?.last,
                                 candles: chart.candles.map((c) => ({ ...c })),
                             };
                         }
                         return next;
                     });
-                    if (footprint?.pairs) {
+                    if (footprintBasesRef.current.length === 0) return null;
+                    return fetchFootprintView(footprintBasesRef.current, {
+                        profile,
+                        timeframe: defaultFootprintTimeframe,
+                        bustCache: true,
+                    });
+                })
+                .then((footprint) => {
+                    if (cancelled || !footprint) return;
+                    if (footprint.pairs) {
                         setLiveFootprintPairs((prev) => ({ ...prev, ...footprint.pairs }));
                     }
                 })
@@ -505,6 +529,7 @@ const ScannerResults = ({
         chartSymbolsKey,
         defaultChartTimeframe,
         footprintBasesKey,
+        footprintWatchlistKey,
         defaultFootprintTimeframe,
         loading,
         polling,
@@ -616,6 +641,7 @@ const ScannerResults = ({
                             footprintPair={footprintPair}
                             managedChart={managedChart}
                             managedChartLoading={chartsLoading && managedChart == null}
+                            footprintWatchlist={footprintWatchlist}
                         />
                     );
                 })}

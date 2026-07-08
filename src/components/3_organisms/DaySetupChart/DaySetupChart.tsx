@@ -9,7 +9,6 @@ import ScannerSetupChart, {
 import type { ThemeTokens } from "@/components/ui/theme-color";
 import {
   applyLivePriceToMergedBars,
-  expectsFootprintSymbol,
   fetchFootprintView,
   hasOrderflowData,
   hasRealOhlc,
@@ -97,7 +96,7 @@ export default function DaySetupChart({
   managedChartLoading,
 }: DaySetupChartProps) {
   const base = scannerSymbolToBase(symbol);
-  const expectsFootprint = footprintEnabled && expectsFootprintSymbol(base);
+  const expectsFootprint = footprintEnabled;
   const defaultFootprintTimeframe = FOOTPRINT_PROFILE_DEFAULTS[profile].defaultTimeframe;
   const [fpTimeframe, setFpTimeframe] = useState<FootprintTimeframe>(defaultFootprintTimeframe);
   const [altTimeframePair, setAltTimeframePair] = useState<FootprintPairView | null>(null);
@@ -144,7 +143,7 @@ export default function DaySetupChart({
     );
     const spot = chartSpotPrice(liveChart, price);
     return applyLivePriceToMergedBars(overlaid, spot);
-  }, [exchangeCandles, fpTimeframe, liveChart, pairForDisplay?.merged, price]);
+  }, [exchangeCandles, fpTimeframe, liveChart, managedChart?.last, pairForDisplay?.merged, price]);
 
   const showOrderflow =
     hasOrderflowData(pairForDisplay) &&

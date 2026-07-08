@@ -1,7 +1,6 @@
 import { SCANNER_PROFILE_CHART_TIMEFRAME } from "@/services/scannerUtils";
 
-export const FOOTPRINT_SYMBOLS = ["BTC", "ETH", "SOL", "HYPE"] as const;
-export type FootprintSymbol = (typeof FOOTPRINT_SYMBOLS)[number];
+export type FootprintSymbol = string;
 
 export const FOOTPRINT_TIMEFRAMES = ["5m", "15m", "30m", "1h", "2h", "4h"] as const;
 export type FootprintTimeframe = (typeof FOOTPRINT_TIMEFRAMES)[number];
@@ -167,7 +166,13 @@ export interface FootprintViewPayload {
   bar_limit: number;
   cvd_anchor: string;
   health: Record<string, unknown> | null;
+  watchlist?: string[];
   pairs: Record<string, FootprintPairView>;
+}
+
+export interface FootprintMetaPayload {
+  watchlist: string[];
+  health: Record<string, unknown> | null;
 }
 
 export const FOOTPRINT_PROFILE_DEFAULTS: Record<

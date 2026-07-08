@@ -123,6 +123,7 @@ export interface ScannerViewSections {
 export interface ScannerViewFootprintPayload {
   timeframe: FootprintTimeframe | string;
   health?: FootprintViewPayload["health"] | Record<string, unknown> | null;
+  watchlist?: string[];
   pairs_by_base: Record<string, FootprintPairView>;
 }
 
