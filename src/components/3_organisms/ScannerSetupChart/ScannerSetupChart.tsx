@@ -51,8 +51,9 @@ type ScannerSetupChartProps = {
   /** Batched chart from ScannerResults — parent handles live updates. */
   managedChart?: ScannerChartPayload | null;
   managedChartLoading?: boolean;
-  /** Live ticker from parent patch loop — always wins over stale chart.last. */
+  /** Live ticker from parent refresh loop — always wins over stale chart.last. */
   liveSpotPrice?: number;
+  chartRevisionKey?: string;
 };
 
 function computeChartBounds(
@@ -101,6 +102,7 @@ function ScannerSetupChart({
   managedChart,
   managedChartLoading = false,
   liveSpotPrice,
+  chartRevisionKey,
 }: ScannerSetupChartProps) {
   const pageVisible = usePageVisible();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -288,7 +290,7 @@ function ScannerSetupChart({
       lastX,
       lastY,
     };
-  }, [bands, chart, chartWidth, liveSpotPrice, price, zoomStep]);
+  }, [bands, chart, chartRevisionKey, chartWidth, liveSpotPrice, price, zoomStep]);
 
   return (
     <Box

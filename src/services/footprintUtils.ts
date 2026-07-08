@@ -238,6 +238,67 @@ export function overlayExchangeOhlcOnMerged(
   });
 }
 
+function emptyFootprintBar(time: number, candle: OhlcCandle): FootprintMergedBar {
+  return {
+    time,
+    open: candle.open,
+    high: candle.high,
+    low: candle.low,
+    close: candle.close,
+    bucket_start: null,
+    delta: null,
+    delta_max: null,
+    delta_min: null,
+    cvd_window: null,
+    cvd_session: null,
+    oi_open: null,
+    oi_close: null,
+    oi_change: null,
+    oi_change_pct: null,
+    funding_rate: null,
+    vwap: null,
+    liq_long_notional: null,
+    liq_short_notional: null,
+    liq_count: null,
+    source_gap: 1,
+  };
+}
+
+/** Append exchange candles newer than the last footprint bucket (price line stays on time). */
+export function appendExchangeTailToMerged(
+  merged: FootprintMergedBar[],
+  candles: OhlcCandle[] | undefined | null,
+  timeframe = "30m",
+): FootprintMergedBar[] {
+  if (!candles?.length) return merged;
+
+  const slackSec = TIMEFRAME_MATCH_SLACK_SEC[timeframe] ?? 1800;
+  const out = [...merged];
+  const lastMergedTime = out.at(-1)?.time ?? 0;
+
+  for (const candle of candles) {
+    if (!hasRealOhlc(candle)) continue;
+    if (candle.time <= lastMergedTime + slackSec) continue;
+    const duplicate = out.some((bar) => Math.abs(bar.time - candle.time) <= slackSec);
+    if (duplicate) continue;
+    out.push(emptyFootprintBar(candle.time, candle));
+  }
+
+  return out.sort((a, b) => a.time - b.time);
+}
+
+/** Footprint chart bars: orderflow + exchange OHLC tail + live mark on last bar. */
+export function buildFootprintDisplayBars(
+  merged: FootprintMergedBar[],
+  exchangeCandles: OhlcCandle[] | undefined | null,
+  livePrice: number | null | undefined,
+  timeframe = "30m",
+): FootprintMergedBar[] {
+  const overlaid = overlayExchangeOhlcOnMerged(merged, exchangeCandles, timeframe);
+  const withTail = appendExchangeTailToMerged(overlaid, exchangeCandles, timeframe);
+  return applyLivePriceToMergedBars(withTail, livePrice);
+}
+
 /** Move the forming bar to the live mark when ticker updates between full reloads. */
 export function applyLivePriceToMergedBars(
   bars: FootprintMergedBar[],

@@ -154,8 +154,9 @@ export default function FootprintPairChart({
   const candleTheme = useMemo(() => chartCandleTheme(tokens), [tokens]);
 
   const viewKey = useMemo(
-    () => `${timeframe}:${bars.length}:${bars.at(-1)?.time ?? 0}`,
-    [timeframe, bars],
+    () =>
+      `${timeframe}:${bars.length}:${bars.at(-1)?.time ?? 0}:${bars.at(-1)?.close ?? 0}:${livePrice ?? 0}`,
+    [timeframe, bars, livePrice],
   );
   const [prevViewKey, setPrevViewKey] = useState(viewKey);
   if (viewKey !== prevViewKey) {
@@ -178,20 +179,17 @@ export default function FootprintPairChart({
   }, []);
 
   const plot = useMemo(() => {
-    const allVisible = bars.filter((b) => b.close > 0);
-    if (allVisible.length < 2 || width <= 0) return null;
+    const rawVisible = bars.filter((b) => b.close > 0);
+    if (rawVisible.length < 2 || width <= 0) return null;
 
-    const zoomScale = zoomScaleFromStep(zoomStep);
-    const visible = visibleBarsForZoom(allVisible, zoomScale);
-    const lastClose = visible[visible.length - 1]?.close ?? 0;
+    const lastClose = rawVisible[rawVisible.length - 1]?.close ?? 0;
     const spotPrice =
       livePrice != null && Number.isFinite(livePrice) && livePrice > 0
         ? livePrice
         : lastClose;
 
-    const visibleWithLive = visible.map((bar, index) => {
-      if (index !== visible.length - 1) return bar;
-      if (Math.abs(spotPrice - (bar.close ?? 0)) <= 1e-9) return bar;
+    const allVisible = rawVisible.map((bar, index) => {
+      if (index !== rawVisible.length - 1) return bar;
       const high = bar.high ?? spotPrice;
       const low = bar.low ?? spotPrice;
       return {
@@ -201,8 +199,14 @@ export default function FootprintPairChart({
         low: Math.min(low, spotPrice),
       };
     });
-    const closes = visible.map((b) => b.close);
-    const [baseMin, baseMax] = computePriceBounds(closes, spotPrice, visible);
+
+    const zoomScale = zoomScaleFromStep(zoomStep);
+    const visible = visibleBarsForZoom(allVisible, zoomScale);
+    const [baseMin, baseMax] = computePriceBounds(
+      allVisible.map((b) => b.close),
+      spotPrice,
+      allVisible,
+    );
     const [minPrice, maxPrice] = applyZoomBounds(baseMin, baseMax, zoomScale, spotPrice);
     const priceSpan = Math.max(maxPrice - minPrice, 1e-12);
 
@@ -269,13 +273,8 @@ export default function FootprintPairChart({
     const yLiqShort = (notional: number) =>
       liqMidY - (notional / maxAbsLiq) * (liqInnerH / 2 - 2);
 
-    const closePoints = visibleWithLive
+    const closePoints = visible
       .map((bar, i) => `${xAt(i).toFixed(1)},${clampYPrice(bar.close).toFixed(1)}`)
-      .concat(
-        Math.abs(spotPrice - lastClose) > 1e-9
-          ? [`${xAt(visibleWithLive.length - 1).toFixed(1)},${clampYPrice(spotPrice).toFixed(1)}`]
-          : [],
-      )
       .join(" ");
 
     const cvdPoints = visible
@@ -296,7 +295,7 @@ export default function FootprintPairChart({
 
     const barWidth = Math.max(2, innerW / Math.max(visible.length, 1) - 1);
     // Use raw yPrice for candles — clampYPrice pins out-of-range wicks to pane edges (giant spikes).
-    const candleShapes = candleGeometries(visibleWithLive, xAt, yPrice, innerW, priceInnerH);
+    const candleShapes = candleGeometries(visible, xAt, yPrice, innerW, priceInnerH);
 
     const bandRects = bands.flatMap((band, i) => {
       const low = Math.min(band.low, band.high);
@@ -319,7 +318,7 @@ export default function FootprintPairChart({
 
     return {
       chartWidth,
-      visible: visibleWithLive,
+      visible,
       closePoints,
       candleShapes,
       cvdPoints,
@@ -341,7 +340,7 @@ export default function FootprintPairChart({
       barWidth,
       spotPrice,
       spotY: clampYPrice(spotPrice),
-      lastX: xAt(visibleWithLive.length - 1),
+      lastX: xAt(visible.length - 1),
       clipIds: {
         price: `${clipUid}-price`,
         delta: `${clipUid}-delta`,

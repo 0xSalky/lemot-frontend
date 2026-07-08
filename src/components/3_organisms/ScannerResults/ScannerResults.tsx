@@ -10,6 +10,7 @@ import {
     applyChartLivePatch,
     bandLineMarker,
     bandLineSections,
+    chartRevisionKey,
     chartSpotPrice,
     extractChartLiveMark,
     formatCompactLevel,
@@ -255,6 +256,7 @@ function SetupCard({
     managedChartLoading,
     footprintWatchlist,
     liveSpotPrice,
+    chartRevisionKey,
 }: {
     setup: ScannerSetupRow;
     tokens: ThemeTokens;
@@ -265,6 +267,7 @@ function SetupCard({
     managedChartLoading?: boolean;
     footprintWatchlist: readonly string[];
     liveSpotPrice?: number;
+    chartRevisionKey?: string;
 }) {
     const bands = orderedBands(Array.isArray(setup.bands) ? setup.bands : []);
     const base = scannerSymbolToBase(setup.symbol);
@@ -295,6 +298,7 @@ function SetupCard({
                 managedChart={managedChart}
                 managedChartLoading={managedChartLoading}
                 liveSpotPrice={liveSpotPrice}
+                chartRevisionKey={chartRevisionKey}
             />
             <Stack gap="3" mt="2">
                 {bands.map((band, bandIdx) => (
@@ -400,7 +404,6 @@ const ScannerResults = ({
     const [liveLastBySymbol, setLiveLastBySymbol] = useState<Record<string, number>>({});
     const [liveFootprintPairs, setLiveFootprintPairs] = useState<Record<string, FootprintPairView>>({});
     const [chartsLoading, setChartsLoading] = useState(false);
-    const patchRunningRef = useRef(false);
 
     const chartSymbols = useMemo(
         () => setups.map((setup) => setup.symbol),
@@ -482,58 +485,56 @@ const ScannerResults = ({
         if (loading || !polling || !chartSymbolsKey) return;
 
         let cancelled = false;
-        const tick = () => {
-            if (cancelled || document.visibilityState !== "visible" || patchRunningRef.current) return;
-            patchRunningRef.current = true;
 
-            const chartPromise = patchScannerCharts(
-                chartSymbolsRef.current,
-                defaultChartTimeframe,
-            );
+        const runRefresh = async () => {
+            if (cancelled || document.visibilityState !== "visible") return;
 
-            void chartPromise
-                .then((charts) => {
-                    if (cancelled) return;
-                    const liveMarks: Record<string, number> = {};
-                    setPrefetchedCharts((prev) => {
-                        const next = { ...prev };
-                        for (const [symbol, chart] of Object.entries(charts)) {
-                            if (!chart) continue;
-                            const baseline =
-                                next[symbol] ?? viewChartsRef.current[symbol] ?? null;
-                            const merged = applyChartLivePatch(baseline, chart);
-                            next[symbol] = merged;
-                            const mark = extractChartLiveMark(merged);
-                            if (mark != null) liveMarks[symbol] = mark;
-                        }
-                        return next;
-                    });
-                    if (Object.keys(liveMarks).length > 0) {
-                        setLiveLastBySymbol((prev) => ({ ...prev, ...liveMarks }));
+            const symbols = chartSymbolsRef.current;
+            const bases = footprintBasesRef.current;
+
+            try {
+                const [charts, footprint] = await Promise.all([
+                    patchScannerCharts(symbols, defaultChartTimeframe),
+                    bases.length > 0
+                        ? fetchFootprintView(bases, {
+                              profile,
+                              timeframe: defaultFootprintTimeframe,
+                              bustCache: true,
+                          })
+                        : Promise.resolve(null),
+                ]);
+
+                if (cancelled) return;
+
+                const liveMarks: Record<string, number> = {};
+                setPrefetchedCharts((prev) => {
+                    const next = { ...prev };
+                    for (const [symbol, chart] of Object.entries(charts)) {
+                        if (!chart) continue;
+                        const baseline =
+                            next[symbol] ?? viewChartsRef.current[symbol] ?? null;
+                        const merged = applyChartLivePatch(baseline, chart);
+                        next[symbol] = merged;
+                        const mark = extractChartLiveMark(merged);
+                        if (mark != null) liveMarks[symbol] = mark;
                     }
-                    if (footprintBasesRef.current.length === 0) return null;
-                    return fetchFootprintView(footprintBasesRef.current, {
-                        profile,
-                        timeframe: defaultFootprintTimeframe,
-                        bustCache: true,
-                    });
-                })
-                .then((footprint) => {
-                    if (cancelled || !footprint) return;
-                    if (footprint.pairs) {
-                        setLiveFootprintPairs((prev) => ({ ...prev, ...footprint.pairs }));
-                    }
-                })
-                .catch(() => {
-                    console.warn("[scanner live tick] patch failed", { profile });
-                })
-                .finally(() => {
-                    patchRunningRef.current = false;
+                    return next;
                 });
+
+                if (Object.keys(liveMarks).length > 0) {
+                    setLiveLastBySymbol((prev) => ({ ...prev, ...liveMarks }));
+                }
+
+                if (footprint?.pairs) {
+                    setLiveFootprintPairs((prev) => ({ ...prev, ...footprint.pairs }));
+                }
+            } catch {
+                console.warn("[scanner live refresh] failed", { profile });
+            }
         };
 
-        tick();
-        const id = window.setInterval(tick, SCANNER_CHART_LIVE_PATCH_MS);
+        void runRefresh();
+        const id = window.setInterval(() => void runRefresh(), SCANNER_CHART_LIVE_PATCH_MS);
         return () => {
             cancelled = true;
             window.clearInterval(id);
@@ -671,6 +672,7 @@ const ScannerResults = ({
                     const liveSpotPrice =
                         liveLastBySymbol[setup.symbol]
                         ?? chartSpotPrice(managedChart, setup.price);
+                    const revisionKey = chartRevisionKey(managedChart);
 
                     return (
                         <SetupCard
@@ -684,6 +686,7 @@ const ScannerResults = ({
                             managedChartLoading={chartsLoading && managedChart == null}
                             footprintWatchlist={footprintWatchlist}
                             liveSpotPrice={liveSpotPrice}
+                            chartRevisionKey={revisionKey}
                         />
                     );
                 })}

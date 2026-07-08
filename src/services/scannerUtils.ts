@@ -13,8 +13,8 @@ import type {
   ScannerSetupRow,
 } from "@/types/scannerTypes";
 
-/** Chart live-update interval (ticker + tail candles + footprint). */
-export const SCANNER_CHART_LIVE_PATCH_MS = 30 * 1000;
+/** Chart + footprint live refresh interval (patch charts + orderflow). */
+export const SCANNER_CHART_LIVE_PATCH_MS = 5 * 60 * 1000;
 
 const CHART_CLIENT_CACHE_TTL_MS = 300_000;
 
@@ -265,29 +265,63 @@ export function cloneChartPayload(chart: ScannerChartPayload): ScannerChartPaylo
   };
 }
 
+function mergeCandleTail(
+  candles: ScannerChartPayload["candles"],
+  tail: ScannerChartPayload["candles"],
+): ScannerChartPayload["candles"] {
+  if (!tail.length) return candles;
+  const firstTailTime = tail[0].time;
+  const kept = candles.filter((c) => c.time < firstTailTime);
+  const merged = [...kept, ...tail.map((c) => ({ ...c }))];
+  const maxLen = Math.max(candles.length, merged.length);
+  if (merged.length > maxLen) return merged.slice(-maxLen);
+  return merged;
+}
+
+/** Stable key so chart children re-render when last candle / mark changes. */
+export function chartRevisionKey(
+  chart: ScannerChartPayload | null | undefined,
+): string {
+  if (!chart?.candles?.length) return "empty";
+  const last = chart.candles[chart.candles.length - 1];
+  return `${chart.candles.length}|${last.time}|${last.close}|${chart.last ?? ""}`;
+}
+
 export function applyChartLivePatch(
   existing: ScannerChartPayload | null | undefined,
   patch: ScannerChartPayload,
 ): ScannerChartPayload {
   if (!existing?.candles?.length) return cloneChartPayload(patch);
 
-  const candles = [...existing.candles];
   const patchCandles = patch.candles ?? [];
-  const patchLast = patchCandles[patchCandles.length - 1];
-  const baseLast = candles[candles.length - 1];
+  let candles: ScannerChartPayload["candles"];
 
-  if (patchLast && baseLast && patchLast.time === baseLast.time) {
-    candles[candles.length - 1] = { ...patchLast };
-  } else if (patchLast && baseLast && patchLast.time > baseLast.time) {
-    candles.push({ ...patchLast });
-  } else if (patchCandles.length > candles.length) {
-    return cloneChartPayload(patch);
+  if (patchCandles.length === 0) {
+    candles = [...existing.candles];
+  } else if (patchCandles.length >= existing.candles.length) {
+    candles = patchCandles.map((c) => ({ ...c }));
+  } else {
+    const tail = patchCandles.length <= 5 ? patchCandles : patchCandles.slice(-3);
+    candles = mergeCandleTail(existing.candles, tail);
+    const byTime = new Map(patchCandles.map((c) => [c.time, c]));
+    candles = candles.map((c) => {
+      const hit = byTime.get(c.time);
+      return hit ? { ...hit } : c;
+    });
   }
 
   const last =
     patch.last ??
     extractChartLiveMark({ ...patch, candles: patchCandles }) ??
     existing.last;
+
+  if (last != null && candles.length > 0) {
+    const forming = { ...candles[candles.length - 1] };
+    forming.close = last;
+    forming.high = Math.max(forming.high, last);
+    forming.low = Math.min(forming.low, last);
+    candles = [...candles.slice(0, -1), forming];
+  }
 
   return cloneChartPayload({
     ...existing,

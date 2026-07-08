@@ -8,13 +8,12 @@ import ScannerSetupChart, {
 } from "@/components/3_organisms/ScannerSetupChart/ScannerSetupChart";
 import type { ThemeTokens } from "@/components/ui/theme-color";
 import {
-  applyLivePriceToMergedBars,
+  buildFootprintDisplayBars,
   fetchFootprintView,
   hasOrderflowData,
   hasRealOhlc,
-  overlayExchangeOhlcOnMerged,
 } from "@/services/footprintUtils";
-import { scannerSymbolToBase, chartSpotPrice, type ScannerProfile } from "@/services/scannerUtils";
+import { scannerSymbolToBase, chartSpotPrice, chartRevisionKey, type ScannerProfile } from "@/services/scannerUtils";
 import {
   FOOTPRINT_PROFILE_DEFAULTS,
   type FootprintPairView,
@@ -37,8 +36,10 @@ type DaySetupChartProps = {
   footprintEnabled?: boolean;
   managedChart?: ScannerChartPayload | null;
   managedChartLoading?: boolean;
-  /** Live ticker from 30s patch — drives price line even when chart object is stale. */
+  /** Live ticker from parent refresh — drives price line on the chart. */
   liveSpotPrice?: number;
+  /** Bumps when parent merges a new chart patch (forces child plot refresh). */
+  chartRevisionKey?: string;
 };
 
 const FOOTPRINT_CHART_HEIGHT = FOOTPRINT_CHART_TOTAL_HEIGHT;
@@ -97,6 +98,7 @@ export default function DaySetupChart({
   managedChart,
   managedChartLoading,
   liveSpotPrice,
+  chartRevisionKey: chartRevisionKeyProp,
 }: DaySetupChartProps) {
   const base = scannerSymbolToBase(symbol);
   const expectsFootprint = footprintEnabled;
@@ -137,30 +139,32 @@ export default function DaySetupChart({
 
   const liveChart = managedChart ?? pairForDisplay?.chart ?? null;
   const exchangeCandles = managedChart?.candles ?? pairForDisplay?.chart?.candles ?? [];
+  const spotPrice = chartSpotPrice(liveChart, price, liveSpotPrice);
+  const resolvedChartRevisionKey =
+    chartRevisionKeyProp ?? chartRevisionKey(managedChart ?? liveChart);
 
-  const displayBars = useMemo(() => {
-    const overlaid = overlayExchangeOhlcOnMerged(
-      pairForDisplay?.merged ?? [],
+  const displayBars = useMemo(
+    () =>
+      buildFootprintDisplayBars(
+        pairForDisplay?.merged ?? [],
+        exchangeCandles,
+        spotPrice,
+        fpTimeframe,
+      ),
+    [
       exchangeCandles,
       fpTimeframe,
-    );
-    const spot = chartSpotPrice(liveChart, price, liveSpotPrice);
-    return applyLivePriceToMergedBars(overlaid, spot);
-  }, [
-    exchangeCandles,
-    fpTimeframe,
-    liveChart,
-    liveSpotPrice,
-    managedChart?.last,
-    pairForDisplay?.merged,
-    price,
-  ]);
+      pairForDisplay?.merged,
+      resolvedChartRevisionKey,
+      spotPrice,
+    ],
+  );
 
   const showOrderflow =
     hasOrderflowData(pairForDisplay) &&
     displayBars.filter(hasRealOhlc).length >= 2;
   const showFootprintLoading = expectsFootprint && footprintLoading && !showOrderflow;
-  const footprintSpotPrice = chartSpotPrice(liveChart, price, liveSpotPrice);
+  const footprintSpotPrice = spotPrice;
   const restSpotPrice = chartSpotPrice(managedChart, price, liveSpotPrice);
 
   if (showFootprintLoading) {
@@ -197,6 +201,7 @@ export default function DaySetupChart({
         managedChart={managedChart}
         managedChartLoading={managedChartLoading}
         liveSpotPrice={restSpotPrice}
+        chartRevisionKey={resolvedChartRevisionKey}
       />
     </DayChartBleed>
   );
