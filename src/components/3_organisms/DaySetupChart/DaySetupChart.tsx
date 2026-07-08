@@ -37,6 +37,8 @@ type DaySetupChartProps = {
   footprintEnabled?: boolean;
   managedChart?: ScannerChartPayload | null;
   managedChartLoading?: boolean;
+  /** Live ticker from 30s patch — drives price line even when chart object is stale. */
+  liveSpotPrice?: number;
 };
 
 const FOOTPRINT_CHART_HEIGHT = FOOTPRINT_CHART_TOTAL_HEIGHT;
@@ -94,6 +96,7 @@ export default function DaySetupChart({
   footprintEnabled = true,
   managedChart,
   managedChartLoading,
+  liveSpotPrice,
 }: DaySetupChartProps) {
   const base = scannerSymbolToBase(symbol);
   const expectsFootprint = footprintEnabled;
@@ -141,16 +144,24 @@ export default function DaySetupChart({
       exchangeCandles,
       fpTimeframe,
     );
-    const spot = chartSpotPrice(liveChart, price);
+    const spot = chartSpotPrice(liveChart, price, liveSpotPrice);
     return applyLivePriceToMergedBars(overlaid, spot);
-  }, [exchangeCandles, fpTimeframe, liveChart, managedChart?.last, pairForDisplay?.merged, price]);
+  }, [
+    exchangeCandles,
+    fpTimeframe,
+    liveChart,
+    liveSpotPrice,
+    managedChart?.last,
+    pairForDisplay?.merged,
+    price,
+  ]);
 
   const showOrderflow =
     hasOrderflowData(pairForDisplay) &&
     displayBars.filter(hasRealOhlc).length >= 2;
   const showFootprintLoading = expectsFootprint && footprintLoading && !showOrderflow;
-  const footprintSpotPrice = chartSpotPrice(liveChart, price);
-  const restSpotPrice = chartSpotPrice(managedChart, price);
+  const footprintSpotPrice = chartSpotPrice(liveChart, price, liveSpotPrice);
+  const restSpotPrice = chartSpotPrice(managedChart, price, liveSpotPrice);
 
   if (showFootprintLoading) {
     return <FootprintChartLoading tokens={tokens} />;
@@ -185,6 +196,7 @@ export default function DaySetupChart({
         embedded
         managedChart={managedChart}
         managedChartLoading={managedChartLoading}
+        liveSpotPrice={restSpotPrice}
       />
     </DayChartBleed>
   );

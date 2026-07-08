@@ -7,8 +7,11 @@ import type {
     ScannerViewFetchResult,
 } from "@/types/scannerTypes";
 import {
+    applyChartLivePatch,
     bandLineMarker,
     bandLineSections,
+    chartSpotPrice,
+    extractChartLiveMark,
     formatCompactLevel,
     formatUtcIsoLocal,
     isLevelAnchor,
@@ -251,6 +254,7 @@ function SetupCard({
     managedChart,
     managedChartLoading,
     footprintWatchlist,
+    liveSpotPrice,
 }: {
     setup: ScannerSetupRow;
     tokens: ThemeTokens;
@@ -260,6 +264,7 @@ function SetupCard({
     managedChart?: ScannerChartPayload | null;
     managedChartLoading?: boolean;
     footprintWatchlist: readonly string[];
+    liveSpotPrice?: number;
 }) {
     const bands = orderedBands(Array.isArray(setup.bands) ? setup.bands : []);
     const base = scannerSymbolToBase(setup.symbol);
@@ -289,6 +294,7 @@ function SetupCard({
                 defaultChartTimeframe={defaultChartTimeframe}
                 managedChart={managedChart}
                 managedChartLoading={managedChartLoading}
+                liveSpotPrice={liveSpotPrice}
             />
             <Stack gap="3" mt="2">
                 {bands.map((band, bandIdx) => (
@@ -391,6 +397,7 @@ const ScannerResults = ({
     const defaultChartTimeframe = SCANNER_PROFILE_CHART_TIMEFRAME[profile];
     const defaultFootprintTimeframe = FOOTPRINT_PROFILE_DEFAULTS[profile].defaultTimeframe;
     const [prefetchedCharts, setPrefetchedCharts] = useState<Record<string, ScannerChartPayload | null>>({});
+    const [liveLastBySymbol, setLiveLastBySymbol] = useState<Record<string, number>>({});
     const [liveFootprintPairs, setLiveFootprintPairs] = useState<Record<string, FootprintPairView>>({});
     const [chartsLoading, setChartsLoading] = useState(false);
     const patchRunningRef = useRef(false);
@@ -431,6 +438,9 @@ const ScannerResults = ({
         scannerView != null && !("message" in scannerView) ? scannerView.batch : null;
     const viewChartsBySymbol =
         scannerView != null && !("message" in scannerView) ? scannerView.charts.by_symbol : {};
+    const viewChartsRef = useRef(viewChartsBySymbol);
+    viewChartsRef.current = viewChartsBySymbol;
+
     const chartsBySymbol = useMemo(
         () => ({ ...viewChartsBySymbol, ...prefetchedCharts }),
         [prefetchedCharts, viewChartsBySymbol],
@@ -484,20 +494,23 @@ const ScannerResults = ({
             void chartPromise
                 .then((charts) => {
                     if (cancelled) return;
+                    const liveMarks: Record<string, number> = {};
                     setPrefetchedCharts((prev) => {
                         const next = { ...prev };
                         for (const [symbol, chart] of Object.entries(charts)) {
                             if (!chart) continue;
-                            const existing = next[symbol] ?? null;
-                            next[symbol] = {
-                                ...(existing ?? chart),
-                                ...chart,
-                                last: chart.last ?? existing?.last,
-                                candles: chart.candles.map((c) => ({ ...c })),
-                            };
+                            const baseline =
+                                next[symbol] ?? viewChartsRef.current[symbol] ?? null;
+                            const merged = applyChartLivePatch(baseline, chart);
+                            next[symbol] = merged;
+                            const mark = extractChartLiveMark(merged);
+                            if (mark != null) liveMarks[symbol] = mark;
                         }
                         return next;
                     });
+                    if (Object.keys(liveMarks).length > 0) {
+                        setLiveLastBySymbol((prev) => ({ ...prev, ...liveMarks }));
+                    }
                     if (footprintBasesRef.current.length === 0) return null;
                     return fetchFootprintView(footprintBasesRef.current, {
                         profile,
@@ -540,7 +553,18 @@ const ScannerResults = ({
     useEffect(() => {
         setPrefetchedCharts({});
         setLiveFootprintPairs({});
+        setLiveLastBySymbol({});
     }, [batchId, profile]);
+
+    useEffect(() => {
+        if (scannerView == null || "message" in scannerView) return;
+        const marks: Record<string, number> = {};
+        for (const [symbol, chart] of Object.entries(scannerView.charts.by_symbol)) {
+            const mark = extractChartLiveMark(chart);
+            if (mark != null) marks[symbol] = mark;
+        }
+        setLiveLastBySymbol((prev) => ({ ...marks, ...prev }));
+    }, [batchId, scannerView]);
 
     useEffect(() => {
         if (loading || !missingChartKey) {
@@ -554,7 +578,21 @@ const ScannerResults = ({
 
         void prefetchScannerCharts(symbols, defaultChartTimeframe)
             .then((charts) => {
-                if (!cancelled) setPrefetchedCharts((prev) => ({ ...prev, ...charts }));
+                if (cancelled) return;
+                const liveMarks: Record<string, number> = {};
+                setPrefetchedCharts((prev) => {
+                    const next = { ...prev };
+                    for (const [symbol, chart] of Object.entries(charts)) {
+                        if (!chart) continue;
+                        next[symbol] = chart;
+                        const mark = extractChartLiveMark(chart);
+                        if (mark != null) liveMarks[symbol] = mark;
+                    }
+                    return { ...prev, ...next };
+                });
+                if (Object.keys(liveMarks).length > 0) {
+                    setLiveLastBySymbol((prev) => ({ ...prev, ...liveMarks }));
+                }
             })
             .catch(() => {
                 console.warn("[scanner charts] batch prefetch failed", { profile, symbols });
@@ -630,6 +668,9 @@ const ScannerResults = ({
                     const base = scannerSymbolToBase(setup.symbol);
                     const footprintPair = footprintPairs[base] ?? null;
                     const managedChart = chartsBySymbol[setup.symbol] ?? null;
+                    const liveSpotPrice =
+                        liveLastBySymbol[setup.symbol]
+                        ?? chartSpotPrice(managedChart, setup.price);
 
                     return (
                         <SetupCard
@@ -642,6 +683,7 @@ const ScannerResults = ({
                             managedChart={managedChart}
                             managedChartLoading={chartsLoading && managedChart == null}
                             footprintWatchlist={footprintWatchlist}
+                            liveSpotPrice={liveSpotPrice}
                         />
                     );
                 })}

@@ -51,6 +51,8 @@ type ScannerSetupChartProps = {
   /** Batched chart from ScannerResults — parent handles live updates. */
   managedChart?: ScannerChartPayload | null;
   managedChartLoading?: boolean;
+  /** Live ticker from parent patch loop — always wins over stale chart.last. */
+  liveSpotPrice?: number;
 };
 
 function computeChartBounds(
@@ -98,6 +100,7 @@ function ScannerSetupChart({
   embedded = false,
   managedChart,
   managedChartLoading = false,
+  liveSpotPrice,
 }: ScannerSetupChartProps) {
   const pageVisible = usePageVisible();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -219,9 +222,19 @@ function ScannerSetupChart({
     const zoomScale = zoomScaleFromStep(zoomStep);
     const candles = chart.candles;
     const lastClose = candles[candles.length - 1]?.close;
-    const spotPrice = chartSpotPrice(chart, price > 0 ? price : lastClose);
+    const spotPrice = chartSpotPrice(chart, price > 0 ? price : lastClose, liveSpotPrice);
     const visibleCandles = visibleCandlesForZoom(candles, zoomScale);
-    const [baseMin, baseMax] = computeChartBounds(visibleCandles, spotPrice);
+    const visibleWithLive = visibleCandles.map((candle, index) => {
+      if (index !== visibleCandles.length - 1) return candle;
+      if (Math.abs(spotPrice - candle.close) <= 1e-9) return candle;
+      return {
+        ...candle,
+        close: spotPrice,
+        high: Math.max(candle.high, spotPrice),
+        low: Math.min(candle.low, spotPrice),
+      };
+    });
+    const [baseMin, baseMax] = computeChartBounds(visibleWithLive, spotPrice);
     const [minPrice, maxPrice] = applyZoomBounds(baseMin, baseMax, zoomScale, spotPrice);
     const innerW = chartWidth - PAD_X * 2;
     const innerH = CHART_HEIGHT - PAD_TOP - PAD_BOTTOM;
@@ -229,13 +242,13 @@ function ScannerSetupChart({
     const plotBottom = PAD_TOP + innerH;
 
     const xAt = (index: number) =>
-      PAD_X + (index / Math.max(visibleCandles.length - 1, 1)) * innerW;
+      PAD_X + (index / Math.max(visibleWithLive.length - 1, 1)) * innerW;
 
     const yAt = (level: number) =>
       PAD_TOP + ((maxPrice - level) / priceSpan) * innerH;
 
-    const lastX = xAt(visibleCandles.length - 1);
-    const closePoints = visibleCandles
+    const lastX = xAt(visibleWithLive.length - 1);
+    const closePoints = visibleWithLive
       .map((candle, i) => `${xAt(i).toFixed(1)},${yAt(candle.close).toFixed(1)}`)
       .concat(
         Math.abs(spotPrice - (lastClose ?? 0)) > 1e-9
@@ -263,7 +276,7 @@ function ScannerSetupChart({
 
     const spotY = yAt(spotPrice);
     const lastY = yAt(spotPrice);
-    const candleShapes = candleGeometries(visibleCandles, xAt, yAt, innerW, innerH);
+    const candleShapes = candleGeometries(visibleWithLive, xAt, yAt, innerW, innerH);
 
     return {
       closePoints,
@@ -275,7 +288,7 @@ function ScannerSetupChart({
       lastX,
       lastY,
     };
-  }, [bands, chart, chartWidth, price, zoomStep]);
+  }, [bands, chart, chartWidth, liveSpotPrice, price, zoomStep]);
 
   return (
     <Box

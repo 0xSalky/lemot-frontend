@@ -235,7 +235,9 @@ function chartsBatchInflightKey(
 export function chartSpotPrice(
   chart: ScannerChartPayload | null | undefined,
   fallbackPrice?: number,
+  liveMark?: number,
 ): number {
+  if (liveMark != null && Number.isFinite(liveMark) && liveMark > 0) return liveMark;
   const mark = chart?.last;
   if (mark != null && Number.isFinite(mark) && mark > 0) return mark;
   const close = chart?.candles?.at(-1)?.close;
@@ -246,18 +248,28 @@ export function chartSpotPrice(
   return 0;
 }
 
-function cloneChartPayload(chart: ScannerChartPayload): ScannerChartPayload {
+export function extractChartLiveMark(
+  chart: ScannerChartPayload | null | undefined,
+): number | undefined {
+  const mark = chart?.last;
+  if (mark != null && Number.isFinite(mark) && mark > 0) return mark;
+  const close = chart?.candles?.at(-1)?.close;
+  if (close != null && Number.isFinite(close) && close > 0) return close;
+  return undefined;
+}
+
+export function cloneChartPayload(chart: ScannerChartPayload): ScannerChartPayload {
   return {
     ...chart,
     candles: chart.candles.map((c) => ({ ...c })),
   };
 }
 
-function mergeChartLivePatch(
+export function applyChartLivePatch(
   existing: ScannerChartPayload | null | undefined,
   patch: ScannerChartPayload,
 ): ScannerChartPayload {
-  if (!existing?.candles?.length) return patch;
+  if (!existing?.candles?.length) return cloneChartPayload(patch);
 
   const candles = [...existing.candles];
   const patchCandles = patch.candles ?? [];
@@ -265,20 +277,25 @@ function mergeChartLivePatch(
   const baseLast = candles[candles.length - 1];
 
   if (patchLast && baseLast && patchLast.time === baseLast.time) {
-    candles[candles.length - 1] = patchLast;
+    candles[candles.length - 1] = { ...patchLast };
   } else if (patchLast && baseLast && patchLast.time > baseLast.time) {
-    candles.push(patchLast);
+    candles.push({ ...patchLast });
   } else if (patchCandles.length > candles.length) {
-    return patch;
+    return cloneChartPayload(patch);
   }
 
-  return {
+  const last =
+    patch.last ??
+    extractChartLiveMark({ ...patch, candles: patchCandles }) ??
+    existing.last;
+
+  return cloneChartPayload({
     ...existing,
     symbol: patch.symbol ?? existing.symbol,
     timeframe: patch.timeframe ?? existing.timeframe,
-    last: patch.last ?? existing.last,
+    last,
     candles,
-  };
+  });
 }
 
 export async function fetchScannerChart(
@@ -318,7 +335,7 @@ export async function fetchScannerChart(
     };
     const cached = chartPayloadCache.get(key);
     const merged = cached
-      ? mergeChartLivePatch(await cached.promise.catch(() => null), normalized)
+      ? applyChartLivePatch(await cached.promise.catch(() => null), normalized)
       : normalized;
     chartPayloadCache.set(key, {
       expiresAt: Date.now() + CHART_CLIENT_CACHE_TTL_MS,
@@ -535,7 +552,7 @@ export async function patchScannerCharts(
         const key = `${symbol}|${timeframe}`;
         const existing = chartPayloadCache.get(key);
         const merged = existing
-          ? mergeChartLivePatch(await existing.promise.catch(() => null), payload)
+          ? applyChartLivePatch(await existing.promise.catch(() => null), payload)
           : payload;
         const cloned = cloneChartPayload(merged);
         chartPayloadCache.set(key, {
