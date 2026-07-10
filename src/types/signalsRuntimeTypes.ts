@@ -10,6 +10,7 @@ export interface SignalsRuntimeControls {
   b_trade_mgmt_enabled: boolean;
   a_trade_mgmt_auto_enabled: boolean;
   b_trade_mgmt_auto_enabled: boolean;
+  risk_desk_strict: boolean;
   updated_at: string | null;
   summary: string;
   ready: boolean;
@@ -27,6 +28,7 @@ export interface SignalsRuntimeUpdate {
   b_trade_mgmt_enabled?: boolean;
   a_trade_mgmt_auto_enabled?: boolean;
   b_trade_mgmt_auto_enabled?: boolean;
+  risk_desk_strict?: boolean;
   notify_telegram?: boolean;
 }
 
@@ -47,6 +49,7 @@ export const UNAVAILABLE_SIGNALS_RUNTIME: SignalsRuntimeControls = {
   b_trade_mgmt_enabled: false,
   a_trade_mgmt_auto_enabled: false,
   b_trade_mgmt_auto_enabled: false,
+  risk_desk_strict: true,
   updated_at: null,
   summary: "Unavailable",
   ready: false,
@@ -77,6 +80,10 @@ export function normalizeSignalsRuntime(raw: unknown): SignalsRuntimeControls {
     b_trade_mgmt_enabled: Boolean(data.b_trade_mgmt_enabled),
     a_trade_mgmt_auto_enabled: Boolean(data.a_trade_mgmt_auto_enabled),
     b_trade_mgmt_auto_enabled: Boolean(data.b_trade_mgmt_auto_enabled),
+    risk_desk_strict:
+      data.risk_desk_strict !== undefined
+        ? data.risk_desk_strict !== false
+        : data.risk_desk_htf_bias !== false,
     updated_at: typeof data.updated_at === "string" ? data.updated_at : null,
     summary:
       typeof data.summary === "string" ? data.summary : "Signals active",

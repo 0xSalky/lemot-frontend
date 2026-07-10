@@ -171,6 +171,18 @@ export default function SignalsConfigPanel({ tokens, refreshKey = 0 }: SignalsCo
         />
 
         <RuntimeSwitchRow
+          label="Risk desk · strict mode"
+          description="On: one side only, hedge protection, max slots. Off: same side + HTF required, no hedge block. Daily loss cap applies in both modes."
+          checked={controls.risk_desk_strict}
+          disabled={panelDisabled || masterOff}
+          colorPalette="cyan"
+          tokens={tokens}
+          onChange={(next) =>
+            void update({ risk_desk_strict: next }, "risk_desk_strict")
+          }
+        />
+
+        <RuntimeSwitchRow
           label="Profile A signals"
           description="30m fractal band alerts — day-trade profile A scanner watchlist."
           checked={controls.a_enabled}

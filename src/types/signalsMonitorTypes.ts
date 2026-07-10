@@ -63,6 +63,7 @@ export interface SignalsMonitorHealth {
     b_trade_mgmt_enabled: boolean;
     a_trade_mgmt_auto_enabled: boolean;
     b_trade_mgmt_auto_enabled: boolean;
+    risk_desk_strict: boolean;
     updated_at: string | null;
     summary: string;
     ready: boolean;
@@ -153,6 +154,7 @@ export const EMPTY_SIGNALS_HEALTH: SignalsMonitorHealth = {
     b_trade_mgmt_enabled: false,
     a_trade_mgmt_auto_enabled: false,
     b_trade_mgmt_auto_enabled: false,
+    risk_desk_strict: true,
     updated_at: null,
     summary: "Unavailable",
     ready: false,
@@ -267,6 +269,10 @@ export function normalizeSignalsHealth(raw: unknown): SignalsMonitorHealth {
       b_trade_mgmt_enabled: Boolean(controlsRaw?.b_trade_mgmt_enabled),
       a_trade_mgmt_auto_enabled: Boolean(controlsRaw?.a_trade_mgmt_auto_enabled),
       b_trade_mgmt_auto_enabled: Boolean(controlsRaw?.b_trade_mgmt_auto_enabled),
+      risk_desk_strict:
+        controlsRaw?.risk_desk_strict !== undefined
+          ? controlsRaw.risk_desk_strict !== false
+          : controlsRaw?.risk_desk_htf_bias !== false,
       updated_at:
         typeof controlsRaw?.updated_at === "string" ? controlsRaw.updated_at : null,
       summary:

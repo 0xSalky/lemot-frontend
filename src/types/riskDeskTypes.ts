@@ -165,10 +165,18 @@ export interface RiskDeskGlobalView {
   unknown_count: number;
 }
 
+export interface RiskModeInfo {
+  risk_desk_strict: boolean;
+  mode: "strict" | "htf_filter" | string;
+  label: string;
+  summary: string;
+}
+
 export interface RiskDeskSignalsRuntime {
   signals_enabled: boolean;
   a_enabled: boolean;
   b_enabled: boolean;
+  risk_desk_strict?: boolean;
 }
 
 export interface RiskDeskPayload {
@@ -200,6 +208,7 @@ export interface RiskDeskPayload {
   next_same_side_preview: RiskNextPreview | null;
   recent_events: RiskDeskEvent[];
   trade_mgmt: TradeMgmtDesk | null;
+  risk_mode: RiskModeInfo | null;
   signals_runtime: RiskDeskSignalsRuntime | null;
 }
 
@@ -229,6 +238,7 @@ export const EMPTY_RISK_DESK: RiskDeskPayload = {
   next_same_side_preview: null,
   recent_events: [],
   trade_mgmt: null,
+  risk_mode: null,
   signals_runtime: null,
 };
 
@@ -365,6 +375,7 @@ export function normalizeRiskDesk(body: unknown): RiskDeskPayload {
   const tradeMgmtRaw = raw.trade_mgmt as Record<string, unknown> | null;
   const previewRaw = raw.next_same_side_preview as Record<string, unknown> | null;
   const runtimeRaw = raw.signals_runtime as Record<string, unknown> | null;
+  const riskModeRaw = raw.risk_mode as Record<string, unknown> | null;
 
   return {
     ready: Boolean(raw.ready),
@@ -432,11 +443,26 @@ export function normalizeRiskDesk(body: unknown): RiskDeskPayload {
       : null,
     recent_events: events,
     trade_mgmt: tradeMgmtRaw ? normalizeTradeMgmtDesk(tradeMgmtRaw) : null,
+    risk_mode: riskModeRaw
+      ? {
+          risk_desk_strict:
+            riskModeRaw.risk_desk_strict !== undefined
+              ? Boolean(riskModeRaw.risk_desk_strict)
+              : riskModeRaw.risk_desk_htf_bias !== false,
+          mode: str(riskModeRaw.mode) ?? "strict",
+          label: str(riskModeRaw.label) ?? "Strict",
+          summary: str(riskModeRaw.summary) ?? "",
+        }
+      : null,
     signals_runtime: runtimeRaw
       ? {
           signals_enabled: Boolean(runtimeRaw.signals_enabled),
           a_enabled: Boolean(runtimeRaw.a_enabled),
           b_enabled: Boolean(runtimeRaw.b_enabled),
+          risk_desk_strict:
+            runtimeRaw.risk_desk_strict !== undefined
+              ? runtimeRaw.risk_desk_strict !== false
+              : runtimeRaw.risk_desk_htf_bias !== false,
         }
       : null,
   };
