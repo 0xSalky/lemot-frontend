@@ -11,16 +11,13 @@ import PairsAccountBar from "@/components/3_organisms/PairsAccountBar/PairsAccou
 import ResponsiveCardGrid from "@/components/4_layouts/ResponsiveCardGrid/ResponsiveCardGrid";
 import { useThemeColor, useThemeTokens } from "@/components/ui/theme-color";
 import { TRADING_PAIRS, CONTENT_MAX_WIDTH, IS_PROFILE_B_ACTIVE } from "@/services/config";
-import type { ScannerSetupRow, ScannerViewFetchResult } from "@/types/scannerTypes";
+import type { ScannerViewFetchResult } from "@/types/scannerTypes";
 import {
-    fetchLatestScannerBatch,
     fetchScannerView,
-    scannerSymbolToBase,
-    SCANNER_PROFILES,
     type ScannerProfile,
 } from "@/services/scannerUtils";
 import { Stack, Tabs } from "@chakra-ui/react";
-import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
+import { useCallback, useEffect, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 
 const INITIAL_SCANNER_LOADING: Record<ScannerProfile, boolean> = {
     b: false,
@@ -81,10 +78,6 @@ const HomePage = () => {
         b: null,
         a: null,
     });
-    const [batchSetups, setBatchSetups] = useState<Record<ScannerProfile, ScannerSetupRow[]>>({
-        b: [],
-        a: [],
-    });
     const [loading, setLoading] = useState<Record<ScannerProfile, boolean>>(INITIAL_SCANNER_LOADING);
     const loadIdRef = useRef<Record<ScannerProfile, number>>({ b: 0, a: 0 });
     const [activeTab, setActiveTab] = useState<HomeTabId>("pairs");
@@ -114,25 +107,9 @@ const HomePage = () => {
         [bumpTabRefresh],
     );
 
-    const refreshPairs = useCallback(() => {
-        for (const profile of SCANNER_PROFILES) {
-            void fetchLatestScannerBatch(profile)
-                .then((result) => {
-                    if ("message" in result) return;
-                    setBatchSetups((prev) => ({ ...prev, [profile]: result.setups }));
-                })
-                .catch((e) => console.error(`[scanner batch ${profile}]`, e));
-        }
-    }, []);
-
     const pairsRefreshKey = tabRefreshKeys.pairs;
     const scannerARefreshKey = tabRefreshKeys["scanner-a"];
     const scannerBRefreshKey = tabRefreshKeys["scanner-b"];
-
-    useEffect(() => {
-        if (activeTab !== "pairs") return;
-        refreshPairs();
-    }, [activeTab, refreshPairs, pairsRefreshKey]);
 
     useEffect(() => {
         if (activeTab !== "scanner-a") return;
@@ -143,25 +120,6 @@ const HomePage = () => {
         if (activeTab !== "scanner-b") return;
         void loadScanner("b", { reload: true });
     }, [activeTab, loadScanner, scannerBRefreshKey]);
-
-    const scannerPairs = useMemo(() => {
-        const bases: string[] = [];
-        for (const profile of SCANNER_PROFILES) {
-            const view = views[profile];
-            const setups =
-                view != null && !("message" in view) ? view.setups : batchSetups[profile];
-            for (const setup of setups) {
-                bases.push(scannerSymbolToBase(setup.symbol));
-            }
-        }
-        return [...new Set(bases)];
-    }, [batchSetups, views]);
-
-    const tradingPairs = useMemo(() => {
-        const combined = [...new Set([...TRADING_PAIRS, ...scannerPairs])];
-        const rest = combined.filter((p) => p !== "BTC").sort((a, b) => a.localeCompare(b));
-        return combined.includes("BTC") ? ["BTC", ...rest] : rest;
-    }, [scannerPairs]);
 
     return (
         <Stack
@@ -219,13 +177,13 @@ const HomePage = () => {
                 </Tabs.List>
 
                 <Tabs.Content value="pairs">
-                    <Stack gap="3" pt="3">
+                    <Stack gap="3">
                         <PairsAccountBar
                             active={activeTab === "pairs"}
                             refreshKey={pairsRefreshKey}
                         />
                         <ResponsiveCardGrid>
-                            {tradingPairs.map((pair) => (
+                            {TRADING_PAIRS.map((pair) => (
                                 <AssetInterface key={pair} pair={pair} />
                             ))}
                         </ResponsiveCardGrid>
