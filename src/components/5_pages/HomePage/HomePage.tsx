@@ -7,6 +7,7 @@ import SignalsMonitorPanel from "@/components/3_organisms/SignalsMonitorPanel/Si
 import RiskDeskPanel from "@/components/3_organisms/RiskDeskPanel/RiskDeskPanel";
 import JournalAnalyticsPanel from "@/components/3_organisms/JournalAnalyticsPanel/JournalAnalyticsPanel";
 import TradeJournalPanel from "@/components/3_organisms/TradeJournalPanel/TradeJournalPanel";
+import PairsAccountBar from "@/components/3_organisms/PairsAccountBar/PairsAccountBar";
 import ResponsiveCardGrid from "@/components/4_layouts/ResponsiveCardGrid/ResponsiveCardGrid";
 import { useThemeColor, useThemeTokens } from "@/components/ui/theme-color";
 import { TRADING_PAIRS, CONTENT_MAX_WIDTH, IS_PROFILE_B_ACTIVE } from "@/services/config";
@@ -218,11 +219,17 @@ const HomePage = () => {
                 </Tabs.List>
 
                 <Tabs.Content value="pairs">
-                    <ResponsiveCardGrid>
-                        {tradingPairs.map((pair) => (
-                            <AssetInterface key={pair} pair={pair} />
-                        ))}
-                    </ResponsiveCardGrid>
+                    <Stack gap="3" pt="3">
+                        <PairsAccountBar
+                            active={activeTab === "pairs"}
+                            refreshKey={pairsRefreshKey}
+                        />
+                        <ResponsiveCardGrid>
+                            {tradingPairs.map((pair) => (
+                                <AssetInterface key={pair} pair={pair} />
+                            ))}
+                        </ResponsiveCardGrid>
+                    </Stack>
                 </Tabs.Content>
 
                 <Tabs.Content value="scanner-a">
