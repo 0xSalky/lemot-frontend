@@ -129,10 +129,10 @@ export default function TradeJournalPanel({ active = true, refreshKey = 0 }: Tra
               letterSpacing="0.18em"
               textShadow={`0 0 12px ${alien}66`}
             >
-              ◈ TRADE_JOURNAL
+              ◈ PNL_DESK
             </Text>
             <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted} letterSpacing="0.1em">
-              closed log · Bybit match · tap row for detail
+              equity curve · closed log · Bybit match
             </Text>
           </Stack>
         </Flex>

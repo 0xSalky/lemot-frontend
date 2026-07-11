@@ -1,3 +1,5 @@
+import type { TradeSetupContext } from "@/types/journalAnalyticsTypes";
+
 export type TradeLifecycle = "open" | "closed" | "unknown";
 export type TradeMatchMethod =
   | "order_id"
@@ -73,6 +75,7 @@ export type TradeJournalRow = {
   leverage: number | null;
   matched_order_id: string | null;
   position_id: string | null;
+  setup_context: TradeSetupContext | null;
 };
 
 export type TradeJournalGrowthPoint = {
@@ -181,6 +184,62 @@ function normalizeStats(raw: unknown): TradeJournalStats {
   };
 }
 
+function strList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => String(item).trim()).filter(Boolean);
+}
+
+function normalizeSetupContext(raw: unknown): TradeSetupContext {
+  const row = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  return {
+    has_snapshot: Boolean(row.has_snapshot),
+    proposed_side: str(row.proposed_side),
+    band_side: str(row.band_side),
+    band_total_weight: num(row.band_total_weight),
+    band_anchor_count: num(row.band_anchor_count),
+    band_span_pct: num(row.band_span_pct),
+    band_level_keys: strList(row.band_level_keys),
+    band_level_families: strList(row.band_level_families),
+    band_anchor_level_keys: strList(row.band_anchor_level_keys),
+    htf_setup_bias: str(row.htf_setup_bias),
+    htf_adx_regime: str(row.htf_adx_regime),
+    htf_composite_read: str(row.htf_composite_read),
+    htf_favored_side: str(row.htf_favored_side),
+    htf_aligned: row.htf_aligned == null ? null : Boolean(row.htf_aligned),
+    htf_adx: num(row.htf_adx),
+    btc_available: Boolean(row.btc_available),
+    btc_htf_setup_bias: str(row.btc_htf_setup_bias),
+    btc_htf_adx_regime: str(row.btc_htf_adx_regime),
+    btc_htf_aligned: row.btc_htf_aligned == null ? null : Boolean(row.btc_htf_aligned),
+    btc_flow_bias: str(row.btc_flow_bias),
+    btc_flow_aligned: row.btc_flow_aligned == null ? null : Boolean(row.btc_flow_aligned),
+    flow_alignment: str(row.flow_alignment),
+    flow_bias: str(row.flow_bias),
+    flow_confidence: str(row.flow_confidence),
+    flow_aligned: row.flow_aligned == null ? null : Boolean(row.flow_aligned),
+    flow_tags: strList(row.flow_tags),
+    flow_headline: str(row.flow_headline),
+    trapped_at_fractal: Boolean(row.trapped_at_fractal),
+    sequence_acceptance: str(row.sequence_acceptance),
+    auction_flags: strList(row.auction_flags),
+    confirm_opposes_trade:
+      row.confirm_opposes_trade == null ? null : Boolean(row.confirm_opposes_trade),
+    trigger: str(row.trigger),
+    placement: str(row.placement),
+    res_short_rejection: Boolean(row.res_short_rejection),
+    sup_long_reclaim: Boolean(row.sup_long_reclaim),
+    base_probability_pct: num(row.base_probability_pct),
+    setup_grade: str(row.setup_grade),
+    enter_probability_pct: num(row.enter_probability_pct),
+    setup_factors: strList(row.setup_factors),
+    fractal_volume_vs_median: num(row.fractal_volume_vs_median),
+    confirm_volume_vs_median: num(row.confirm_volume_vs_median),
+    entry_dow: num(row.entry_dow),
+    entry_hour: num(row.entry_hour),
+    entry_utc_session: str(row.entry_utc_session),
+  };
+}
+
 function normalizeTrade(raw: unknown): TradeJournalRow | null {
   if (!raw || typeof raw !== "object") return null;
   const row = raw as Record<string, unknown>;
@@ -255,6 +314,7 @@ function normalizeTrade(raw: unknown): TradeJournalRow | null {
     leverage: num(row.leverage),
     matched_order_id: str(row.matched_order_id),
     position_id: str(row.position_id),
+    setup_context: normalizeSetupContext(row.setup_context),
   };
 }
 

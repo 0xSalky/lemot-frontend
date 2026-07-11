@@ -5,6 +5,7 @@ import ScannerChat from "@/components/3_organisms/ScannerChat/ScannerChat";
 import ScannerResults from "@/components/3_organisms/ScannerResults/ScannerResults";
 import SignalsMonitorPanel from "@/components/3_organisms/SignalsMonitorPanel/SignalsMonitorPanel";
 import RiskDeskPanel from "@/components/3_organisms/RiskDeskPanel/RiskDeskPanel";
+import JournalAnalyticsPanel from "@/components/3_organisms/JournalAnalyticsPanel/JournalAnalyticsPanel";
 import TradeJournalPanel from "@/components/3_organisms/TradeJournalPanel/TradeJournalPanel";
 import ResponsiveCardGrid from "@/components/4_layouts/ResponsiveCardGrid/ResponsiveCardGrid";
 import { useThemeColor, useThemeTokens } from "@/components/ui/theme-color";
@@ -32,6 +33,7 @@ type HomeTabId =
     | "scanner-chat"
     | "signals"
     | "risk"
+    | "pnl"
     | "journal"
     | "config";
 
@@ -43,6 +45,7 @@ function initialTabRefreshKeys(): Record<HomeTabId, number> {
         "scanner-chat": 0,
         signals: 0,
         risk: 0,
+        pnl: 0,
         journal: 0,
         config: 0,
     };
@@ -203,6 +206,9 @@ const HomePage = () => {
                     <ThemeTabTrigger value="risk" currentTab={activeTab} onReselect={bumpTabRefresh}>
                         Risk desk
                     </ThemeTabTrigger>
+                    <ThemeTabTrigger value="pnl" currentTab={activeTab} onReselect={bumpTabRefresh}>
+                        PnL
+                    </ThemeTabTrigger>
                     <ThemeTabTrigger value="journal" currentTab={activeTab} onReselect={bumpTabRefresh}>
                         Journal
                     </ThemeTabTrigger>
@@ -262,8 +268,15 @@ const HomePage = () => {
                     />
                 </Tabs.Content>
 
-                <Tabs.Content value="journal">
+                <Tabs.Content value="pnl">
                     <TradeJournalPanel
+                        active={activeTab === "pnl"}
+                        refreshKey={tabRefreshKeys.pnl}
+                    />
+                </Tabs.Content>
+
+                <Tabs.Content value="journal">
+                    <JournalAnalyticsPanel
                         active={activeTab === "journal"}
                         refreshKey={tabRefreshKeys.journal}
                     />
