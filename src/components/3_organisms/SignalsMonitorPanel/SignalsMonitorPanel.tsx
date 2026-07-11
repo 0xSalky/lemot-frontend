@@ -41,9 +41,9 @@ function buildEventStyles(tokens: ThemeTokens): Record<string, EventStyle> {
     alert_sent: { color: tokens.tagGreen.color, glyph: "▶", label: "ALERT" },
     alert_skipped: { color: tokens.tagNeutral.color, glyph: "○", label: "SKIP" },
     bar_processed: { color: tokens.tagBlue.color, glyph: "·", label: "BAR" },
-    advice_sent: { color: tokens.tagAccent.color, glyph: "◆", label: "AI" },
-    advice_queued: { color: tokens.panelLabel, glyph: "◇", label: "AI·Q" },
-    advice_failed: { color: tokens.tagRed.color, glyph: "✕", label: "AI·ERR" },
+    advice_sent: { color: tokens.tagAccent.color, glyph: "◆", label: "MARKOV" },
+    advice_queued: { color: tokens.panelLabel, glyph: "◇", label: "MK·Q" },
+    advice_failed: { color: tokens.tagRed.color, glyph: "✕", label: "MK·ERR" },
     telegram_failed: { color: tokens.warn, glyph: "!", label: "TG·ERR" },
     profile_error: { color: tokens.warn, glyph: "!", label: "ERR" },
     fractal_seen: { color: tokens.panelHeading, glyph: "△", label: "FRACTAL" },
@@ -331,11 +331,17 @@ function metaString(meta: Record<string, unknown> | null, key: string): string |
   return value != null ? String(value) : null;
 }
 
-function hasAiTooltip(meta: Record<string, unknown> | null): boolean {
-  return Boolean(meta?.ai_message && String(meta.ai_message).trim());
+function adviceMessage(meta: Record<string, unknown> | null): string {
+  if (!meta) return "";
+  const raw = meta.message ?? meta.ai_message;
+  return raw != null ? String(raw) : "";
 }
 
-function AiTooltipContent({
+function hasMarkovRead(meta: Record<string, unknown> | null): boolean {
+  return Boolean(adviceMessage(meta).trim()) || meta?.verdict != null;
+}
+
+function MarkovReadPanel({
   meta,
   tokens,
 }: {
@@ -344,12 +350,12 @@ function AiTooltipContent({
 }) {
   const verdict = metaString(meta, "verdict") ?? "—";
   const grade = metaString(meta, "setup_grade");
-  const prob = meta.enter_probability_pct;
-  const base = meta.system_base_probability_pct;
-  const adj = meta.ai_adjustment_pts;
+  const posterior = meta.enter_probability_pct ?? meta.markov_posterior_pct;
+  const prior = meta.system_base_probability_pct ?? meta.markov_prior_pct;
+  const tp = metaString(meta, "tp_strategy_id");
   const risk = metaString(meta, "risk");
   const confidence = metaString(meta, "confidence");
-  const message = String(meta.ai_message ?? "");
+  const message = adviceMessage(meta);
 
   return (
     <Box
@@ -360,18 +366,14 @@ function AiTooltipContent({
       lineHeight="1.5"
     >
       <Text color={tokens.title} fontWeight="bold" letterSpacing="0.1em" mb="1">
-        AI ENTRY READ
+        MARKOV READ
       </Text>
       <Flex gap="2" flexWrap="wrap" mb="2" color={tokens.tagAccent.color}>
         <Text>{verdict}</Text>
         {grade ? <Text>grade {grade}</Text> : null}
-        {prob != null ? <Text>{String(prob)}%</Text> : null}
-        {base != null && adj != null ? (
-          <Text>
-            {String(base)}→{String(prob)} ({Number(adj) >= 0 ? "+" : ""}
-            {String(adj)})
-          </Text>
-        ) : null}
+        {posterior != null ? <Text>posterior {String(posterior)}%</Text> : null}
+        {prior != null ? <Text>prior {String(prior)}%</Text> : null}
+        {tp ? <Text>TP {tp}</Text> : null}
         {confidence ? <Text>{confidence} conf</Text> : null}
         {risk ? <Text>{risk} risk</Text> : null}
       </Flex>
@@ -451,7 +453,7 @@ function TerminalLine({
   live?: boolean;
   showConditionDots?: boolean;
 }) {
-  const [aiOpen, setAiOpen] = useState(false);
+  const [markovOpen, setMarkovOpen] = useState(false);
   const style =
     eventStyles[event.event_type] ?? {
       color: tokens.panelMuted,
@@ -464,8 +466,8 @@ function TerminalLine({
   const isArchive = meta?.imported === true;
   const hasAdvice =
     event.event_type === "alert_sent" &&
-    (meta?.ai_message != null || meta?.verdict != null);
-  const showAiHint = hasAiTooltip(meta);
+    (meta?.message != null || meta?.ai_message != null || meta?.verdict != null);
+  const showMarkovRead = hasMarkovRead(meta);
   const profileLabel = (event.profile ?? "—").toUpperCase();
   const tf = event.timeframe ?? (event.profile === "a" ? "30m" : event.profile === "b" ? "4h" : null);
   const detail = buildDetailLine(event, meta);
@@ -479,7 +481,7 @@ function TerminalLine({
     <TagGrid
       tags={[
         {
-          label: hasAdvice ? "ALERT+AI" : style.label,
+          label: hasAdvice ? "ALERT+MK" : style.label,
           tone: eventTypeTone(event.event_type, tokens),
         },
         side === "long" || side === "short"
@@ -500,15 +502,15 @@ function TerminalLine({
             }
             : meta?.band_side != null
               ? { label: String(meta.band_side), tone: tokens.tagBlue }
-              : showAiHint
-                ? { label: "AI read", tone: tokens.tagAccent }
+              : showMarkovRead
+                ? { label: "Markov", tone: tokens.tagAccent }
                 : null,
       ]}
     />
   );
 
-  const toggleAi = () => {
-    if (showAiHint) setAiOpen((open) => !open);
+  const toggleMarkov = () => {
+    if (showMarkovRead) setMarkovOpen((open) => !open);
   };
 
   const row = (
@@ -516,8 +518,8 @@ function TerminalLine({
       gap="1"
       py="2.5"
       px="3"
-      bg={rowStripeBg(tokens, rowIndex, aiOpen)}
-      _hover={{ bg: aiOpen ? tokens.panelBgUser : tokens.blockquoteBg }}
+      bg={rowStripeBg(tokens, rowIndex, markovOpen)}
+      _hover={{ bg: markovOpen ? tokens.panelBgUser : tokens.blockquoteBg }}
       borderLeftWidth="2px"
       borderLeftColor={style.color}
       borderBottomWidth="1px"
@@ -526,11 +528,11 @@ function TerminalLine({
       fontSize="xs"
       lineHeight="1.45"
       transition="background 0.15s ease"
-      cursor={showAiHint ? "pointer" : undefined}
-      onClick={showAiHint ? toggleAi : undefined}
-      role={showAiHint ? "button" : undefined}
-      aria-expanded={showAiHint ? aiOpen : undefined}
-      aria-label={showAiHint ? "Toggle AI entry read" : undefined}
+      cursor={showMarkovRead ? "pointer" : undefined}
+      onClick={showMarkovRead ? toggleMarkov : undefined}
+      role={showMarkovRead ? "button" : undefined}
+      aria-expanded={showMarkovRead ? markovOpen : undefined}
+      aria-label={showMarkovRead ? "Toggle Markov read" : undefined}
     >
       <Flex
         gap="3"
@@ -564,26 +566,26 @@ function TerminalLine({
             lineHeight="1.5"
             flex="1"
             minW="0"
-            textDecoration={showAiHint && !aiOpen ? "underline dotted" : undefined}
+            textDecoration={showMarkovRead && !markovOpen ? "underline dotted" : undefined}
             textDecorationColor={tokens.tagAccent.border}
             textUnderlineOffset="3px"
           >
             {detailShort}
           </Text>
-          {showAiHint ? (
+          {showMarkovRead ? (
             <Text
               flexShrink={0}
               fontSize="2xs"
               color={tokens.tagAccent.color}
               letterSpacing="0.06em"
             >
-              {aiOpen ? "▲ hide" : "▼ AI read"}
+              {markovOpen ? "▲ hide" : "▼ Markov"}
             </Text>
           ) : null}
         </Flex>
-      ) : showAiHint ? (
+      ) : showMarkovRead ? (
         <Text fontSize="2xs" color={tokens.tagAccent.color} pl="0.5" letterSpacing="0.06em">
-          {aiOpen ? "▲ hide AI read" : "▼ tap for AI read"}
+          {markovOpen ? "▲ hide Markov read" : "▼ tap for Markov read"}
         </Text>
       ) : null}
       {showConditionDots && alertConditions ? (
@@ -597,8 +599,8 @@ function TerminalLine({
     </Stack>
   );
 
-  if (showAiHint && meta) {
-    const aiPanel = aiOpen ? (
+  if (showMarkovRead && meta) {
+    const markovPanel = markovOpen ? (
       <Box
         px="3"
         pb="3"
@@ -609,7 +611,7 @@ function TerminalLine({
         borderLeftWidth="2px"
         borderLeftColor={tokens.tagAccent.color}
       >
-        <AiTooltipContent meta={meta} tokens={tokens} />
+        <MarkovReadPanel meta={meta} tokens={tokens} />
       </Box>
     ) : null;
 
@@ -618,7 +620,7 @@ function TerminalLine({
         <Tooltip
           showArrow
           openDelay={200}
-          disabled={aiOpen}
+          disabled={markovOpen}
           content={
             <Box
               bg={tokens.panelBgUser}
@@ -627,14 +629,14 @@ function TerminalLine({
               rounded="md"
               boxShadow={tokens.panelGlow}
             >
-              <AiTooltipContent meta={meta} tokens={tokens} />
+              <MarkovReadPanel meta={meta} tokens={tokens} />
             </Box>
           }
           contentProps={{ bg: "transparent", border: "none", p: 0 }}
         >
           <Box>{row}</Box>
         </Tooltip>
-        {aiPanel}
+        {markovPanel}
       </Box>
     );
   }
@@ -672,7 +674,7 @@ function StatsStrip({
         <Box as="span" color={tokens.tagAccent.color}>
           {stats.advice_sent}
         </Box>{" "}
-        AI ok
+        Markov ok
       </Text>
       <Text>
         <Box as="span" color={tokens.warn}>
@@ -896,7 +898,7 @@ export default function SignalsMonitorPanel({ active = true, refreshKey = 0 }: S
               </Box>
             </Text>
             <Text>
-              AI A{" "}
+              Markov A{" "}
               <Box
                 as="span"
                 color={
@@ -1046,7 +1048,7 @@ export default function SignalsMonitorPanel({ active = true, refreshKey = 0 }: S
                   bg={tokens.blockquoteBg}
                 >
                   <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
-                    past alerts with AI read · tap row for full message
+                    past alerts with Markov read · tap row for full message
                   </Text>
                 </Box>
                 {historicEvents.map((event, index) => (
@@ -1062,7 +1064,7 @@ export default function SignalsMonitorPanel({ active = true, refreshKey = 0 }: S
               </>
             ) : (
               <Text p="4" fontFamily="mono" fontSize="xs" color={tokens.panelMuted} lineHeight="1.6">
-                {"// no past signals yet — fired alerts with AI advice appear here."}
+                {"// no past signals yet — fired alerts with Markov scoring appear here."}
               </Text>
             )}
           </Tabs.Content>

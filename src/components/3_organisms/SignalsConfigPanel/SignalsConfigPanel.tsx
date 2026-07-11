@@ -162,7 +162,7 @@ export default function SignalsConfigPanel({ tokens, refreshKey = 0 }: SignalsCo
       <Stack gap="0">
         <RuntimeSwitchRow
           label="Telegram signals"
-          description="Master switch — pauses all fractal alerts and AI reads."
+          description="Master switch — pauses all fractal alerts and Markov scoring."
           checked={controls.signals_enabled}
           disabled={panelDisabled}
           colorPalette={palette}
@@ -193,8 +193,8 @@ export default function SignalsConfigPanel({ tokens, refreshKey = 0 }: SignalsCo
         />
 
         <RuntimeSwitchRow
-          label="Profile A AI entry advice"
-          description="Sonnet follow-up after profile A alerts only — independent from B."
+          label="Profile A Markov scoring"
+          description="Run the Markov model after profile A alerts — ENTER/SKIP verdict, grade, and TP preset. Independent from B."
           checked={controls.a_entry_advice_enabled}
           disabled={dayOff}
           colorPalette="blue"
@@ -206,7 +206,7 @@ export default function SignalsConfigPanel({ tokens, refreshKey = 0 }: SignalsCo
 
         <RuntimeSwitchRow
           label="Profile A auto trade"
-          description="Execute on Bybit when profile A AI confirms ENTER (max 4% SL, min 1:2 RR)."
+          description="Execute on Bybit when profile A Markov verdict is ENTER (max 4% SL, TP 1.5–2.5R by probability)."
           checked={controls.a_auto_trade_enabled}
           disabled={dayOff || !controls.a_entry_advice_enabled}
           colorPalette="green"
@@ -253,8 +253,8 @@ export default function SignalsConfigPanel({ tokens, refreshKey = 0 }: SignalsCo
             />
 
             <RuntimeSwitchRow
-              label="Profile B AI entry advice"
-              description="Sonnet follow-up after profile B alerts only — independent from A."
+              label="Profile B Markov scoring"
+              description="Run the Markov model after profile B alerts — ENTER/SKIP verdict, grade, and TP preset. Independent from A."
               checked={controls.b_entry_advice_enabled}
               disabled={bOff}
               colorPalette="blue"
@@ -266,7 +266,7 @@ export default function SignalsConfigPanel({ tokens, refreshKey = 0 }: SignalsCo
 
             <RuntimeSwitchRow
               label="Profile B auto trade"
-              description="Execute on Bybit when profile B AI confirms ENTER (max 4% SL, min 1:2 RR)."
+              description="Execute on Bybit when profile B Markov verdict is ENTER (max 4% SL, TP 1.5–2.5R by probability)."
               checked={controls.b_auto_trade_enabled}
               disabled={bOff || !controls.b_entry_advice_enabled}
               colorPalette="green"
