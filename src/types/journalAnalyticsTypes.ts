@@ -37,11 +37,19 @@ export type TradeSetupContext = {
   res_short_rejection: boolean;
   sup_long_reclaim: boolean;
   base_probability_pct: number | null;
+  markov_posterior_pct: number | null;
+  markov_log_odds_total: number | null;
   setup_grade: string | null;
   enter_probability_pct: number | null;
+  tp_preset: string | null;
   setup_factors: string[];
   fractal_volume_vs_median: number | null;
   confirm_volume_vs_median: number | null;
+  fractal_volume_tier: string | null;
+  band_type_tier: string | null;
+  band_tf_count: number | null;
+  band_density: string | null;
+  band_has_anchor: boolean | null;
   entry_dow: number | null;
   entry_hour: number | null;
   entry_utc_session: string | null;
@@ -70,8 +78,13 @@ export type JournalFilterState = {
   trappedAtFractal: TriState;
   minBaseProbability: number | null;
   maxBaseProbability: number | null;
+  minMarkovPosterior: number | null;
   setupGrades: string[];
   minEnterProbability: number | null;
+  bandTypeTiers: string[];
+  bandDensities: string[];
+  fractalVolumeTiers: string[];
+  tpPresets: string[];
   requiredFactors: string[];
   excludedFactors: string[];
   daysOfWeek: number[];
@@ -99,8 +112,13 @@ export const EMPTY_JOURNAL_FILTERS: JournalFilterState = {
   trappedAtFractal: "any",
   minBaseProbability: null,
   maxBaseProbability: null,
+  minMarkovPosterior: null,
   setupGrades: [],
   minEnterProbability: null,
+  bandTypeTiers: [],
+  bandDensities: [],
+  fractalVolumeTiers: [],
+  tpPresets: [],
   requiredFactors: [],
   excludedFactors: [],
   daysOfWeek: [],

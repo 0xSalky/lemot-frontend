@@ -95,8 +95,13 @@ export function countActiveFilters(filters: JournalFilterState): number {
   if (filters.trappedAtFractal !== "any") count += 1;
   if (filters.minBaseProbability != null) count += 1;
   if (filters.maxBaseProbability != null) count += 1;
+  if (filters.minMarkovPosterior != null) count += 1;
   if (filters.setupGrades.length) count += 1;
   if (filters.minEnterProbability != null) count += 1;
+  if (filters.bandTypeTiers.length) count += 1;
+  if (filters.bandDensities.length) count += 1;
+  if (filters.fractalVolumeTiers.length) count += 1;
+  if (filters.tpPresets.length) count += 1;
   if (filters.requiredFactors.length) count += 1;
   if (filters.excludedFactors.length) count += 1;
   if (filters.daysOfWeek.length) count += 1;
@@ -157,6 +162,14 @@ export function applyJournalFilters(
       const enter = c.enter_probability_pct ?? trade.enter_probability_pct;
       if (enter == null || enter < filters.minEnterProbability) return false;
     }
+    if (filters.minMarkovPosterior != null) {
+      const mp = c.markov_posterior_pct;
+      if (mp == null || mp < filters.minMarkovPosterior) return false;
+    }
+    if (!matchesStringList(c.band_type_tier, filters.bandTypeTiers)) return false;
+    if (!matchesStringList(c.band_density, filters.bandDensities)) return false;
+    if (!matchesStringList(c.fractal_volume_tier, filters.fractalVolumeTiers)) return false;
+    if (!matchesStringList(c.tp_preset, filters.tpPresets)) return false;
 
     const factors = c.setup_factors ?? [];
     if (!matchesAllInList(factors, filters.requiredFactors)) return false;

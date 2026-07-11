@@ -14,15 +14,15 @@ import type { ThemeTokens } from "@/components/ui/theme-color";
 import { Box, Button, Checkbox, Flex, Input, Stack, Text } from "@chakra-ui/react";
 import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
 
-type FilterCategory = "levels" | "htf" | "orderflow" | "btc" | "time" | "score";
+type FilterCategory = "levels" | "htf" | "orderflow" | "btc" | "time" | "markov";
 
 const CATEGORIES: { id: FilterCategory; label: string }[] = [
-  { id: "levels", label: "Band levels" },
-  { id: "htf", label: "HTF bias" },
-  { id: "orderflow", label: "Orderflow" },
+  { id: "levels", label: "Bands" },
+  { id: "htf", label: "HTF" },
+  { id: "orderflow", label: "Flow" },
   { id: "btc", label: "BTC" },
   { id: "time", label: "Time" },
-  { id: "score", label: "Setup score" },
+  { id: "markov", label: "Markov" },
 ];
 
 type JournalFiltersProps = {
@@ -202,8 +202,53 @@ function ActiveFilterPills({
     if (filters.minBaseProbability != null) {
       items.push({
         key: "min-base",
-        label: `Base ≥ ${filters.minBaseProbability}%`,
+        label: `Prior ≥ ${filters.minBaseProbability}%`,
         clear: () => setFilters((f) => ({ ...f, minBaseProbability: null })),
+      });
+    }
+    if (filters.minMarkovPosterior != null) {
+      items.push({
+        key: "min-posterior",
+        label: `Posterior ≥ ${filters.minMarkovPosterior}%`,
+        clear: () => setFilters((f) => ({ ...f, minMarkovPosterior: null })),
+      });
+    }
+    for (const tier of filters.bandTypeTiers) {
+      items.push({
+        key: `band-type-${tier}`,
+        label: `Band ${tier}`,
+        clear: () =>
+          setFilters((f) => ({ ...f, bandTypeTiers: f.bandTypeTiers.filter((t) => t !== tier) })),
+      });
+    }
+    for (const density of filters.bandDensities) {
+      items.push({
+        key: `density-${density}`,
+        label: `Band ${density}`,
+        clear: () =>
+          setFilters((f) => ({
+            ...f,
+            bandDensities: f.bandDensities.filter((d) => d !== density),
+          })),
+      });
+    }
+    for (const vt of filters.fractalVolumeTiers) {
+      items.push({
+        key: `vol-${vt}`,
+        label: `Vol ${vt}`,
+        clear: () =>
+          setFilters((f) => ({
+            ...f,
+            fractalVolumeTiers: f.fractalVolumeTiers.filter((t) => t !== vt),
+          })),
+      });
+    }
+    for (const tp of filters.tpPresets) {
+      items.push({
+        key: `tp-${tp}`,
+        label: `TP ${tp.replace("rr_1_", "").replace(/_/g, ".")}R`,
+        clear: () =>
+          setFilters((f) => ({ ...f, tpPresets: f.tpPresets.filter((t) => t !== tp) })),
       });
     }
 
@@ -252,8 +297,13 @@ function ActiveFilterPills({
             trappedAtFractal: "any",
             minBaseProbability: null,
             maxBaseProbability: null,
+            minMarkovPosterior: null,
             setupGrades: [],
             minEnterProbability: null,
+            bandTypeTiers: [],
+            bandDensities: [],
+            fractalVolumeTiers: [],
+            tpPresets: [],
             requiredFactors: [],
             excludedFactors: [],
             daysOfWeek: [],
@@ -314,7 +364,7 @@ export default function JournalFilters({
         {category === "levels" ? (
           <Stack gap="4">
             <SectionHint tokens={tokens}>
-              Pick band side, then check levels to hide trades that used them.
+              Filter by band side, level quality, and density.
             </SectionHint>
             <Flex gap="2" flexWrap="wrap">
               <Chip
@@ -334,6 +384,51 @@ export default function JournalFilters({
                 tokens={tokens}
               />
             </Flex>
+            <Box>
+              <Text fontSize="xs" color={tokens.panelMuted} mb="2">
+                Level type quality
+              </Text>
+              <Flex gap="2" flexWrap="wrap">
+                {[
+                  { id: "best", label: "Best (VP/Fractal/Prev)" },
+                  { id: "good", label: "Good (HTF level)" },
+                  { id: "ok", label: "OK (EMA)" },
+                  { id: "weak", label: "Weak (VWAP only)" },
+                ].map((t) => (
+                  <Chip
+                    key={t.id}
+                    label={t.label}
+                    active={filters.bandTypeTiers.includes(t.id)}
+                    onClick={() =>
+                      patch({ bandTypeTiers: toggleStringList(filters.bandTypeTiers, t.id) })
+                    }
+                    tokens={tokens}
+                  />
+                ))}
+              </Flex>
+            </Box>
+            <Box>
+              <Text fontSize="xs" color={tokens.panelMuted} mb="2">
+                Band density
+              </Text>
+              <Flex gap="2" flexWrap="wrap">
+                {[
+                  { id: "dense", label: "Dense cluster" },
+                  { id: "normal", label: "Normal" },
+                  { id: "wide", label: "Wide zone" },
+                ].map((d) => (
+                  <Chip
+                    key={d.id}
+                    label={d.label}
+                    active={filters.bandDensities.includes(d.id)}
+                    onClick={() =>
+                      patch({ bandDensities: toggleStringList(filters.bandDensities, d.id) })
+                    }
+                    tokens={tokens}
+                  />
+                ))}
+              </Flex>
+            </Box>
             {LEVEL_FAMILY_ORDER.filter((family) => levelGroups[family]?.length).map((family) => (
               <Box key={family}>
                 <Text fontSize="xs" fontWeight="semibold" color={tokens.panelHeading} mb="2">
@@ -449,8 +544,33 @@ export default function JournalFilters({
         {category === "orderflow" ? (
           <Stack gap="4">
             <SectionHint tokens={tokens}>
-              Filter by how orderflow lined up with the trade.
+              Filter by orderflow and volume participation at the fractal.
             </SectionHint>
+            <Box>
+              <Text fontSize="xs" color={tokens.panelMuted} mb="2">
+                Fractal bar volume
+              </Text>
+              <Flex gap="2" flexWrap="wrap">
+                {[
+                  { id: "climactic", label: "Climactic" },
+                  { id: "high", label: "High" },
+                  { id: "normal", label: "Normal" },
+                  { id: "dry", label: "Dry" },
+                ].map((v) => (
+                  <Chip
+                    key={v.id}
+                    label={v.label}
+                    active={filters.fractalVolumeTiers.includes(v.id)}
+                    onClick={() =>
+                      patch({
+                        fractalVolumeTiers: toggleStringList(filters.fractalVolumeTiers, v.id),
+                      })
+                    }
+                    tokens={tokens}
+                  />
+                ))}
+              </Flex>
+            </Box>
             <Box>
               <Text fontSize="xs" color={tokens.panelMuted} mb="2">
                 Flow vs trade
@@ -637,26 +757,26 @@ export default function JournalFilters({
           </Stack>
         ) : null}
 
-        {category === "score" ? (
+        {category === "markov" ? (
           <Stack gap="4">
             <SectionHint tokens={tokens}>
-              Filter by setup quality from the advice snapshot.
+              Filter by Markov probability, grade, and selected TP preset.
             </SectionHint>
             <Box>
               <Text fontSize="xs" color={tokens.panelMuted} mb="2">
-                Minimum base probability
+                Min posterior probability (%)
               </Text>
               <Input
                 size="sm"
                 type="number"
                 maxW="8rem"
-                placeholder="e.g. 55"
+                placeholder="e.g. 60"
                 bg={tokens.blockquoteBg}
                 borderColor={tokens.panelBorder}
-                value={filters.minBaseProbability ?? ""}
+                value={filters.minMarkovPosterior ?? ""}
                 onChange={(e) =>
                   patch({
-                    minBaseProbability: e.target.value ? Number(e.target.value) : null,
+                    minMarkovPosterior: e.target.value ? Number(e.target.value) : null,
                   })
                 }
               />
@@ -666,10 +786,10 @@ export default function JournalFilters({
                 Grade
               </Text>
               <Flex gap="2" flexWrap="wrap">
-                {["A", "B", "C", "D", "F"].map((grade) => (
+                {["A", "B", "C", "D"].map((grade) => (
                   <Chip
                     key={grade}
-                    label={grade}
+                    label={`Grade ${grade}`}
                     active={filters.setupGrades.includes(grade)}
                     onClick={() =>
                       patch({ setupGrades: toggleStringList(filters.setupGrades, grade) })
@@ -678,6 +798,47 @@ export default function JournalFilters({
                   />
                 ))}
               </Flex>
+            </Box>
+            <Box>
+              <Text fontSize="xs" color={tokens.panelMuted} mb="2">
+                TP preset selected
+              </Text>
+              <Flex gap="2" flexWrap="wrap">
+                {[
+                  { id: "rr_1_1_5", label: "1.5R" },
+                  { id: "rr_1_2", label: "2R" },
+                  { id: "rr_1_2_5", label: "2.5R" },
+                ].map((tp) => (
+                  <Chip
+                    key={tp.id}
+                    label={tp.label}
+                    active={filters.tpPresets.includes(tp.id)}
+                    onClick={() =>
+                      patch({ tpPresets: toggleStringList(filters.tpPresets, tp.id) })
+                    }
+                    tokens={tokens}
+                  />
+                ))}
+              </Flex>
+            </Box>
+            <Box>
+              <Text fontSize="xs" color={tokens.panelMuted} mb="2">
+                Min prior probability (%)
+              </Text>
+              <Input
+                size="sm"
+                type="number"
+                maxW="8rem"
+                placeholder="e.g. 45"
+                bg={tokens.blockquoteBg}
+                borderColor={tokens.panelBorder}
+                value={filters.minBaseProbability ?? ""}
+                onChange={(e) =>
+                  patch({
+                    minBaseProbability: e.target.value ? Number(e.target.value) : null,
+                  })
+                }
+              />
             </Box>
           </Stack>
         ) : null}

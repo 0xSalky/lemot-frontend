@@ -17,6 +17,14 @@ function pnlUsd(trades: TradeJournalRow[]): number {
   return trades.reduce((sum, trade) => sum + (trade.realized_pnl_usd ?? 0), 0);
 }
 
+function avgMarkovPosterior(trades: TradeJournalRow[]): number | null {
+  const vals = trades
+    .map((t) => t.setup_context?.markov_posterior_pct)
+    .filter((v): v is number => v != null);
+  if (vals.length === 0) return null;
+  return Math.round(vals.reduce((s, v) => s + v, 0) / vals.length);
+}
+
 function Stat({
   label,
   value,
@@ -53,6 +61,7 @@ export default function JournalStatsBar({
 }: JournalStatsBarProps) {
   const stats = computeClosedStats(filtered);
   const pnl = pnlUsd(filtered);
+  const avgPosterior = avgMarkovPosterior(filtered);
   const pnlColor =
     pnl > 0 ? tokens.tagGreen.color : pnl < 0 ? tokens.tagRed.color : tokens.panelBody;
   const lowSample = stats.closed_trades > 0 && stats.closed_trades < 20;
@@ -102,6 +111,13 @@ export default function JournalStatsBar({
           tokens={tokens}
           accent={pnlColor}
         />
+        {avgPosterior != null ? (
+          <Stat
+            label="Avg posterior"
+            value={`${avgPosterior}%`}
+            tokens={tokens}
+          />
+        ) : null}
       </Flex>
     </Box>
   );
