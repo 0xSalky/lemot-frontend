@@ -32,7 +32,7 @@ export const TP_PRESETS = {
   ],
 } as const;
 
-export const DEFAULT_TP_PRESET = "1.5";
+export const DEFAULT_TP_PRESET = "2";
 export const DEFAULT_RISK = "1";
 export const DEFAULT_STOP_LOSS = "price";
 
