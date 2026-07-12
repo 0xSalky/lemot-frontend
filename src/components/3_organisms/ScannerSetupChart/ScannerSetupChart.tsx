@@ -117,7 +117,9 @@ function ScannerSetupChart({
     error: null,
   });
 
-  const useManagedChart = managedChart !== undefined;
+  const useManagedChart =
+    managedChart !== undefined &&
+    (managedChart == null || managedChart.timeframe === timeframe);
   const fetchKey = `${symbol}|${timeframe}`;
   const loading = useManagedChart
     ? managedChartLoading

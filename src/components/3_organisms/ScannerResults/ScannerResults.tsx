@@ -398,8 +398,14 @@ const ScannerResults = ({
     const polling = active && pageVisible;
     const setups = setupsFromScannerView(scannerView);
     const profileLabel = scannerProfileLabel(profile);
-    const defaultChartTimeframe = SCANNER_PROFILE_CHART_TIMEFRAME[profile];
-    const defaultFootprintTimeframe = FOOTPRINT_PROFILE_DEFAULTS[profile].defaultTimeframe;
+    const defaultChartTimeframe =
+        scannerView != null && !("message" in scannerView)
+            ? scannerView.charts.timeframe
+            : SCANNER_PROFILE_CHART_TIMEFRAME[profile];
+    const defaultFootprintTimeframe =
+        scannerView != null && !("message" in scannerView)
+            ? scannerView.footprint.timeframe
+            : FOOTPRINT_PROFILE_DEFAULTS[profile].defaultTimeframe;
     const [prefetchedCharts, setPrefetchedCharts] = useState<Record<string, ScannerChartPayload | null>>({});
     const [liveLastBySymbol, setLiveLastBySymbol] = useState<Record<string, number>>({});
     const [liveFootprintPairs, setLiveFootprintPairs] = useState<Record<string, FootprintPairView>>({});
