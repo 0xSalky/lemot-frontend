@@ -10,7 +10,8 @@ import {
   type ManualAccountConnectionState,
 } from "@/types/accountBalanceTypes";
 import { formatUsd } from "@/components/3_organisms/TradeJournalPanel/journalFormat";
-import { Box, Flex, Spinner, Stack, Text } from "@chakra-ui/react";
+import AddTradingPairDialog from "@/components/2_molecules/AddTradingPairDialog/AddTradingPairDialog";
+import { Box, Flex, IconButton, Spinner, Stack, Text } from "@chakra-ui/react";
 import { keyframes } from "@emotion/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -67,15 +68,24 @@ function connectionDetail(
 type PairsAccountBarProps = {
   active: boolean;
   refreshKey: number;
+  existingPairs: readonly string[];
+  onAddPair: (symbol: string) => void;
 };
 
-export default function PairsAccountBar({ active, refreshKey }: PairsAccountBarProps) {
+export default function PairsAccountBar({
+  active,
+  refreshKey,
+  existingPairs,
+  onAddPair,
+}: PairsAccountBarProps) {
   const { palette } = useThemeColor();
   const tokens = useThemeTokens(palette);
   const pageVisible = usePageVisible();
   const [loading, setLoading] = useState(true);
   const [payload, setPayload] = useState<AccountBalanceResponse | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [addDialogKey, setAddDialogKey] = useState(0);
 
   const load = useCallback(async (refresh = false) => {
     setLoading(true);
@@ -107,95 +117,123 @@ export default function PairsAccountBar({ active, refreshKey }: PairsAccountBarP
   const detail = connectionDetail(connectionState, payload, fetchError);
 
   return (
-    <Box rounded="md" {...themedPanelStyle(tokens, "strong")}>
-      <Flex
-        px="4"
-        py="3"
-        align={{ base: "stretch", md: "center" }}
-        justify="space-between"
-        flexWrap="wrap"
-        gap="3"
-      >
-        <Flex align="center" gap="3" minW="0">
-          <Box
-            w="2.5"
-            h="2.5"
-            rounded="full"
-            bg={statusColor}
-            color={statusColor}
-            flexShrink={0}
-            animation={connectionState === "connected" ? `${pulse} 2s ease-in-out infinite` : undefined}
-          />
-          <Stack gap="0" minW="0">
-            <Text
-              fontFamily="mono"
-              fontSize="sm"
-              fontWeight="bold"
-              color={tokens.title}
-              letterSpacing="0.12em"
-            >
-              MANUAL_ACCOUNT
-            </Text>
-            <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted} lineClamp={2}>
-              {statusLabel}
-              {" · "}
-              {detail}
-            </Text>
-          </Stack>
-        </Flex>
-
+    <>
+      <Box rounded="md" {...themedPanelStyle(tokens, "strong")}>
         <Flex
-          align="center"
-          gap={{ base: "3", md: "5" }}
-          fontFamily="mono"
-          fontSize="xs"
-          color={tokens.panelLabel}
+          px="4"
+          py="3"
+          align={{ base: "stretch", md: "center" }}
+          justify="space-between"
           flexWrap="wrap"
+          gap="3"
         >
-          {loading && !manual ? (
-            <Spinner size="sm" color={tokens.panelMuted} />
-          ) : (
-            <>
-              <Stack gap="0" minW="5.5rem">
-                <Text fontSize="2xs" color={tokens.panelMuted}>
-                  equity
-                </Text>
-                <Text color={tokens.title} fontWeight="semibold">
-                  {manual && manual.balance.total_equity > 0
-                    ? formatUsd(manual.balance.total_equity)
-                    : "—"}
-                </Text>
-              </Stack>
-              <Stack gap="0" minW="5.5rem">
-                <Text fontSize="2xs" color={tokens.panelMuted}>
-                  available
-                </Text>
-                <Text color={tokens.title}>
-                  {manual && manual.balance.available_balance > 0
-                    ? formatUsd(manual.balance.available_balance)
-                    : "—"}
-                </Text>
-              </Stack>
-              <Stack gap="0" minW="5.5rem">
-                <Text fontSize="2xs" color={tokens.panelMuted}>
-                  unrealized
-                </Text>
-                <Text
-                  color={
-                    manual && manual.balance.total_unrealized_pnl > 0
-                      ? tokens.tagGreen.color
-                      : manual && manual.balance.total_unrealized_pnl < 0
-                        ? "red.400"
-                        : tokens.title
-                  }
-                >
-                  {manual ? formatUsd(manual.balance.total_unrealized_pnl) : "—"}
-                </Text>
-              </Stack>
-            </>
-          )}
+          <Flex align="center" gap="3" minW="0">
+            <Box
+              w="2.5"
+              h="2.5"
+              rounded="full"
+              bg={statusColor}
+              color={statusColor}
+              flexShrink={0}
+              animation={connectionState === "connected" ? `${pulse} 2s ease-in-out infinite` : undefined}
+            />
+            <Stack gap="0" minW="0">
+              <Text
+                fontFamily="mono"
+                fontSize="sm"
+                fontWeight="bold"
+                color={tokens.title}
+                letterSpacing="0.12em"
+              >
+                MANUAL_ACCOUNT
+              </Text>
+              <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted} lineClamp={2}>
+                {statusLabel}
+                {" · "}
+                {detail}
+              </Text>
+            </Stack>
+          </Flex>
+
+          <Flex
+            align="center"
+            gap={{ base: "2", md: "3" }}
+            fontFamily="mono"
+            fontSize="xs"
+            color={tokens.panelLabel}
+            flexWrap="wrap"
+          >
+            {loading && !manual ? (
+              <Spinner size="sm" color={tokens.panelMuted} />
+            ) : (
+              <>
+                <Stack gap="0" minW="5.5rem">
+                  <Text fontSize="2xs" color={tokens.panelMuted}>
+                    equity
+                  </Text>
+                  <Text color={tokens.title} fontWeight="semibold">
+                    {manual && manual.balance.total_equity > 0
+                      ? formatUsd(manual.balance.total_equity)
+                      : "—"}
+                  </Text>
+                </Stack>
+                <Stack gap="0" minW="5.5rem">
+                  <Text fontSize="2xs" color={tokens.panelMuted}>
+                    available
+                  </Text>
+                  <Text color={tokens.title}>
+                    {manual && manual.balance.available_balance > 0
+                      ? formatUsd(manual.balance.available_balance)
+                      : "—"}
+                  </Text>
+                </Stack>
+                <Stack gap="0" minW="5.5rem">
+                  <Text fontSize="2xs" color={tokens.panelMuted}>
+                    unrealized
+                  </Text>
+                  <Text
+                    color={
+                      manual && manual.balance.total_unrealized_pnl > 0
+                        ? tokens.tagGreen.color
+                        : manual && manual.balance.total_unrealized_pnl < 0
+                          ? "red.400"
+                          : tokens.title
+                    }
+                  >
+                    {manual ? formatUsd(manual.balance.total_unrealized_pnl) : "—"}
+                  </Text>
+                </Stack>
+              </>
+            )}
+            <IconButton
+              aria-label="Add trading pair"
+              title="Add trading pair"
+              size="sm"
+              variant="outline"
+              colorPalette={palette}
+              borderColor={tokens.panelBorder}
+              color={tokens.panelBody}
+              minW="33px"
+              minH="33px"
+              onClick={() => {
+                setAddDialogKey((key) => key + 1);
+                setAddDialogOpen(true);
+              }}
+            >
+              <Text fontFamily="mono" fontSize="lg" lineHeight="1">
+                +
+              </Text>
+            </IconButton>
+          </Flex>
         </Flex>
-      </Flex>
-    </Box>
+      </Box>
+      <AddTradingPairDialog
+        key={addDialogKey}
+        open={addDialogOpen}
+        existingPairs={existingPairs}
+        onAdd={onAddPair}
+        onClose={() => setAddDialogOpen(false)}
+      />
+    </>
   );
 }

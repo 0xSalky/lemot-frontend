@@ -11,6 +11,7 @@ import PairsAccountBar from "@/components/3_organisms/PairsAccountBar/PairsAccou
 import ResponsiveCardGrid from "@/components/4_layouts/ResponsiveCardGrid/ResponsiveCardGrid";
 import { useThemeColor, useThemeTokens } from "@/components/ui/theme-color";
 import { TRADING_PAIRS, CONTENT_MAX_WIDTH } from "@/services/config";
+import { sortTradingPairs } from "@/services/tradingPairs";
 import type { ScannerSetupRow, ScannerViewFetchResult } from "@/types/scannerTypes";
 import {
     fetchLatestScannerBatch,
@@ -81,6 +82,7 @@ const HomePage = () => {
         b: null,
         a: null,
     });
+    const [extraTradingPairs, setExtraTradingPairs] = useState<string[]>([]);
     const [batchSetups, setBatchSetups] = useState<Record<ScannerProfile, ScannerSetupRow[]>>({
         b: [],
         a: [],
@@ -153,6 +155,10 @@ const HomePage = () => {
         [bumpTabRefresh],
     );
 
+    const addTradingPair = useCallback((symbol: string) => {
+        setExtraTradingPairs((prev) => (prev.includes(symbol) ? prev : [...prev, symbol]));
+    }, []);
+
     const refreshPairs = useCallback(() => {
         for (const profile of SCANNER_PROFILES) {
             void fetchLatestScannerBatch(profile)
@@ -196,11 +202,10 @@ const HomePage = () => {
         return [...new Set(bases)];
     }, [batchSetups, views]);
 
-    const tradingPairs = useMemo(() => {
-        const combined = [...new Set([...TRADING_PAIRS, ...scannerPairs])];
-        const rest = combined.filter((p) => p !== "BTC").sort((a, b) => a.localeCompare(b));
-        return combined.includes("BTC") ? ["BTC", ...rest] : rest;
-    }, [scannerPairs]);
+    const tradingPairs = useMemo(
+        () => sortTradingPairs([...TRADING_PAIRS, ...scannerPairs, ...extraTradingPairs]),
+        [scannerPairs, extraTradingPairs],
+    );
 
     return (
         <Stack
@@ -260,6 +265,8 @@ const HomePage = () => {
                         <PairsAccountBar
                             active={activeTab === "pairs"}
                             refreshKey={pairsRefreshKey}
+                            existingPairs={tradingPairs}
+                            onAddPair={addTradingPair}
                         />
                         <ResponsiveCardGrid>
                             {tradingPairs.map((pair) => (
