@@ -10,10 +10,21 @@ import type {
   FootprintTimeframe,
   FootprintViewPayload,
 } from "@/types/footprintTypes";
+import { FOOTPRINT_TIMEFRAMES } from "@/types/footprintTypes";
 import type { ScannerChartPayload } from "@/types/scannerTypes";
 
 const footprintViewCache = new Map<string, Promise<FootprintViewPayload>>();
 let footprintMetaCache: Promise<FootprintMetaPayload> | null = null;
+
+export function normalizeFootprintTimeframe(
+  value: string | null | undefined,
+  fallback: FootprintTimeframe,
+): FootprintTimeframe {
+  const raw = (value ?? fallback).trim();
+  return (FOOTPRINT_TIMEFRAMES as readonly string[]).includes(raw)
+    ? (raw as FootprintTimeframe)
+    : fallback;
+}
 
 /** Bybit linear symbol → base (e.g. 1000PEPEUSDT → 1000PEPE). */
 export function bybitLinearSymbolToBase(symbol: string): string {

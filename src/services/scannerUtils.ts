@@ -12,6 +12,7 @@ import type {
   ScannerLevelRow,
   ScannerSetupRow,
 } from "@/types/scannerTypes";
+import { SCANNER_CHART_TIMEFRAMES } from "@/types/scannerTypes";
 
 /** Chart + footprint live refresh interval (patch charts + orderflow). */
 export const SCANNER_CHART_LIVE_PATCH_MS = 5 * 60 * 1000;
@@ -85,6 +86,16 @@ export const SCANNER_PROFILE_CHART_TIMEFRAME: Record<
   b: "30m",
   a: "30m",
 };
+
+export function normalizeScannerChartTimeframe(
+  value: string | null | undefined,
+  fallback: ScannerChartTimeframe,
+): ScannerChartTimeframe {
+  const raw = (value ?? fallback).trim();
+  return (SCANNER_CHART_TIMEFRAMES as readonly string[]).includes(raw)
+    ? (raw as ScannerChartTimeframe)
+    : fallback;
+}
 
 export async function fetchLatestScannerBatch(
   profile: ScannerProfile = DEFAULT_SCANNER_PROFILE,
@@ -162,9 +173,9 @@ export async function fetchScannerView(
       charts:
         payload.charts && typeof payload.charts === "object"
           ? {
-              timeframe: String(
-                payload.charts.timeframe ??
-                  SCANNER_PROFILE_CHART_TIMEFRAME[profile],
+              timeframe: normalizeScannerChartTimeframe(
+                payload.charts.timeframe,
+                SCANNER_PROFILE_CHART_TIMEFRAME[profile],
               ),
               by_symbol:
                 payload.charts.by_symbol &&

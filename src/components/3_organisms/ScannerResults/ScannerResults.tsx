@@ -20,6 +20,7 @@ import {
     orderedBands,
     patchScannerCharts,
     prefetchScannerCharts,
+    normalizeScannerChartTimeframe,
     scannerProfileLabel,
     SCANNER_CHART_LIVE_PATCH_MS,
     SCANNER_PROFILE_CHART_TIMEFRAME,
@@ -43,6 +44,7 @@ import {
     hasScannerChartCandles,
     isFootprintWatchSymbol,
     isFootprintCollectorOnline,
+    normalizeFootprintTimeframe,
 } from "@/services/footprintUtils";
 import { Box, Badge, Flex, Stack, Text } from "@chakra-ui/react";
 import type { ReactNode } from "react";
@@ -401,14 +403,18 @@ const ScannerResults = ({
     const polling = active && pageVisible;
     const setups = setupsFromScannerView(scannerView);
     const profileLabel = scannerProfileLabel(profile);
-    const defaultChartTimeframe =
+    const defaultChartTimeframe = normalizeScannerChartTimeframe(
         scannerView != null && !("message" in scannerView)
             ? scannerView.charts.timeframe
-            : SCANNER_PROFILE_CHART_TIMEFRAME[profile];
-    const defaultFootprintTimeframe =
+            : undefined,
+        SCANNER_PROFILE_CHART_TIMEFRAME[profile],
+    );
+    const defaultFootprintTimeframe = normalizeFootprintTimeframe(
         scannerView != null && !("message" in scannerView)
             ? scannerView.footprint.timeframe
-            : FOOTPRINT_PROFILE_DEFAULTS[profile].defaultTimeframe;
+            : undefined,
+        FOOTPRINT_PROFILE_DEFAULTS[profile].defaultTimeframe,
+    );
     const [prefetchedCharts, setPrefetchedCharts] = useState<Record<string, ScannerChartPayload | null>>({});
     const [liveLastBySymbol, setLiveLastBySymbol] = useState<Record<string, number>>({});
     const [liveFootprintPairs, setLiveFootprintPairs] = useState<Record<string, FootprintPairView>>({});
