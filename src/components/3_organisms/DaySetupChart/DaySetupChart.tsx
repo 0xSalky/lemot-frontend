@@ -9,7 +9,6 @@ import ScannerSetupChart, {
 import type { ThemeTokens } from "@/components/ui/theme-color";
 import {
   buildFootprintDisplayBars,
-  fetchFootprintView,
   hasOrderflowData,
   hasRealOhlc,
 } from "@/services/footprintUtils";
@@ -17,11 +16,10 @@ import { scannerSymbolToBase, chartSpotPrice, chartRevisionKey, type ScannerProf
 import {
   FOOTPRINT_PROFILE_DEFAULTS,
   type FootprintPairView,
-  type FootprintTimeframe,
 } from "@/types/footprintTypes";
 import type { ScannerBandRow, ScannerChartPayload, ScannerChartTimeframe } from "@/types/scannerTypes";
 import { Box, Text } from "@chakra-ui/react";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 
 type DaySetupChartProps = {
   symbol: string;
@@ -100,45 +98,10 @@ export default function DaySetupChart({
   liveSpotPrice,
   chartRevisionKey: chartRevisionKeyProp,
 }: DaySetupChartProps) {
-  const base = scannerSymbolToBase(symbol);
-  const expectsFootprint = footprintEnabled;
-  const defaultFootprintTimeframe = FOOTPRINT_PROFILE_DEFAULTS[profile].defaultTimeframe;
-  const [fpTimeframe, setFpTimeframe] = useState<FootprintTimeframe>(defaultFootprintTimeframe);
-  const [altTimeframePair, setAltTimeframePair] = useState<FootprintPairView | null>(null);
-  const [fpLoading, setFpLoading] = useState(false);
+  const footprintTimeframe = FOOTPRINT_PROFILE_DEFAULTS[profile].defaultTimeframe;
 
-  useEffect(() => {
-    setFpTimeframe(defaultFootprintTimeframe);
-    setAltTimeframePair(null);
-  }, [defaultFootprintTimeframe, symbol]);
-
-  const handleFootprintTimeframeChange = useCallback(
-    (next: FootprintTimeframe) => {
-      setFpTimeframe(next);
-      if (next === defaultFootprintTimeframe) {
-        setAltTimeframePair(null);
-        return;
-      }
-      setFpLoading(true);
-      void fetchFootprintView([base], { profile, timeframe: next })
-        .then((data) => {
-          setAltTimeframePair(data.pairs[base] ?? null);
-        })
-        .catch(() => {
-          setAltTimeframePair(null);
-        })
-        .finally(() => {
-          setFpLoading(false);
-        });
-    },
-    [base, defaultFootprintTimeframe, profile],
-  );
-
-  const pairForDisplay =
-    fpTimeframe === defaultFootprintTimeframe ? footprintPair : altTimeframePair;
-
-  const liveChart = managedChart ?? pairForDisplay?.chart ?? null;
-  const exchangeCandles = managedChart?.candles ?? pairForDisplay?.chart?.candles ?? [];
+  const liveChart = managedChart ?? footprintPair?.chart ?? null;
+  const exchangeCandles = managedChart?.candles ?? footprintPair?.chart?.candles ?? [];
   const spotPrice = chartSpotPrice(liveChart, price, liveSpotPrice);
   const resolvedChartRevisionKey =
     chartRevisionKeyProp ?? chartRevisionKey(managedChart ?? liveChart);
@@ -146,24 +109,24 @@ export default function DaySetupChart({
   const displayBars = useMemo(
     () =>
       buildFootprintDisplayBars(
-        pairForDisplay?.merged ?? [],
+        footprintPair?.merged ?? [],
         exchangeCandles,
         spotPrice,
-        fpTimeframe,
+        footprintTimeframe,
       ),
     [
       exchangeCandles,
-      fpTimeframe,
-      pairForDisplay?.merged,
+      footprintPair?.merged,
+      footprintTimeframe,
       resolvedChartRevisionKey,
       spotPrice,
     ],
   );
 
   const showOrderflow =
-    hasOrderflowData(pairForDisplay) &&
+    hasOrderflowData(footprintPair) &&
     displayBars.filter(hasRealOhlc).length >= 2;
-  const showFootprintLoading = expectsFootprint && footprintLoading && !showOrderflow;
+  const showFootprintLoading = footprintEnabled && footprintLoading && !showOrderflow;
   const footprintSpotPrice = spotPrice;
   const restSpotPrice = chartSpotPrice(managedChart, price, liveSpotPrice);
 
@@ -171,14 +134,12 @@ export default function DaySetupChart({
     return <FootprintChartLoading tokens={tokens} />;
   }
 
-  if (showOrderflow && pairForDisplay) {
+  if (showOrderflow && footprintPair) {
     return (
       <DayChartBleed tokens={tokens} minHeight={FOOTPRINT_CHART_HEIGHT}>
         <FootprintPairChart
           bars={displayBars}
-          timeframe={fpTimeframe}
-          onTimeframeChange={handleFootprintTimeframeChange}
-          loading={fpLoading}
+          timeframe={footprintTimeframe}
           tokens={tokens}
           bands={bands}
           embedded

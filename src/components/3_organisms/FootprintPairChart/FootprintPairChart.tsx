@@ -19,9 +19,8 @@ import {
 } from "@/services/footprintUtils";
 import { formatLevelPrice, formatVolDollar } from "@/services/scannerUtils";
 import type { FootprintMergedBar, FootprintTimeframe } from "@/types/footprintTypes";
-import { FOOTPRINT_TIMEFRAMES } from "@/types/footprintTypes";
 import type { ScannerBandRow } from "@/types/scannerTypes";
-import { Box, Flex, NativeSelect, Stack, Text } from "@chakra-ui/react";
+import { Box, Flex, Stack, Text } from "@chakra-ui/react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 const PRICE_HEIGHT = 200;
@@ -45,7 +44,6 @@ const ZOOM_STEP_MAX = Math.floor(Math.log(ZOOM_MAX) / Math.log(ZOOM_FACTOR));
 type FootprintPairChartProps = {
   bars: FootprintMergedBar[];
   timeframe: FootprintTimeframe;
-  onTimeframeChange?: (timeframe: FootprintTimeframe) => void;
   loading?: boolean;
   tokens: ThemeTokens;
   bands?: ScannerBandRow[];
@@ -137,7 +135,6 @@ function paddedValueRange(values: number[]): [number, number] {
 export default function FootprintPairChart({
   bars,
   timeframe,
-  onTimeframeChange,
   loading = false,
   tokens,
   bands = [],
@@ -440,45 +437,6 @@ export default function FootprintPairChart({
             tokens={tokens}
           />
         </Flex>
-
-        {onTimeframeChange ? (
-          <Flex
-            position="absolute"
-            top="2"
-            right="2"
-            zIndex={5}
-            align="center"
-            gap="1.5"
-          >
-            <NativeSelect.Root size="xs" width={{ base: "2.25rem", md: "3rem" }} maxW={{ base: "2.25rem", md: "3rem" }}>
-                <NativeSelect.Field
-                  className="chart-tf-select"
-                  value={timeframe}
-                  fontFamily="mono"
-                  fontSize={{ base: "10px", md: "2xs" }}
-                  h="1.5rem"
-                  minH="1.5rem"
-                  maxH="1.5rem"
-                  py="0"
-                  px="0.5"
-                  bg={tokens.panelBgUser}
-                  borderColor={tokens.panelBorder}
-                  onChange={(e) => {
-                    const next = e.currentTarget.value;
-                    if ((FOOTPRINT_TIMEFRAMES as readonly string[]).includes(next)) {
-                      onTimeframeChange(next as FootprintTimeframe);
-                    }
-                  }}
-                >
-                  {FOOTPRINT_TIMEFRAMES.map((tf) => (
-                    <option key={tf} value={tf}>
-                      {tf}
-                    </option>
-                  ))}
-                </NativeSelect.Field>
-              </NativeSelect.Root>
-          </Flex>
-        ) : null}
 
         {loading || !plot ? (
           <Box h="100%" display="flex" alignItems="center" justifyContent="center">

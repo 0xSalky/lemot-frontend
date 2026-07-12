@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  SCANNER_CHART_TIMEFRAMES,
   type ScannerBandRow,
   type ScannerChartPayload,
   type ScannerChartTimeframe,
@@ -17,7 +16,7 @@ import {
   computeOhlcBounds,
   type ChartPriceMode,
 } from "@/utils/chartOhlc";
-import { Box, Flex, NativeSelect, Text } from "@chakra-ui/react";
+import { Box, Flex, Text } from "@chakra-ui/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const CHART_HEIGHT = 250;
@@ -107,7 +106,7 @@ function ScannerSetupChart({
   const pageVisible = usePageVisible();
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
-  const [timeframe, setTimeframe] = useState<ScannerChartTimeframe>(defaultTimeframe);
+  const timeframe = defaultTimeframe;
   const [priceMode, setPriceMode] = useState<ChartPriceMode>("candle");
   const candleTheme = useMemo(() => chartCandleTheme(tokens), [tokens]);
   const [zoomStep, setZoomStep] = useState(0);
@@ -118,8 +117,7 @@ function ScannerSetupChart({
     error: null,
   });
 
-  const useManagedChart =
-    managedChart !== undefined && timeframe === defaultTimeframe;
+  const useManagedChart = managedChart !== undefined;
   const fetchKey = `${symbol}|${timeframe}`;
   const loading = useManagedChart
     ? managedChartLoading
@@ -134,10 +132,6 @@ function ScannerSetupChart({
     : fetchState.key === fetchKey
       ? fetchState.error
       : null;
-
-  useEffect(() => {
-    setTimeframe(defaultTimeframe);
-  }, [defaultTimeframe]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -394,44 +388,6 @@ function ScannerSetupChart({
                 onChange={setPriceMode}
                 tokens={tokens}
               />
-            </Flex>
-
-            <Flex
-              position="absolute"
-              top="2"
-              right="2"
-              zIndex={5}
-              align="center"
-              gap="1.5"
-            >
-              <NativeSelect.Root size="xs" width={{ base: "2.25rem", md: "3rem" }} maxW={{ base: "2.25rem", md: "3rem" }}>
-                <NativeSelect.Field
-                  className="chart-tf-select"
-                  value={timeframe}
-                  fontFamily="mono"
-                  fontSize={{ base: "10px", md: "2xs" }}
-                  h="1.5rem"
-                  minH="1.5rem"
-                  maxH="1.5rem"
-                  py="0"
-                  px="0.5"
-                  bg={tokens.panelBgUser}
-                  borderColor={tokens.panelBorder}
-                  onChange={(e) => {
-                    const next = e.currentTarget.value;
-                    if ((SCANNER_CHART_TIMEFRAMES as readonly string[]).includes(next)) {
-                      setTimeframe(next as ScannerChartTimeframe);
-                      setZoomStep(0);
-                    }
-                  }}
-                >
-                  {SCANNER_CHART_TIMEFRAMES.map((tf) => (
-                    <option key={tf} value={tf}>
-                      {tf}
-                    </option>
-                  ))}
-                </NativeSelect.Field>
-              </NativeSelect.Root>
             </Flex>
 
             {plot.bandRects.map((band) => (
