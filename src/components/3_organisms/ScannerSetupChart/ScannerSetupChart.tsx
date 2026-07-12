@@ -5,7 +5,7 @@ import {
   type ScannerChartPayload,
   type ScannerChartTimeframe,
 } from "@/types/scannerTypes";
-import { fetchScannerChart, chartSpotPrice, formatLevelPrice, SCANNER_CHART_LIVE_PATCH_MS } from "@/services/scannerUtils";
+import { fetchScannerChart, chartSpotPrice, formatLevelPrice } from "@/services/scannerUtils";
 import ChartPriceModeToggle from "@/components/2_molecules/ChartPriceModeToggle/ChartPriceModeToggle";
 import { ChartCandleSvg } from "@/components/2_molecules/ChartCandleSvg/ChartCandleSvg";
 import { usePageVisible } from "@/hooks/usePageVisible";
@@ -22,7 +22,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 const CHART_HEIGHT = 250;
 
 export { CHART_HEIGHT as SETUP_CHART_HEIGHT };
-const CHART_REFRESH_MS = SCANNER_CHART_LIVE_PATCH_MS;
 const ZOOM_FACTOR = 1.2;
 const ZOOM_MIN = 0.3;
 const ZOOM_MAX = 5;
@@ -47,11 +46,9 @@ type ScannerSetupChartProps = {
   defaultTimeframe?: ScannerChartTimeframe;
   /** When true, outer bleed margins are omitted (parent card handles layout). */
   embedded?: boolean;
-  /** Batched chart from ScannerResults — parent handles live updates. */
+  /** Batched chart from ScannerResults. */
   managedChart?: ScannerChartPayload | null;
   managedChartLoading?: boolean;
-  /** Live ticker from parent refresh loop — always wins over stale chart.last. */
-  liveSpotPrice?: number;
   chartRevisionKey?: string;
 };
 
@@ -100,7 +97,6 @@ function ScannerSetupChart({
   embedded = false,
   managedChart,
   managedChartLoading = false,
-  liveSpotPrice,
   chartRevisionKey,
 }: ScannerSetupChartProps) {
   const pageVisible = usePageVisible();
@@ -155,19 +151,17 @@ function ScannerSetupChart({
 
     let cancelled = false;
 
-    const loadChart = (patch: boolean): Promise<void> =>
-      fetchScannerChart(symbol, timeframe, patch ? { patch: true } : undefined)
+    const loadChart = (): Promise<void> =>
+      fetchScannerChart(symbol, timeframe)
         .then((payload) => {
           if (cancelled) return;
           if (!payload) {
-            if (!patch) {
-              setFetchState({
-                key: fetchKey,
-                status: "error",
-                chart: null,
-                error: "Chart unavailable",
-              });
-            }
+            setFetchState({
+              key: fetchKey,
+              status: "error",
+              chart: null,
+              error: "Chart unavailable",
+            });
             return;
           }
           setFetchState({
@@ -178,7 +172,7 @@ function ScannerSetupChart({
           });
         })
         .catch(() => {
-          if (!cancelled && !patch) {
+          if (!cancelled) {
             setFetchState({
               key: fetchKey,
               status: "error",
@@ -188,27 +182,10 @@ function ScannerSetupChart({
           }
         });
 
-    let refreshTimer: number | undefined;
-    const scheduleRefresh = () => {
-      refreshTimer = window.setTimeout(() => {
-        if (cancelled) return;
-        if (document.visibilityState !== "visible") {
-          scheduleRefresh();
-          return;
-        }
-        void loadChart(true).finally(() => {
-          if (!cancelled) scheduleRefresh();
-        });
-      }, CHART_REFRESH_MS);
-    };
-
-    void loadChart(false).finally(() => {
-      if (!cancelled) scheduleRefresh();
-    });
+    void loadChart();
 
     return () => {
       cancelled = true;
-      if (refreshTimer != null) window.clearTimeout(refreshTimer);
     };
   }, [fetchKey, pageVisible, symbol, timeframe, useManagedChart]);
 
@@ -220,19 +197,9 @@ function ScannerSetupChart({
     const zoomScale = zoomScaleFromStep(zoomStep);
     const candles = chart.candles;
     const lastClose = candles[candles.length - 1]?.close;
-    const spotPrice = chartSpotPrice(chart, price > 0 ? price : lastClose, liveSpotPrice);
+    const spotPrice = chartSpotPrice(chart, price > 0 ? price : lastClose);
     const visibleCandles = visibleCandlesForZoom(candles, zoomScale);
-    const visibleWithLive = visibleCandles.map((candle, index) => {
-      if (index !== visibleCandles.length - 1) return candle;
-      if (Math.abs(spotPrice - candle.close) <= 1e-9) return candle;
-      return {
-        ...candle,
-        close: spotPrice,
-        high: Math.max(candle.high, spotPrice),
-        low: Math.min(candle.low, spotPrice),
-      };
-    });
-    const [baseMin, baseMax] = computeChartBounds(visibleWithLive, spotPrice);
+    const [baseMin, baseMax] = computeChartBounds(visibleCandles, spotPrice);
     const [minPrice, maxPrice] = applyZoomBounds(baseMin, baseMax, zoomScale, spotPrice);
     const innerW = chartWidth - PAD_X * 2;
     const innerH = CHART_HEIGHT - PAD_TOP - PAD_BOTTOM;
@@ -240,19 +207,14 @@ function ScannerSetupChart({
     const plotBottom = PAD_TOP + innerH;
 
     const xAt = (index: number) =>
-      PAD_X + (index / Math.max(visibleWithLive.length - 1, 1)) * innerW;
+      PAD_X + (index / Math.max(visibleCandles.length - 1, 1)) * innerW;
 
     const yAt = (level: number) =>
       PAD_TOP + ((maxPrice - level) / priceSpan) * innerH;
 
-    const lastX = xAt(visibleWithLive.length - 1);
-    const closePoints = visibleWithLive
+    const lastX = xAt(visibleCandles.length - 1);
+    const closePoints = visibleCandles
       .map((candle, i) => `${xAt(i).toFixed(1)},${yAt(candle.close).toFixed(1)}`)
-      .concat(
-        Math.abs(spotPrice - (lastClose ?? 0)) > 1e-9
-          ? [`${lastX.toFixed(1)},${yAt(spotPrice).toFixed(1)}`]
-          : [],
-      )
       .join(" ");
 
     const bandRects = bands.flatMap((band, i) => {
@@ -274,7 +236,7 @@ function ScannerSetupChart({
 
     const spotY = yAt(spotPrice);
     const lastY = yAt(spotPrice);
-    const candleShapes = candleGeometries(visibleWithLive, xAt, yAt, innerW, innerH);
+    const candleShapes = candleGeometries(visibleCandles, xAt, yAt, innerW, innerH);
 
     return {
       closePoints,
@@ -286,7 +248,7 @@ function ScannerSetupChart({
       lastX,
       lastY,
     };
-  }, [bands, chart, chartRevisionKey, chartWidth, liveSpotPrice, price, zoomStep]);
+  }, [bands, chart, chartRevisionKey, chartWidth, price, zoomStep]);
 
   return (
     <Box

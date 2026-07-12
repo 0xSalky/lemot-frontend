@@ -11,7 +11,6 @@ import type {
   FootprintViewPayload,
 } from "@/types/footprintTypes";
 import { FOOTPRINT_TIMEFRAMES } from "@/types/footprintTypes";
-import type { ScannerChartPayload } from "@/types/scannerTypes";
 
 const footprintViewCache = new Map<string, Promise<FootprintViewPayload>>();
 let footprintMetaCache: Promise<FootprintMetaPayload> | null = null;
@@ -139,7 +138,7 @@ export async function fetchFootprintView(
         params.set("profile", options.profile);
       }
       if (options?.bustCache) {
-        params.set("fresh", "1");
+        params.set("fresh", "true");
       }
 
       const res = await apiFetch(`/api/footprint/view?${params.toString()}`, {
@@ -166,23 +165,6 @@ export function hasFootprintData(pair?: FootprintPairView | null): boolean {
   return Boolean(pair?.orderflow?.bars?.length);
 }
 
-type OhlcCandle = {
-  time: number;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-};
-
-const TIMEFRAME_MATCH_SLACK_SEC: Record<string, number> = {
-  "5m": 300,
-  "15m": 900,
-  "30m": 1800,
-  "1h": 3600,
-  "2h": 7200,
-  "4h": 14400,
-};
-
 /** True when a bar has exchange-grade OHLC (not a flat mark-price dot). */
 export function hasRealOhlc(bar: {
   high?: number | null;
@@ -196,175 +178,6 @@ export function hasRealOhlc(bar: {
   const close = bar.close ?? 0;
   if (high <= 0 || low <= 0) return false;
   return Math.abs(high - low) > 1e-9 || Math.abs(open - close) > 1e-9;
-}
-
-function bucketSeconds(timeframe: string): number {
-  return TIMEFRAME_MATCH_SLACK_SEC[timeframe] ?? 1800;
-}
-
-function pickExchangeCandleForBar(
-  barTime: number,
-  sortedCandles: OhlcCandle[],
-  candleByTime: Map<number, OhlcCandle>,
-  usedTimes: Set<number>,
-  bucketSec: number,
-): OhlcCandle | null {
-  const exact = candleByTime.get(barTime);
-  if (exact && !usedTimes.has(exact.time)) {
-    usedTimes.add(exact.time);
-    return exact;
-  }
-
-  for (const candle of sortedCandles) {
-    if (usedTimes.has(candle.time)) continue;
-    if (candle.time >= barTime && candle.time < barTime + bucketSec) {
-      usedTimes.add(candle.time);
-      return candle;
-    }
-  }
-
-  for (const offset of [60, -60, 120, -120]) {
-    const hit = candleByTime.get(barTime + offset);
-    if (hit && !usedTimes.has(hit.time)) {
-      usedTimes.add(hit.time);
-      return hit;
-    }
-  }
-
-  return null;
-}
-
-/** Replace mark-only merged OHLC with exchange candles while keeping orderflow fields. */
-export function overlayExchangeOhlcOnMerged(
-  merged: FootprintMergedBar[],
-  candles: OhlcCandle[] | undefined | null,
-  timeframe = "30m",
-): FootprintMergedBar[] {
-  if (!merged.length || !candles?.length) return merged;
-
-  const bucketSec = bucketSeconds(timeframe);
-  const candleByTime = new Map(candles.map((candle) => [candle.time, candle]));
-  const sortedCandles = [...candles].sort((a, b) => a.time - b.time);
-  const usedTimes = new Set<number>();
-
-  return merged.map((bar) => {
-    const candle = pickExchangeCandleForBar(
-      bar.time,
-      sortedCandles,
-      candleByTime,
-      usedTimes,
-      bucketSec,
-    );
-    if (!candle || !hasRealOhlc(candle)) return bar;
-    return {
-      ...bar,
-      open: candle.open,
-      high: candle.high,
-      low: candle.low,
-      close: candle.close,
-    };
-  });
-}
-
-function emptyFootprintBar(time: number, candle: OhlcCandle): FootprintMergedBar {
-  return {
-    time,
-    open: candle.open,
-    high: candle.high,
-    low: candle.low,
-    close: candle.close,
-    bucket_start: null,
-    delta: null,
-    delta_max: null,
-    delta_min: null,
-    cvd_window: null,
-    cvd_session: null,
-    oi_open: null,
-    oi_close: null,
-    oi_change: null,
-    oi_change_pct: null,
-    funding_rate: null,
-    vwap: null,
-    liq_long_notional: null,
-    liq_short_notional: null,
-    liq_count: null,
-    source_gap: 1,
-  };
-}
-
-/** Append exchange candles newer than the last footprint bucket (price line stays on time). */
-export function appendExchangeTailToMerged(
-  merged: FootprintMergedBar[],
-  candles: OhlcCandle[] | undefined | null,
-  timeframe = "30m",
-): FootprintMergedBar[] {
-  if (!candles?.length) return merged;
-
-  const bucketSec = bucketSeconds(timeframe);
-  const out = [...merged];
-  let lastMergedTime = out.at(-1)?.time ?? 0;
-
-  for (const candle of candles) {
-    if (!hasRealOhlc(candle)) continue;
-
-    const existingIdx = out.findIndex((bar) => bar.time === candle.time);
-    if (existingIdx >= 0) {
-      const bar = out[existingIdx];
-      out[existingIdx] = {
-        ...bar,
-        open: candle.open,
-        high: candle.high,
-        low: candle.low,
-        close: candle.close,
-      };
-      lastMergedTime = Math.max(lastMergedTime, out[existingIdx]?.time ?? 0);
-      continue;
-    }
-
-    if (candle.time < lastMergedTime + bucketSec) continue;
-    out.push(emptyFootprintBar(candle.time, candle));
-    lastMergedTime = candle.time;
-  }
-
-  return out.sort((a, b) => a.time - b.time);
-}
-
-/** Footprint chart bars: orderflow + exchange OHLC tail + live mark on last bar. */
-export function buildFootprintDisplayBars(
-  merged: FootprintMergedBar[],
-  exchangeCandles: OhlcCandle[] | undefined | null,
-  livePrice: number | null | undefined,
-  timeframe = "30m",
-): FootprintMergedBar[] {
-  const overlaid = overlayExchangeOhlcOnMerged(merged, exchangeCandles, timeframe);
-  const withTail = appendExchangeTailToMerged(overlaid, exchangeCandles, timeframe);
-  return applyLivePriceToMergedBars(withTail, livePrice);
-}
-
-/** Move the forming bar to the live mark when ticker updates between full reloads. */
-export function applyLivePriceToMergedBars(
-  bars: FootprintMergedBar[],
-  livePrice: number | null | undefined,
-): FootprintMergedBar[] {
-  if (bars.length === 0) return bars;
-  if (livePrice == null || !Number.isFinite(livePrice) || livePrice <= 0) return bars;
-
-  const last = bars[bars.length - 1];
-  const high = last.high ?? livePrice;
-  const low = last.low ?? livePrice;
-  return [
-    ...bars.slice(0, -1),
-    {
-      ...last,
-      close: livePrice,
-      high: Math.max(high, livePrice),
-      low: Math.min(low, livePrice),
-    },
-  ];
-}
-
-export function hasScannerChartCandles(chart?: ScannerChartPayload | null): boolean {
-  return (chart?.candles ?? []).some(hasRealOhlc);
 }
 
 const COLLECTOR_STALE_MS = 5 * 60 * 1000;

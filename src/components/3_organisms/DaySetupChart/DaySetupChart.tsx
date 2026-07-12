@@ -7,12 +7,8 @@ import ScannerSetupChart, {
   SETUP_CHART_HEIGHT,
 } from "@/components/3_organisms/ScannerSetupChart/ScannerSetupChart";
 import type { ThemeTokens } from "@/components/ui/theme-color";
-import {
-  buildFootprintDisplayBars,
-  hasOrderflowData,
-  hasRealOhlc,
-} from "@/services/footprintUtils";
-import { chartSpotPrice, chartRevisionKey, type ScannerProfile } from "@/services/scannerUtils";
+import { hasOrderflowData, hasRealOhlc } from "@/services/footprintUtils";
+import { chartRevisionKey, type ScannerProfile } from "@/services/scannerUtils";
 import {
   FOOTPRINT_PROFILE_DEFAULTS,
   type FootprintPairView,
@@ -20,7 +16,7 @@ import {
 } from "@/types/footprintTypes";
 import type { ScannerBandRow, ScannerChartPayload, ScannerChartTimeframe } from "@/types/scannerTypes";
 import { Box, Text } from "@chakra-ui/react";
-import { useMemo, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 type DaySetupChartProps = {
   symbol: string;
@@ -31,15 +27,10 @@ type DaySetupChartProps = {
   footprintPair?: FootprintPairView | null;
   footprintLoading?: boolean;
   defaultChartTimeframe?: ScannerChartTimeframe;
-  /** Footprint rollup timeframe (usually matches setup chart; may differ from chart_timeframe in config). */
   defaultFootprintTimeframe?: FootprintTimeframe;
-  /** When true, try footprint/orderflow chart first for tracked symbols (day + swing). */
   footprintEnabled?: boolean;
   managedChart?: ScannerChartPayload | null;
   managedChartLoading?: boolean;
-  /** Live ticker from parent refresh — drives price line on the chart. */
-  liveSpotPrice?: number;
-  /** Bumps when parent merges a new chart patch (forces child plot refresh). */
   chartRevisionKey?: string;
 };
 
@@ -99,7 +90,6 @@ export default function DaySetupChart({
   footprintEnabled = true,
   managedChart,
   managedChartLoading,
-  liveSpotPrice,
   chartRevisionKey: chartRevisionKeyProp,
 }: DaySetupChartProps) {
   const footprintTimeframe =
@@ -107,50 +97,14 @@ export default function DaySetupChart({
     (footprintPair?.chart?.timeframe as FootprintTimeframe | undefined) ??
     FOOTPRINT_PROFILE_DEFAULTS[profile].defaultTimeframe;
 
-  const liveChart = managedChart ?? footprintPair?.chart ?? null;
-  const exchangeCandles = useMemo(() => {
-    const managedTf = managedChart?.timeframe ?? defaultChartTimeframe;
-    const managedCandles = managedChart?.candles;
-    if (managedCandles?.length && managedTf === footprintTimeframe) {
-      return managedCandles;
-    }
-    const footprintCandles = footprintPair?.chart?.candles;
-    if (footprintCandles?.length) return footprintCandles;
-    return [];
-  }, [
-    defaultChartTimeframe,
-    footprintPair?.chart?.candles,
-    footprintTimeframe,
-    managedChart?.candles,
-    managedChart?.timeframe,
-  ]);
-  const spotPrice = chartSpotPrice(liveChart, price, liveSpotPrice);
+  const displayBars = footprintPair?.merged ?? [];
   const resolvedChartRevisionKey =
-    chartRevisionKeyProp ?? chartRevisionKey(managedChart ?? liveChart);
-
-  const displayBars = useMemo(
-    () =>
-      buildFootprintDisplayBars(
-        footprintPair?.merged ?? [],
-        exchangeCandles,
-        spotPrice,
-        footprintTimeframe,
-      ),
-    [
-      exchangeCandles,
-      footprintPair?.merged,
-      footprintTimeframe,
-      resolvedChartRevisionKey,
-      spotPrice,
-    ],
-  );
+    chartRevisionKeyProp ?? chartRevisionKey(managedChart);
 
   const showOrderflow =
     hasOrderflowData(footprintPair) &&
     displayBars.filter(hasRealOhlc).length >= 2;
-  const showFootprintLoading = footprintEnabled && footprintLoading && !showOrderflow;
-  const footprintSpotPrice = spotPrice;
-  const restSpotPrice = chartSpotPrice(managedChart, price, liveSpotPrice);
+  const showFootprintLoading = footprintEnabled && footprintLoading;
 
   if (showFootprintLoading) {
     return <FootprintChartLoading tokens={tokens} />;
@@ -166,7 +120,7 @@ export default function DaySetupChart({
           bands={bands}
           embedded
           symbol={symbol}
-          livePrice={footprintSpotPrice}
+          chartRevisionKey={resolvedChartRevisionKey}
         />
       </DayChartBleed>
     );
@@ -176,14 +130,13 @@ export default function DaySetupChart({
     <DayChartBleed tokens={tokens} minHeight={SIMPLE_CHART_HEIGHT}>
       <ScannerSetupChart
         symbol={symbol}
-        price={restSpotPrice}
+        price={price}
         bands={bands}
         tokens={tokens}
         defaultTimeframe={defaultChartTimeframe}
         embedded
         managedChart={managedChart}
         managedChartLoading={managedChartLoading}
-        liveSpotPrice={restSpotPrice}
         chartRevisionKey={resolvedChartRevisionKey}
       />
     </DayChartBleed>

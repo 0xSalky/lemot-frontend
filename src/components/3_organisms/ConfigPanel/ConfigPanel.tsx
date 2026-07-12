@@ -42,14 +42,10 @@ function ConfigSection({ title, children }: { title: string; children: ReactNode
 
 function ScannerConfigPanel({
   profile,
-  loading,
-  onRefresh,
   onRequestScan,
   onRequestScanWithAi,
 }: {
   profile: ScannerProfile;
-  loading: boolean;
-  onRefresh: () => void;
   onRequestScan: () => void;
   onRequestScanWithAi: () => void;
 }) {
@@ -64,16 +60,6 @@ function ScannerConfigPanel({
         {profile === "a" ? " · watchlist scan" : " · high-volume scan"}
       </Text>
       <Stack direction="row" gap="2" flexWrap="wrap">
-        <Button
-          size="xs"
-          variant="outline"
-          colorPalette={palette}
-          borderColor={tokens.panelBorder}
-          loading={loading}
-          onClick={onRefresh}
-        >
-          Refresh {label} results
-        </Button>
         <Button
           size="xs"
           variant="outline"
@@ -98,35 +84,20 @@ function ScannerConfigPanel({
 }
 
 export type ConfigPanelProps = {
-  onScannerRefresh: (profile: ScannerProfile) => Promise<void>;
   refreshKey?: number;
 };
 
-export default function ConfigPanel({ onScannerRefresh, refreshKey = 0 }: ConfigPanelProps) {
+export default function ConfigPanel({ refreshKey = 0 }: ConfigPanelProps) {
   const { palette } = useThemeColor();
   const tokens = useThemeTokens();
   const { serverConfigured, signOut } = useTradingAccess();
   const [pendingScan, setPendingScan] = useState<PendingScan | null>(null);
-  const [refreshing, setRefreshing] = useState<Record<ScannerProfile, boolean>>({
-    a: false,
-    b: false,
-  });
-
-  const handleRefresh = useCallback(
-    (profile: ScannerProfile) => {
-      setRefreshing((prev) => ({ ...prev, [profile]: true }));
-      void onScannerRefresh(profile).finally(() => {
-        setRefreshing((prev) => ({ ...prev, [profile]: false }));
-      });
-    },
-    [onScannerRefresh],
-  );
 
   const runScannerJob = useCallback((profile: ScannerProfile, withAi: boolean) => {
     const label = scannerProfileLabel(profile);
     toaster.info({
       title: withAi ? `${label} scan + AI started` : `${label} scan started`,
-      description: "Results will be ready in a few minutes. Tap Refresh when complete.",
+      description: "Results will be ready in a few minutes. Use the ↻ refresh button on the Scanner tab to reload charts when complete.",
     });
 
     void runScanner(profile, { analyze: withAi }).then((result) => {
@@ -168,8 +139,8 @@ export default function ConfigPanel({ onScannerRefresh, refreshKey = 0 }: Config
             </>
           ) : (
             <>
-              Starts a new {pendingLabel} scanner batch without AI analysis. Faster — use Refresh
-              when the run completes.
+              Starts a new {pendingLabel} scanner batch without AI analysis. Faster — use the refresh
+              button on the Scanner tab when the run completes.
             </>
           )
         }
@@ -216,8 +187,6 @@ export default function ConfigPanel({ onScannerRefresh, refreshKey = 0 }: Config
           <ConfigSection title="Day">
             <ScannerConfigPanel
               profile="a"
-              loading={refreshing.a}
-              onRefresh={() => handleRefresh("a")}
               onRequestScan={() => setPendingScan({ profile: "a", withAi: false })}
               onRequestScanWithAi={() => setPendingScan({ profile: "a", withAi: true })}
             />
@@ -228,8 +197,6 @@ export default function ConfigPanel({ onScannerRefresh, refreshKey = 0 }: Config
           <ConfigSection title="Scalper">
             <ScannerConfigPanel
               profile="b"
-              loading={refreshing.b}
-              onRefresh={() => handleRefresh("b")}
               onRequestScan={() => setPendingScan({ profile: "b", withAi: false })}
               onRequestScanWithAi={() => setPendingScan({ profile: "b", withAi: true })}
             />

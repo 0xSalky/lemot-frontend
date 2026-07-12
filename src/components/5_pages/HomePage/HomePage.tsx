@@ -90,14 +90,29 @@ const HomePage = () => {
     const [activeTab, setActiveTab] = useState<HomeTabId>("pairs");
     const [tabRefreshKeys, setTabRefreshKeys] = useState(initialTabRefreshKeys);
 
+    const [refreshing, setRefreshing] = useState<Record<ScannerProfile, boolean>>({
+        b: false,
+        a: false,
+    });
+    const [chartsRefreshKey, setChartsRefreshKey] = useState<Record<ScannerProfile, number>>({
+        b: 0,
+        a: 0,
+    });
+
     const loadScanner = useCallback(
         (profile: ScannerProfile, options?: { fresh?: boolean; reload?: boolean }) =>
             runScannerViewFetch(profile, loadIdRef, setViews, setLoading, options),
         [],
     );
 
-    const refreshScannerFromConfig = useCallback(
-        (profile: ScannerProfile) => loadScanner(profile, { reload: true }),
+    const refreshScannerBatch = useCallback(
+        (profile: ScannerProfile) => {
+            setRefreshing((prev) => ({ ...prev, [profile]: true }));
+            setChartsRefreshKey((prev) => ({ ...prev, [profile]: prev[profile] + 1 }));
+            return loadScanner(profile, { fresh: true, reload: true }).finally(() => {
+                setRefreshing((prev) => ({ ...prev, [profile]: false }));
+            });
+        },
         [loadScanner],
     );
 
@@ -235,8 +250,9 @@ const HomePage = () => {
                         profile="a"
                         scannerView={views.a}
                         loading={loading.a}
-                        active={activeTab === "scanner-a"}
-                        refreshKey={tabRefreshKeys["scanner-a"]}
+                        refreshing={refreshing.a}
+                        chartsRefreshKey={chartsRefreshKey.a}
+                        onRefresh={() => void refreshScannerBatch("a")}
                     />
                 </Tabs.Content>
 
@@ -245,8 +261,9 @@ const HomePage = () => {
                         profile="b"
                         scannerView={views.b}
                         loading={loading.b}
-                        active={activeTab === "scanner-b"}
-                        refreshKey={tabRefreshKeys["scanner-b"]}
+                        refreshing={refreshing.b}
+                        chartsRefreshKey={chartsRefreshKey.b}
+                        onRefresh={() => void refreshScannerBatch("b")}
                     />
                 </Tabs.Content>
 
@@ -286,10 +303,7 @@ const HomePage = () => {
                 </Tabs.Content>
 
                 <Tabs.Content value="config">
-                    <ConfigPanel
-                        onScannerRefresh={refreshScannerFromConfig}
-                        refreshKey={tabRefreshKeys.config}
-                    />
+                    <ConfigPanel refreshKey={tabRefreshKeys.config} />
                 </Tabs.Content>
             </Tabs.Root>
         </Stack>

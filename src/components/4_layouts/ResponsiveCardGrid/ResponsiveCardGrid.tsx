@@ -7,7 +7,7 @@ type ResponsiveCardGridProps = {
     gap?: string;
 };
 
-/** Single column; width capped at CONTENT_MAX_WIDTH (50vw on large screens). */
+/** Single column; width capped at CONTENT_MAX_WIDTH. */
 const ResponsiveCardGrid = ({ children, gap = "1rem" }: ResponsiveCardGridProps) => {
     return (
         <Box

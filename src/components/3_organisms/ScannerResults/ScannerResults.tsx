@@ -7,22 +7,16 @@ import type {
     ScannerViewFetchResult,
 } from "@/types/scannerTypes";
 import {
-    applyChartLivePatch,
     bandLineMarker,
     bandLineSections,
     chartRevisionKey,
-    chartSpotPrice,
-    extractChartLiveMark,
     formatCompactLevel,
     formatUtcIsoLocal,
     isLevelAnchor,
     levelsHighToLow,
     orderedBands,
-    patchScannerCharts,
-    prefetchScannerCharts,
     normalizeScannerChartTimeframe,
     scannerProfileLabel,
-    SCANNER_CHART_LIVE_PATCH_MS,
     SCANNER_PROFILE_CHART_TIMEFRAME,
     scannerSymbolToBase,
     setupsFromScannerView,
@@ -32,23 +26,18 @@ import ResponsiveCardGrid from "@/components/4_layouts/ResponsiveCardGrid/Respon
 import FootprintOrderflowTags from "@/components/2_molecules/FootprintOrderflowTags/FootprintOrderflowTags";
 import SetupHeaderTags from "@/components/2_molecules/SetupHeaderTags/SetupHeaderTags";
 import DaySetupChart from "@/components/3_organisms/DaySetupChart/DaySetupChart";
-import { usePageVisible } from "@/hooks/usePageVisible";
 import { useThemeColor, useThemeTokens, type ThemeTokens } from "@/components/ui/theme-color";
 import { themedPanelStyle } from "@/components/ui/themed-panel";
 import {
-    fetchFootprintView,
-    footprintBasesForSetups,
     footprintWatchlistBases,
-    hasFootprintChartCandles,
     hasOrderflowData,
-    hasScannerChartCandles,
     isFootprintWatchSymbol,
     isFootprintCollectorOnline,
     normalizeFootprintTimeframe,
 } from "@/services/footprintUtils";
-import { Box, Badge, Flex, Stack, Text } from "@chakra-ui/react";
+import { Box, Badge, Flex, IconButton, Stack, Text } from "@chakra-ui/react";
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import type { FootprintPairView, FootprintTimeframe } from "@/types/footprintTypes";
 import { FOOTPRINT_PROFILE_DEFAULTS } from "@/types/footprintTypes";
 
@@ -56,7 +45,9 @@ type ScannerResultsProps = {
     profile: ScannerProfile;
     scannerView: ScannerViewFetchResult | null;
     loading?: boolean;
-    active?: boolean;
+    refreshing?: boolean;
+    chartsRefreshKey?: number;
+    onRefresh?: () => void;
     refreshKey?: number;
 };
 
@@ -256,10 +247,9 @@ function SetupCard({
     profile,
     footprintPair,
     managedChart,
-    managedChartLoading,
+    chartsLoading,
     footprintWatchlist,
-    liveSpotPrice,
-    chartRevisionKey,
+    chartRevisionKey: chartRevisionKeyProp,
 }: {
     setup: ScannerSetupRow;
     tokens: ThemeTokens;
@@ -268,9 +258,8 @@ function SetupCard({
     profile: ScannerProfile;
     footprintPair?: FootprintPairView | null;
     managedChart?: ScannerChartPayload | null;
-    managedChartLoading?: boolean;
+    chartsLoading?: boolean;
     footprintWatchlist: readonly string[];
-    liveSpotPrice?: number;
     chartRevisionKey?: string;
 }) {
     const bands = orderedBands(Array.isArray(setup.bands) ? setup.bands : []);
@@ -301,9 +290,9 @@ function SetupCard({
                 defaultChartTimeframe={defaultChartTimeframe}
                 defaultFootprintTimeframe={defaultFootprintTimeframe}
                 managedChart={managedChart}
-                managedChartLoading={managedChartLoading}
-                liveSpotPrice={liveSpotPrice}
-                chartRevisionKey={chartRevisionKey}
+                managedChartLoading={chartsLoading}
+                footprintLoading={chartsLoading}
+                chartRevisionKey={chartRevisionKeyProp}
             />
             <Stack gap="3" mt="2">
                 {bands.map((band, bandIdx) => (
@@ -322,8 +311,8 @@ function BandBlock({ band }: { band: ScannerBandRow }) {
         band.side === "RES"
             ? `${dist.toFixed(2)}% above`
             : band.side === "SUP"
-              ? `${dist.toFixed(2)}% below`
-              : "at price";
+                ? `${dist.toFixed(2)}% below`
+                : "at price";
 
     return (
         <Stack gap="0">
@@ -390,17 +379,35 @@ function BandBlock({ band }: { band: ScannerBandRow }) {
     );
 }
 
+function RefreshIcon({ size = 20 }: { size?: number }) {
+    return (
+        <svg
+            width={size}
+            height={size}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+        >
+            <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+            <path d="M21 3v6h-6" />
+        </svg>
+    );
+}
+
 const ScannerResults = ({
     profile,
     scannerView,
     loading = false,
-    active = true,
-    refreshKey = 0,
+    refreshing = false,
+    chartsRefreshKey = 0,
+    onRefresh,
 }: ScannerResultsProps) => {
     const { palette } = useThemeColor();
     const tokens = useThemeTokens(palette);
-    const pageVisible = usePageVisible();
-    const polling = active && pageVisible;
     const setups = setupsFromScannerView(scannerView);
     const profileLabel = scannerProfileLabel(profile);
     const defaultChartTimeframe = normalizeScannerChartTimeframe(
@@ -415,18 +422,6 @@ const ScannerResults = ({
             : undefined,
         FOOTPRINT_PROFILE_DEFAULTS[profile].defaultTimeframe,
     );
-    const [prefetchedCharts, setPrefetchedCharts] = useState<Record<string, ScannerChartPayload | null>>({});
-    const [liveLastBySymbol, setLiveLastBySymbol] = useState<Record<string, number>>({});
-    const [liveFootprintPairs, setLiveFootprintPairs] = useState<Record<string, FootprintPairView>>({});
-    const [chartsLoading, setChartsLoading] = useState(false);
-
-    const chartSymbols = useMemo(
-        () => setups.map((setup) => setup.symbol),
-        [setups],
-    );
-    const chartSymbolsKey = chartSymbols.slice().sort().join(",");
-    const chartSymbolsRef = useRef(chartSymbols);
-    chartSymbolsRef.current = chartSymbols;
 
     const footprintHealth =
         scannerView != null && !("message" in scannerView) ? scannerView.footprint.health : null;
@@ -435,253 +430,22 @@ const ScannerResults = ({
             footprintWatchlistBases(
                 scannerView != null && !("message" in scannerView)
                     ? {
-                          watchlist: scannerView.footprint.watchlist,
-                          health: scannerView.footprint.health,
-                      }
+                        watchlist: scannerView.footprint.watchlist,
+                        health: scannerView.footprint.health,
+                    }
                     : { health: footprintHealth },
             ),
         [footprintHealth, scannerView],
     );
-    const footprintWatchlistKey = footprintWatchlist.slice().sort().join(",");
-
-    const footprintBases = useMemo(
-        () => footprintBasesForSetups(setups, footprintWatchlist),
-        [footprintWatchlist, setups],
-    );
-    const footprintBasesKey = footprintBases.slice().sort().join(",");
-    const footprintBasesRef = useRef(footprintBases);
-    footprintBasesRef.current = footprintBases;
 
     const batchMeta =
         scannerView != null && !("message" in scannerView) ? scannerView.batch : null;
-    const viewChartsBySymbol =
+    const chartsBySymbol =
         scannerView != null && !("message" in scannerView) ? scannerView.charts.by_symbol : {};
-    const viewChartsRef = useRef(viewChartsBySymbol);
-    viewChartsRef.current = viewChartsBySymbol;
-
-    const chartsBySymbol = useMemo(
-        () => ({ ...viewChartsBySymbol, ...prefetchedCharts }),
-        [prefetchedCharts, viewChartsBySymbol],
-    );
-    const footprintPairsFromView =
+    const footprintPairs =
         scannerView != null && !("message" in scannerView)
             ? scannerView.footprint.pairs_by_base
             : {};
-    const footprintPairsFromViewRef = useRef(footprintPairsFromView);
-    footprintPairsFromViewRef.current = footprintPairsFromView;
-    const baseToSymbol = useMemo(() => {
-        const map = new Map<string, string>();
-        for (const setup of setups) {
-            map.set(scannerSymbolToBase(setup.symbol), setup.symbol);
-        }
-        return map;
-    }, [setups]);
-    const baseToSymbolRef = useRef(baseToSymbol);
-    baseToSymbolRef.current = baseToSymbol;
-    const footprintPairs = useMemo(
-        () => ({ ...footprintPairsFromView, ...liveFootprintPairs }),
-        [footprintPairsFromView, liveFootprintPairs],
-    );
-
-    const missingChartSymbols = useMemo(() => {
-        if (scannerView == null || "message" in scannerView) return [];
-        return setups
-            .filter((setup) => {
-                const base = scannerSymbolToBase(setup.symbol);
-                const footprintPair = footprintPairs[base] ?? null;
-                const managedChart = chartsBySymbol[setup.symbol] ?? null;
-                const footprintReady =
-                    hasOrderflowData(footprintPair) &&
-                    (hasFootprintChartCandles(footprintPair) || hasScannerChartCandles(managedChart));
-                const usesManagedChart =
-                    !isFootprintWatchSymbol(base, footprintWatchlist)
-                    || !hasOrderflowData(footprintPair)
-                    || !footprintReady;
-                return usesManagedChart && managedChart == null;
-            })
-            .map((setup) => setup.symbol);
-    }, [chartsBySymbol, footprintPairs, footprintWatchlist, scannerView, setups]);
-
-    const missingChartKey = missingChartSymbols.slice().sort().join(",");
-
-    const batchId =
-        scannerView != null && !("message" in scannerView) ? scannerView.batch?.id : null;
-
-    useEffect(() => {
-        if (loading || !polling || !chartSymbolsKey) return;
-
-        let cancelled = false;
-
-        const runRefresh = async () => {
-            if (cancelled || document.visibilityState !== "visible") return;
-
-            const symbols = chartSymbolsRef.current;
-            const bases = footprintBasesRef.current;
-
-            try {
-                const [charts, footprint] = await Promise.all([
-                    patchScannerCharts(symbols, defaultChartTimeframe),
-                    bases.length > 0
-                        ? fetchFootprintView(bases, {
-                              profile,
-                              timeframe: defaultFootprintTimeframe,
-                              bustCache: true,
-                          })
-                        : Promise.resolve(null),
-                ]);
-
-                const footprintChartPatches =
-                    defaultFootprintTimeframe === defaultChartTimeframe
-                        ? charts
-                        : bases.length > 0
-                          ? await patchScannerCharts(
-                                bases
-                                    .map((base) => baseToSymbolRef.current.get(base))
-                                    .filter((symbol): symbol is string => Boolean(symbol)),
-                                defaultFootprintTimeframe,
-                            )
-                          : charts;
-
-                if (cancelled) return;
-
-                const liveMarks: Record<string, number> = {};
-                setPrefetchedCharts((prev) => {
-                    const next = { ...prev };
-                    for (const [symbol, chart] of Object.entries(charts)) {
-                        if (!chart) continue;
-                        const baseline =
-                            next[symbol] ?? viewChartsRef.current[symbol] ?? null;
-                        const merged = applyChartLivePatch(baseline, chart);
-                        next[symbol] = merged;
-                        const mark = extractChartLiveMark(merged);
-                        if (mark != null) liveMarks[symbol] = mark;
-                    }
-                    return next;
-                });
-
-                if (Object.keys(liveMarks).length > 0) {
-                    setLiveLastBySymbol((prev) => ({ ...prev, ...liveMarks }));
-                }
-
-                if (bases.length > 0) {
-                    setLiveFootprintPairs((prev) => {
-                        let next = { ...prev };
-                        if (footprint?.pairs) {
-                            next = { ...next, ...footprint.pairs };
-                        }
-                        for (const base of bases) {
-                            const symbol = baseToSymbolRef.current.get(base);
-                            if (!symbol) continue;
-                            const patch = footprintChartPatches[symbol];
-                            if (!patch?.candles?.length) continue;
-                            const existing =
-                                next[base] ?? footprintPairsFromViewRef.current[base];
-                            if (!existing) continue;
-                            const mergedChart = applyChartLivePatch(
-                                existing.chart
-                                    ? {
-                                          symbol: existing.chart.symbol,
-                                          timeframe: existing.chart.timeframe,
-                                          last: existing.chart.last,
-                                          candles: existing.chart.candles,
-                                      }
-                                    : null,
-                                patch,
-                            );
-                            if (!mergedChart?.candles?.length) continue;
-                            next[base] = {
-                                ...existing,
-                                chart: {
-                                    symbol: mergedChart.symbol,
-                                    timeframe: mergedChart.timeframe,
-                                    last: mergedChart.last,
-                                    candles: mergedChart.candles,
-                                },
-                            };
-                        }
-                        return next;
-                    });
-                } else if (footprint?.pairs) {
-                    setLiveFootprintPairs((prev) => ({ ...prev, ...footprint.pairs }));
-                }
-            } catch {
-                console.warn("[scanner live refresh] failed", { profile });
-            }
-        };
-
-        void runRefresh();
-        const id = window.setInterval(() => void runRefresh(), SCANNER_CHART_LIVE_PATCH_MS);
-        return () => {
-            cancelled = true;
-            window.clearInterval(id);
-        };
-    }, [
-        chartSymbolsKey,
-        defaultChartTimeframe,
-        footprintBasesKey,
-        footprintWatchlistKey,
-        defaultFootprintTimeframe,
-        loading,
-        polling,
-        profile,
-        refreshKey,
-    ]);
-
-    useEffect(() => {
-        setPrefetchedCharts({});
-        setLiveFootprintPairs({});
-        setLiveLastBySymbol({});
-    }, [batchId, profile]);
-
-    useEffect(() => {
-        if (scannerView == null || "message" in scannerView) return;
-        const marks: Record<string, number> = {};
-        for (const [symbol, chart] of Object.entries(scannerView.charts.by_symbol)) {
-            const mark = extractChartLiveMark(chart);
-            if (mark != null) marks[symbol] = mark;
-        }
-        setLiveLastBySymbol((prev) => ({ ...marks, ...prev }));
-    }, [batchId, scannerView]);
-
-    useEffect(() => {
-        if (loading || !missingChartKey) {
-            setChartsLoading(false);
-            return;
-        }
-
-        let cancelled = false;
-        setChartsLoading(true);
-        const symbols = missingChartKey.split(",").filter(Boolean);
-
-        void prefetchScannerCharts(symbols, defaultChartTimeframe)
-            .then((charts) => {
-                if (cancelled) return;
-                const liveMarks: Record<string, number> = {};
-                setPrefetchedCharts((prev) => {
-                    const next = { ...prev };
-                    for (const [symbol, chart] of Object.entries(charts)) {
-                        if (!chart) continue;
-                        next[symbol] = chart;
-                        const mark = extractChartLiveMark(chart);
-                        if (mark != null) liveMarks[symbol] = mark;
-                    }
-                    return { ...prev, ...next };
-                });
-                if (Object.keys(liveMarks).length > 0) {
-                    setLiveLastBySymbol((prev) => ({ ...prev, ...liveMarks }));
-                }
-            })
-            .catch(() => {
-                console.warn("[scanner charts] batch prefetch failed", { profile, symbols });
-            })
-            .finally(() => {
-                if (!cancelled) setChartsLoading(false);
-            });
-
-        return () => {
-            cancelled = true;
-        };
-    }, [defaultChartTimeframe, loading, missingChartKey, profile]);
 
     const wsConnected = isFootprintCollectorOnline(footprintHealth, footprintPairs);
 
@@ -716,24 +480,57 @@ const ScannerResults = ({
         <Stack gap="3" align="stretch">
             {batchMetaLine ? (
                 <Stack gap="2">
-                    <Flex gap="2" flexWrap="wrap" align="center">
-                        <Text fontSize="xs" color="fg.muted" fontFamily="mono">
+                    <Flex
+                        w="100%"
+                        align="center"
+                        justify="space-between"
+                        gap="3"
+                        flexWrap={{ base: "wrap", sm: "nowrap" }}
+                    >
+                        <Text
+                            fontSize="xs"
+                            color="fg.muted"
+                            fontFamily="mono"
+                            flex="1"
+                            minW="0"
+                        >
                             batch #{batchMetaLine.id} · {batchMetaLine.mode} · {batchMetaLine.match_count}{" "}
                             setups · {formatUtcIsoLocal(batchMetaLine.created_at)}
                             {batchMetaLine.ai_generated_at
                                 ? ` · ai ${formatUtcIsoLocal(batchMetaLine.ai_generated_at)}`
                                 : ""}
                         </Text>
-                        {hasFootprintPairs ? (
-                            <Badge
-                                colorPalette={wsConnected ? "green" : "gray"}
-                                variant="subtle"
-                                fontFamily="mono"
-                                fontSize="2xs"
-                            >
-                                footprint collector {wsConnected ? "online" : "offline"}
-                            </Badge>
-                        ) : null}
+                        <Flex align="center" gap="2" flexShrink={0}>
+                            {hasFootprintPairs ? (
+                                <Badge
+                                    colorPalette={wsConnected ? "green" : "gray"}
+                                    variant="subtle"
+                                    fontFamily="mono"
+                                    fontSize="xs"
+                                    px="2"
+                                    py="1"
+                                >
+                                    footprint {wsConnected ? "online" : "offline"}
+                                </Badge>
+                            ) : null}
+                            {onRefresh ? (
+                                <IconButton
+                                    aria-label={`Refresh ${profileLabel} scanner charts`}
+                                    title={`Refresh ${profileLabel} charts`}
+                                    size="sm"
+                                    variant="outline"
+                                    colorPalette={palette}
+                                    borderColor={tokens.panelBorder}
+                                    color={tokens.panelBody}
+                                    loading={refreshing}
+                                    minW="33px"
+                                    minH="33px"
+                                    onClick={onRefresh}
+                                >
+                                    <RefreshIcon size={20} />
+                                </IconButton>
+                            ) : null}
+                        </Flex>
                     </Flex>
                     {batchMetaLine.ai_summary?.btc_read ? (
                         <BtcReadCard text={batchMetaLine.ai_summary.btc_read} tokens={tokens} />
@@ -745,10 +542,7 @@ const ScannerResults = ({
                     const base = scannerSymbolToBase(setup.symbol);
                     const footprintPair = footprintPairs[base] ?? null;
                     const managedChart = chartsBySymbol[setup.symbol] ?? null;
-                    const liveSpotPrice =
-                        liveLastBySymbol[setup.symbol]
-                        ?? chartSpotPrice(managedChart, setup.price);
-                    const revisionKey = chartRevisionKey(managedChart);
+                    const revisionKey = `${chartsRefreshKey}|${chartRevisionKey(managedChart)}`;
 
                     return (
                         <SetupCard
@@ -760,9 +554,8 @@ const ScannerResults = ({
                             defaultFootprintTimeframe={defaultFootprintTimeframe}
                             footprintPair={footprintPair}
                             managedChart={managedChart}
-                            managedChartLoading={chartsLoading && managedChart == null}
+                            chartsLoading={refreshing}
                             footprintWatchlist={footprintWatchlist}
-                            liveSpotPrice={liveSpotPrice}
                             chartRevisionKey={revisionKey}
                         />
                     );

@@ -49,8 +49,7 @@ type FootprintPairChartProps = {
   bands?: ScannerBandRow[];
   embedded?: boolean;
   symbol?: string;
-  /** Live mark from scanner; drawn as dashed line when it differs from last bar close. */
-  livePrice?: number;
+  chartRevisionKey?: string;
 };
 
 function toneColor(tone: "buy" | "sell" | "neutral", tokens: ThemeTokens) {
@@ -140,7 +139,7 @@ export default function FootprintPairChart({
   bands = [],
   embedded = false,
   symbol,
-  livePrice,
+  chartRevisionKey,
 }: FootprintPairChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const clipUid = useId().replace(/:/g, "");
@@ -152,8 +151,8 @@ export default function FootprintPairChart({
 
   const viewKey = useMemo(
     () =>
-      `${timeframe}:${bars.length}:${bars.at(-1)?.time ?? 0}:${bars.at(-1)?.close ?? 0}:${livePrice ?? 0}`,
-    [timeframe, bars, livePrice],
+      `${chartRevisionKey ?? ""}:${timeframe}:${bars.length}:${bars.at(-1)?.time ?? 0}:${bars.at(-1)?.close ?? 0}`,
+    [chartRevisionKey, timeframe, bars],
   );
   const [prevViewKey, setPrevViewKey] = useState(viewKey);
   if (viewKey !== prevViewKey) {
@@ -180,22 +179,8 @@ export default function FootprintPairChart({
     if (rawVisible.length < 2 || width <= 0) return null;
 
     const lastClose = rawVisible[rawVisible.length - 1]?.close ?? 0;
-    const spotPrice =
-      livePrice != null && Number.isFinite(livePrice) && livePrice > 0
-        ? livePrice
-        : lastClose;
-
-    const allVisible = rawVisible.map((bar, index) => {
-      if (index !== rawVisible.length - 1) return bar;
-      const high = bar.high ?? spotPrice;
-      const low = bar.low ?? spotPrice;
-      return {
-        ...bar,
-        close: spotPrice,
-        high: Math.max(high, spotPrice),
-        low: Math.min(low, spotPrice),
-      };
-    });
+    const spotPrice = lastClose;
+    const allVisible = rawVisible;
 
     const zoomScale = zoomScaleFromStep(zoomStep);
     const visible = visibleBarsForZoom(allVisible, zoomScale);
@@ -345,7 +330,7 @@ export default function FootprintPairChart({
         liq: `${clipUid}-liq`,
       },
     };
-  }, [bands, bars, clipUid, livePrice, width, zoomStep]);
+  }, [bands, bars, chartRevisionKey, clipUid, width, zoomStep]);
 
   const hoverBar = hoverIndex != null && plot ? plot.visible[hoverIndex] : null;
   const tooltipPlacement =

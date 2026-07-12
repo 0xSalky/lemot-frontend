@@ -14,9 +14,6 @@ import type {
 } from "@/types/scannerTypes";
 import { SCANNER_CHART_TIMEFRAMES } from "@/types/scannerTypes";
 
-/** Chart + footprint live refresh interval (patch charts + orderflow). */
-export const SCANNER_CHART_LIVE_PATCH_MS = 5 * 60 * 1000;
-
 const CHART_CLIENT_CACHE_TTL_MS = 300_000;
 
 /** CCXT-style unified symbol, e.g. `BTC/USDT:USDT` → base `BTC`. */
@@ -141,9 +138,13 @@ export async function fetchScannerView(
     if (pending) return pending;
   }
 
+  if (options?.fresh) {
+    clearScannerChartPayloadCache();
+  }
+
   const params = new URLSearchParams({ profile });
-  if (options?.fresh) params.set("fresh", "1");
-  if (options?.reload) params.set("reload", "1");
+  if (options?.fresh) params.set("fresh", "true");
+  if (options?.reload) params.set("reload", "true");
 
   const promise = (async (): Promise<ScannerViewFetchResult> => {
     const res = await apiFetch(`/api/scanner/view?${params.toString()}`, {
@@ -241,27 +242,15 @@ const chartPayloadCache = new Map<
   { expiresAt: number; promise: Promise<ScannerChartPayload | null> }
 >();
 
-const chartsBatchInflight = new Map<
-  string,
-  Promise<Record<string, ScannerChartPayload | null>>
->();
-
-function chartsBatchInflightKey(
-  symbols: readonly string[],
-  timeframe: ScannerChartTimeframe,
-  mode: "full-cached" | "full-fresh" | "patch",
-): string {
-  return `${mode}|${timeframe}|${[...symbols].sort().join(",")}`;
+export function clearScannerChartPayloadCache(): void {
+  chartPayloadCache.clear();
 }
 
-/** Prefer fresh chart mark/close over stale scanner-batch setup price. */
+/** Spot price from chart payload or setup fallback. */
 export function chartSpotPrice(
   chart: ScannerChartPayload | null | undefined,
   fallbackPrice?: number,
-  liveMark?: number,
 ): number {
-  if (liveMark != null && Number.isFinite(liveMark) && liveMark > 0)
-    return liveMark;
   const mark = chart?.last;
   if (mark != null && Number.isFinite(mark) && mark > 0) return mark;
   const close = chart?.candles?.at(-1)?.close;
@@ -276,51 +265,7 @@ export function chartSpotPrice(
   return 0;
 }
 
-export function extractChartLiveMark(
-  chart: ScannerChartPayload | null | undefined,
-): number | undefined {
-  const mark = chart?.last;
-  if (mark != null && Number.isFinite(mark) && mark > 0) return mark;
-  const close = chart?.candles?.at(-1)?.close;
-  if (close != null && Number.isFinite(close) && close > 0) return close;
-  return undefined;
-}
-
-export function cloneChartPayload(
-  chart: ScannerChartPayload,
-): ScannerChartPayload {
-  return {
-    ...chart,
-    candles: chart.candles.map((c) => ({ ...c })),
-  };
-}
-
-function mergeCandleTail(
-  candles: ScannerChartPayload["candles"],
-  tail: ScannerChartPayload["candles"],
-): ScannerChartPayload["candles"] {
-  if (!tail.length) return candles;
-  const firstTailTime = tail[0].time;
-  const kept = candles.filter((c) => c.time < firstTailTime);
-  const merged = [...kept, ...tail.map((c) => ({ ...c }))];
-  const maxLen = Math.max(candles.length, merged.length);
-  if (merged.length > maxLen) return merged.slice(-maxLen);
-  return merged;
-}
-
-function dedupeCandlesByTime(
-  candles: ScannerChartPayload["candles"],
-): ScannerChartPayload["candles"] {
-  const byTime = new Map<number, ScannerChartPayload["candles"][number]>();
-  for (const candle of candles) {
-    byTime.set(candle.time, candle);
-  }
-  return [...byTime.entries()]
-    .sort((a, b) => a[0] - b[0])
-    .map(([, candle]) => candle);
-}
-
-/** Stable key so chart children re-render when last candle / mark changes. */
+/** Stable key so chart children re-render when candle data changes. */
 export function chartRevisionKey(
   chart: ScannerChartPayload | null | undefined,
 ): string {
@@ -329,100 +274,13 @@ export function chartRevisionKey(
   return `${chart.candles.length}|${last.time}|${last.close}|${chart.last ?? ""}`;
 }
 
-export function applyChartLivePatch(
-  existing: ScannerChartPayload | null | undefined,
-  patch: ScannerChartPayload,
-): ScannerChartPayload {
-  if (!existing?.candles?.length) return cloneChartPayload(patch);
-
-  const patchCandles = patch.candles ?? [];
-  let candles: ScannerChartPayload["candles"];
-
-  if (patchCandles.length === 0) {
-    candles = [...existing.candles];
-  } else if (patchCandles.length >= existing.candles.length) {
-    candles = patchCandles.map((c) => ({ ...c }));
-  } else {
-    const tail =
-      patchCandles.length <= 5 ? patchCandles : patchCandles.slice(-3);
-    candles = mergeCandleTail(existing.candles, tail);
-    const byTime = new Map(patchCandles.map((c) => [c.time, c]));
-    candles = candles.map((c) => {
-      const hit = byTime.get(c.time);
-      return hit ? { ...hit } : c;
-    });
-  }
-
-  const last =
-    patch.last ??
-    extractChartLiveMark({ ...patch, candles: patchCandles }) ??
-    existing.last;
-
-  if (last != null && candles.length > 0) {
-    const prev = candles[candles.length - 1];
-    const forming = { ...prev };
-    forming.close = last;
-    forming.high = Math.max(forming.high, last);
-    forming.low = Math.min(forming.low, last);
-    candles = [...candles.slice(0, -1), forming];
-  }
-
-  candles = dedupeCandlesByTime(candles);
-
-  return cloneChartPayload({
-    ...existing,
-    symbol: patch.symbol ?? existing.symbol,
-    timeframe: patch.timeframe ?? existing.timeframe,
-    last,
-    candles,
-  });
-}
-
 export async function fetchScannerChart(
   symbol: string,
   timeframe: ScannerChartTimeframe = "1h",
-  options?: { bustCache?: boolean; patch?: boolean },
+  options?: { bustCache?: boolean },
 ): Promise<ScannerChartPayload | null> {
   const key = `${symbol.trim()}|${timeframe}`;
   if (!symbol.trim()) return null;
-
-  if (options?.patch) {
-    const params = new URLSearchParams({
-      symbol: symbol.trim(),
-      timeframe,
-      patch: "1",
-    });
-    const res = await apiFetch(`/api/scanner/chart?${params.toString()}`, {
-      cache: "no-store",
-    });
-    const raw = await res.text();
-    let data: unknown;
-    try {
-      data = raw ? JSON.parse(raw) : {};
-    } catch {
-      return null;
-    }
-    if (!res.ok) return null;
-    const payload = data as Partial<ScannerChartPayload>;
-    if (!Array.isArray(payload.candles) || payload.candles.length === 0) {
-      return null;
-    }
-    const normalized = {
-      symbol: payload.symbol ?? symbol.trim(),
-      timeframe: payload.timeframe ?? timeframe,
-      last: typeof payload.last === "number" ? payload.last : undefined,
-      candles: payload.candles,
-    };
-    const cached = chartPayloadCache.get(key);
-    const merged = cached
-      ? applyChartLivePatch(await cached.promise.catch(() => null), normalized)
-      : normalized;
-    chartPayloadCache.set(key, {
-      expiresAt: Date.now() + CHART_CLIENT_CACHE_TTL_MS,
-      promise: Promise.resolve(merged),
-    });
-    return merged;
-  }
 
   if (options?.bustCache) {
     chartPayloadCache.delete(key);
@@ -439,7 +297,7 @@ export async function fetchScannerChart(
       timeframe,
     });
     if (options?.bustCache) {
-      params.set("fresh", "1");
+      params.set("fresh", "true");
     }
     const res = await apiFetch(`/api/scanner/chart?${params.toString()}`, {
       cache: "no-store",
@@ -483,194 +341,6 @@ export async function fetchScannerChart(
   });
 
   return promise;
-}
-
-/** One HTTP round-trip for all setup cards — backend fetches Bybit in parallel. */
-export async function prefetchScannerCharts(
-  symbols: readonly string[],
-  timeframe: ScannerChartTimeframe,
-  options?: { bustCache?: boolean },
-): Promise<Record<string, ScannerChartPayload | null>> {
-  const unique = [...new Set(symbols.map((s) => s.trim()).filter(Boolean))];
-  if (unique.length === 0) return {};
-
-  if (unique.length === 1) {
-    const symbol = unique[0];
-    const chart = await fetchScannerChart(symbol, timeframe, options);
-    return { [symbol]: chart };
-  }
-
-  const inflightKey = chartsBatchInflightKey(
-    unique,
-    timeframe,
-    options?.bustCache ? "full-fresh" : "full-cached",
-  );
-  const pending = chartsBatchInflight.get(inflightKey);
-  if (pending) return pending;
-
-  const promise = (async (): Promise<
-    Record<string, ScannerChartPayload | null>
-  > => {
-    if (options?.bustCache) {
-      for (const symbol of unique) {
-        chartPayloadCache.delete(`${symbol}|${timeframe}`);
-      }
-    } else {
-      const allCached = unique.every((symbol) => {
-        const cached = chartPayloadCache.get(`${symbol}|${timeframe}`);
-        return cached && Date.now() < cached.expiresAt;
-      });
-      if (allCached) {
-        const entries = await Promise.all(
-          unique.map(
-            async (symbol) =>
-              [symbol, await fetchScannerChart(symbol, timeframe)] as const,
-          ),
-        );
-        return Object.fromEntries(entries);
-      }
-    }
-
-    const params = new URLSearchParams({
-      symbols: unique.join(","),
-      timeframe,
-    });
-    if (options?.bustCache) {
-      params.set("fresh", "1");
-    }
-    const res = await apiFetch(`/api/scanner/charts?${params.toString()}`, {
-      cache: "no-store",
-    });
-    const raw = await res.text();
-    let data: unknown;
-    try {
-      data = raw ? JSON.parse(raw) : {};
-    } catch {
-      console.warn("[scanner charts] non-JSON response", {
-        symbols: unique,
-        timeframe,
-        raw,
-      });
-      return Object.fromEntries(unique.map((symbol) => [symbol, null]));
-    }
-    if (!res.ok) {
-      console.warn("[scanner charts] request failed", {
-        symbols: unique,
-        timeframe,
-        status: res.status,
-        data,
-      });
-      return Object.fromEntries(unique.map((symbol) => [symbol, null]));
-    }
-
-    const record = data as {
-      charts?: Record<string, ScannerChartPayload | null>;
-    };
-    const charts = record.charts ?? {};
-    const out: Record<string, ScannerChartPayload | null> = {};
-    for (const symbol of unique) {
-      const payload = charts[symbol] ?? null;
-      out[symbol] = payload;
-      if (
-        payload &&
-        Array.isArray(payload.candles) &&
-        payload.candles.length > 0
-      ) {
-        chartPayloadCache.set(`${symbol}|${timeframe}`, {
-          expiresAt: Date.now() + CHART_CLIENT_CACHE_TTL_MS,
-          promise: Promise.resolve(payload),
-        });
-      }
-    }
-    return out;
-  })();
-
-  chartsBatchInflight.set(inflightKey, promise);
-  try {
-    return await promise;
-  } finally {
-    if (chartsBatchInflight.get(inflightKey) === promise) {
-      chartsBatchInflight.delete(inflightKey);
-    }
-  }
-}
-
-/** Ticker + last-bar patch only — cheap between full OHLCV reloads. */
-export async function patchScannerCharts(
-  symbols: readonly string[],
-  timeframe: ScannerChartTimeframe,
-): Promise<Record<string, ScannerChartPayload | null>> {
-  const unique = [...new Set(symbols.map((s) => s.trim()).filter(Boolean))];
-  if (unique.length === 0) return {};
-
-  const inflightKey = chartsBatchInflightKey(unique, timeframe, "patch");
-  const pending = chartsBatchInflight.get(inflightKey);
-  if (pending) return pending;
-
-  const promise = (async (): Promise<
-    Record<string, ScannerChartPayload | null>
-  > => {
-    if (unique.length === 1) {
-      const symbol = unique[0];
-      const chart = await fetchScannerChart(symbol, timeframe, { patch: true });
-      return chart ? { [symbol]: chart } : { [symbol]: null };
-    }
-
-    const params = new URLSearchParams({
-      symbols: unique.join(","),
-      timeframe,
-      patch: "1",
-    });
-    const res = await apiFetch(`/api/scanner/charts?${params.toString()}`, {
-      cache: "no-store",
-    });
-    const raw = await res.text();
-    let data: unknown;
-    try {
-      data = raw ? JSON.parse(raw) : {};
-    } catch {
-      return Object.fromEntries(unique.map((symbol) => [symbol, null]));
-    }
-    if (!res.ok) {
-      return Object.fromEntries(unique.map((symbol) => [symbol, null]));
-    }
-
-    const record = data as {
-      charts?: Record<string, ScannerChartPayload | null>;
-    };
-    const charts = record.charts ?? {};
-    const out: Record<string, ScannerChartPayload | null> = {};
-    for (const symbol of unique) {
-      const payload = charts[symbol] ?? null;
-      out[symbol] = payload;
-      if (payload?.candles?.length) {
-        const key = `${symbol}|${timeframe}`;
-        const existing = chartPayloadCache.get(key);
-        const merged = existing
-          ? applyChartLivePatch(
-              await existing.promise.catch(() => null),
-              payload,
-            )
-          : payload;
-        const cloned = cloneChartPayload(merged);
-        chartPayloadCache.set(key, {
-          expiresAt: Date.now() + CHART_CLIENT_CACHE_TTL_MS,
-          promise: Promise.resolve(cloned),
-        });
-        out[symbol] = cloned;
-      }
-    }
-    return out;
-  })();
-
-  chartsBatchInflight.set(inflightKey, promise);
-  try {
-    return await promise;
-  } finally {
-    if (chartsBatchInflight.get(inflightKey) === promise) {
-      chartsBatchInflight.delete(inflightKey);
-    }
-  }
 }
 
 export type ScannerRunResult =
