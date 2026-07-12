@@ -12,10 +12,11 @@ import {
   hasOrderflowData,
   hasRealOhlc,
 } from "@/services/footprintUtils";
-import { scannerSymbolToBase, chartSpotPrice, chartRevisionKey, type ScannerProfile } from "@/services/scannerUtils";
+import { chartSpotPrice, chartRevisionKey, type ScannerProfile } from "@/services/scannerUtils";
 import {
   FOOTPRINT_PROFILE_DEFAULTS,
   type FootprintPairView,
+  type FootprintTimeframe,
 } from "@/types/footprintTypes";
 import type { ScannerBandRow, ScannerChartPayload, ScannerChartTimeframe } from "@/types/scannerTypes";
 import { Box, Text } from "@chakra-ui/react";
@@ -30,6 +31,8 @@ type DaySetupChartProps = {
   footprintPair?: FootprintPairView | null;
   footprintLoading?: boolean;
   defaultChartTimeframe?: ScannerChartTimeframe;
+  /** Footprint rollup timeframe (usually matches setup chart; may differ from chart_timeframe in config). */
+  defaultFootprintTimeframe?: FootprintTimeframe;
   /** When true, try footprint/orderflow chart first for tracked symbols (day + swing). */
   footprintEnabled?: boolean;
   managedChart?: ScannerChartPayload | null;
@@ -92,16 +95,35 @@ export default function DaySetupChart({
   footprintPair,
   footprintLoading = false,
   defaultChartTimeframe = "30m",
+  defaultFootprintTimeframe,
   footprintEnabled = true,
   managedChart,
   managedChartLoading,
   liveSpotPrice,
   chartRevisionKey: chartRevisionKeyProp,
 }: DaySetupChartProps) {
-  const footprintTimeframe = FOOTPRINT_PROFILE_DEFAULTS[profile].defaultTimeframe;
+  const footprintTimeframe =
+    defaultFootprintTimeframe ??
+    (footprintPair?.chart?.timeframe as FootprintTimeframe | undefined) ??
+    FOOTPRINT_PROFILE_DEFAULTS[profile].defaultTimeframe;
 
   const liveChart = managedChart ?? footprintPair?.chart ?? null;
-  const exchangeCandles = managedChart?.candles ?? footprintPair?.chart?.candles ?? [];
+  const exchangeCandles = useMemo(() => {
+    const managedTf = managedChart?.timeframe ?? defaultChartTimeframe;
+    const managedCandles = managedChart?.candles;
+    if (managedCandles?.length && managedTf === footprintTimeframe) {
+      return managedCandles;
+    }
+    const footprintCandles = footprintPair?.chart?.candles;
+    if (footprintCandles?.length) return footprintCandles;
+    return [];
+  }, [
+    defaultChartTimeframe,
+    footprintPair?.chart?.candles,
+    footprintTimeframe,
+    managedChart?.candles,
+    managedChart?.timeframe,
+  ]);
   const spotPrice = chartSpotPrice(liveChart, price, liveSpotPrice);
   const resolvedChartRevisionKey =
     chartRevisionKeyProp ?? chartRevisionKey(managedChart ?? liveChart);

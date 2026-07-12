@@ -162,10 +162,17 @@ export async function fetchScannerView(
       charts:
         payload.charts && typeof payload.charts === "object"
           ? {
-              timeframe: String(payload.charts.timeframe ?? SCANNER_PROFILE_CHART_TIMEFRAME[profile]),
+              timeframe: String(
+                payload.charts.timeframe ??
+                  SCANNER_PROFILE_CHART_TIMEFRAME[profile],
+              ),
               by_symbol:
-                payload.charts.by_symbol && typeof payload.charts.by_symbol === "object"
-                  ? (payload.charts.by_symbol as Record<string, ScannerChartPayload | null>)
+                payload.charts.by_symbol &&
+                typeof payload.charts.by_symbol === "object"
+                  ? (payload.charts.by_symbol as Record<
+                      string,
+                      ScannerChartPayload | null
+                    >)
                   : {},
             }
           : {
@@ -175,13 +182,18 @@ export async function fetchScannerView(
       footprint:
         payload.footprint && typeof payload.footprint === "object"
           ? {
-              timeframe: String(payload.footprint.timeframe ?? SCANNER_PROFILE_CHART_TIMEFRAME[profile]),
+              timeframe: String(
+                payload.footprint.timeframe ??
+                  SCANNER_PROFILE_CHART_TIMEFRAME[profile],
+              ),
               health:
-                payload.footprint.health && typeof payload.footprint.health === "object"
+                payload.footprint.health &&
+                typeof payload.footprint.health === "object"
                   ? payload.footprint.health
                   : null,
               pairs_by_base:
-                payload.footprint.pairs_by_base && typeof payload.footprint.pairs_by_base === "object"
+                payload.footprint.pairs_by_base &&
+                typeof payload.footprint.pairs_by_base === "object"
                   ? payload.footprint.pairs_by_base
                   : {},
             }
@@ -237,12 +249,17 @@ export function chartSpotPrice(
   fallbackPrice?: number,
   liveMark?: number,
 ): number {
-  if (liveMark != null && Number.isFinite(liveMark) && liveMark > 0) return liveMark;
+  if (liveMark != null && Number.isFinite(liveMark) && liveMark > 0)
+    return liveMark;
   const mark = chart?.last;
   if (mark != null && Number.isFinite(mark) && mark > 0) return mark;
   const close = chart?.candles?.at(-1)?.close;
   if (close != null && Number.isFinite(close) && close > 0) return close;
-  if (fallbackPrice != null && Number.isFinite(fallbackPrice) && fallbackPrice > 0) {
+  if (
+    fallbackPrice != null &&
+    Number.isFinite(fallbackPrice) &&
+    fallbackPrice > 0
+  ) {
     return fallbackPrice;
   }
   return 0;
@@ -258,7 +275,9 @@ export function extractChartLiveMark(
   return undefined;
 }
 
-export function cloneChartPayload(chart: ScannerChartPayload): ScannerChartPayload {
+export function cloneChartPayload(
+  chart: ScannerChartPayload,
+): ScannerChartPayload {
   return {
     ...chart,
     candles: chart.candles.map((c) => ({ ...c })),
@@ -301,7 +320,8 @@ export function applyChartLivePatch(
   } else if (patchCandles.length >= existing.candles.length) {
     candles = patchCandles.map((c) => ({ ...c }));
   } else {
-    const tail = patchCandles.length <= 5 ? patchCandles : patchCandles.slice(-3);
+    const tail =
+      patchCandles.length <= 5 ? patchCandles : patchCandles.slice(-3);
     candles = mergeCandleTail(existing.candles, tail);
     const byTime = new Map(patchCandles.map((c) => [c.time, c]));
     candles = candles.map((c) => {
@@ -403,11 +423,20 @@ export async function fetchScannerChart(
     try {
       data = raw ? JSON.parse(raw) : {};
     } catch {
-      console.warn("[scanner chart] non-JSON response", { symbol, timeframe, raw });
+      console.warn("[scanner chart] non-JSON response", {
+        symbol,
+        timeframe,
+        raw,
+      });
       return null;
     }
     if (!res.ok) {
-      console.warn("[scanner chart] request failed", { symbol, timeframe, status: res.status, data });
+      console.warn("[scanner chart] request failed", {
+        symbol,
+        timeframe,
+        status: res.status,
+        data,
+      });
       return null;
     }
     const payload = data as Partial<ScannerChartPayload>;
@@ -453,7 +482,9 @@ export async function prefetchScannerCharts(
   const pending = chartsBatchInflight.get(inflightKey);
   if (pending) return pending;
 
-  const promise = (async (): Promise<Record<string, ScannerChartPayload | null>> => {
+  const promise = (async (): Promise<
+    Record<string, ScannerChartPayload | null>
+  > => {
     if (options?.bustCache) {
       for (const symbol of unique) {
         chartPayloadCache.delete(`${symbol}|${timeframe}`);
@@ -550,7 +581,9 @@ export async function patchScannerCharts(
   const pending = chartsBatchInflight.get(inflightKey);
   if (pending) return pending;
 
-  const promise = (async (): Promise<Record<string, ScannerChartPayload | null>> => {
+  const promise = (async (): Promise<
+    Record<string, ScannerChartPayload | null>
+  > => {
     if (unique.length === 1) {
       const symbol = unique[0];
       const chart = await fetchScannerChart(symbol, timeframe, { patch: true });
@@ -576,7 +609,9 @@ export async function patchScannerCharts(
       return Object.fromEntries(unique.map((symbol) => [symbol, null]));
     }
 
-    const record = data as { charts?: Record<string, ScannerChartPayload | null> };
+    const record = data as {
+      charts?: Record<string, ScannerChartPayload | null>;
+    };
     const charts = record.charts ?? {};
     const out: Record<string, ScannerChartPayload | null> = {};
     for (const symbol of unique) {
@@ -586,7 +621,10 @@ export async function patchScannerCharts(
         const key = `${symbol}|${timeframe}`;
         const existing = chartPayloadCache.get(key);
         const merged = existing
-          ? applyChartLivePatch(await existing.promise.catch(() => null), payload)
+          ? applyChartLivePatch(
+              await existing.promise.catch(() => null),
+              payload,
+            )
           : payload;
         const cloned = cloneChartPayload(merged);
         chartPayloadCache.set(key, {

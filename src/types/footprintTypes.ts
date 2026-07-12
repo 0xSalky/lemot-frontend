@@ -2,7 +2,14 @@ import { SCANNER_PROFILE_CHART_TIMEFRAME } from "@/services/scannerUtils";
 
 export type FootprintSymbol = string;
 
-export const FOOTPRINT_TIMEFRAMES = ["5m", "15m", "30m", "1h", "2h", "4h"] as const;
+export const FOOTPRINT_TIMEFRAMES = [
+  "5m",
+  "15m",
+  "30m",
+  "1h",
+  "2h",
+  "4h",
+] as const;
 export type FootprintTimeframe = (typeof FOOTPRINT_TIMEFRAMES)[number];
 
 export type FootprintProfile = "b" | "a";
@@ -151,7 +158,13 @@ export interface FootprintPairView {
     symbol: string;
     timeframe: string;
     last?: number;
-    candles: { time: number; open: number; high: number; low: number; close: number }[];
+    candles: {
+      time: number;
+      open: number;
+      high: number;
+      low: number;
+      close: number;
+    }[];
   } | null;
   merged: FootprintMergedBar[];
   summary: FootprintSummary;
@@ -189,7 +202,10 @@ export const FOOTPRINT_PROFILE_DEFAULTS: Record<
   },
 };
 
-export const FOOTPRINT_SIGNAL_SEVERITY_ORDER: Record<FootprintSignalSeverity, number> = {
+export const FOOTPRINT_SIGNAL_SEVERITY_ORDER: Record<
+  FootprintSignalSeverity,
+  number
+> = {
   high: 0,
   medium: 1,
   low: 2,

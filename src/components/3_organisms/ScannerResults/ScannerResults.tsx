@@ -250,6 +250,7 @@ function SetupCard({
     setup,
     tokens,
     defaultChartTimeframe,
+    defaultFootprintTimeframe,
     profile,
     footprintPair,
     managedChart,
@@ -261,6 +262,7 @@ function SetupCard({
     setup: ScannerSetupRow;
     tokens: ThemeTokens;
     defaultChartTimeframe?: ScannerChartTimeframe;
+    defaultFootprintTimeframe?: FootprintTimeframe;
     profile: ScannerProfile;
     footprintPair?: FootprintPairView | null;
     managedChart?: ScannerChartPayload | null;
@@ -295,6 +297,7 @@ function SetupCard({
                 footprintPair={footprintPair}
                 footprintEnabled={isFootprintWatchSymbol(base, footprintWatchlist)}
                 defaultChartTimeframe={defaultChartTimeframe}
+                defaultFootprintTimeframe={defaultFootprintTimeframe}
                 managedChart={managedChart}
                 managedChartLoading={managedChartLoading}
                 liveSpotPrice={liveSpotPrice}
@@ -458,6 +461,17 @@ const ScannerResults = ({
         scannerView != null && !("message" in scannerView)
             ? scannerView.footprint.pairs_by_base
             : {};
+    const footprintPairsFromViewRef = useRef(footprintPairsFromView);
+    footprintPairsFromViewRef.current = footprintPairsFromView;
+    const baseToSymbol = useMemo(() => {
+        const map = new Map<string, string>();
+        for (const setup of setups) {
+            map.set(scannerSymbolToBase(setup.symbol), setup.symbol);
+        }
+        return map;
+    }, [setups]);
+    const baseToSymbolRef = useRef(baseToSymbol);
+    baseToSymbolRef.current = baseToSymbol;
     const footprintPairs = useMemo(
         () => ({ ...footprintPairsFromView, ...liveFootprintPairs }),
         [footprintPairsFromView, liveFootprintPairs],
@@ -510,6 +524,18 @@ const ScannerResults = ({
                         : Promise.resolve(null),
                 ]);
 
+                const footprintChartPatches =
+                    defaultFootprintTimeframe === defaultChartTimeframe
+                        ? charts
+                        : bases.length > 0
+                          ? await patchScannerCharts(
+                                bases
+                                    .map((base) => baseToSymbolRef.current.get(base))
+                                    .filter((symbol): symbol is string => Boolean(symbol)),
+                                defaultFootprintTimeframe,
+                            )
+                          : charts;
+
                 if (cancelled) return;
 
                 const liveMarks: Record<string, number> = {};
@@ -531,7 +557,45 @@ const ScannerResults = ({
                     setLiveLastBySymbol((prev) => ({ ...prev, ...liveMarks }));
                 }
 
-                if (footprint?.pairs) {
+                if (bases.length > 0) {
+                    setLiveFootprintPairs((prev) => {
+                        let next = { ...prev };
+                        if (footprint?.pairs) {
+                            next = { ...next, ...footprint.pairs };
+                        }
+                        for (const base of bases) {
+                            const symbol = baseToSymbolRef.current.get(base);
+                            if (!symbol) continue;
+                            const patch = footprintChartPatches[symbol];
+                            if (!patch?.candles?.length) continue;
+                            const existing =
+                                next[base] ?? footprintPairsFromViewRef.current[base];
+                            if (!existing) continue;
+                            const mergedChart = applyChartLivePatch(
+                                existing.chart
+                                    ? {
+                                          symbol: existing.chart.symbol,
+                                          timeframe: existing.chart.timeframe,
+                                          last: existing.chart.last,
+                                          candles: existing.chart.candles,
+                                      }
+                                    : null,
+                                patch,
+                            );
+                            if (!mergedChart?.candles?.length) continue;
+                            next[base] = {
+                                ...existing,
+                                chart: {
+                                    symbol: mergedChart.symbol,
+                                    timeframe: mergedChart.timeframe,
+                                    last: mergedChart.last,
+                                    candles: mergedChart.candles,
+                                },
+                            };
+                        }
+                        return next;
+                    });
+                } else if (footprint?.pairs) {
                     setLiveFootprintPairs((prev) => ({ ...prev, ...footprint.pairs }));
                 }
             } catch {
@@ -687,6 +751,7 @@ const ScannerResults = ({
                             tokens={tokens}
                             profile={profile}
                             defaultChartTimeframe={defaultChartTimeframe}
+                            defaultFootprintTimeframe={defaultFootprintTimeframe}
                             footprintPair={footprintPair}
                             managedChart={managedChart}
                             managedChartLoading={chartsLoading && managedChart == null}

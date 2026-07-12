@@ -278,6 +278,22 @@ export function appendExchangeTailToMerged(
 
   for (const candle of candles) {
     if (!hasRealOhlc(candle)) continue;
+
+    const existingIdx = out.findIndex(
+      (bar) => Math.abs(bar.time - candle.time) <= slackSec,
+    );
+    if (existingIdx >= 0) {
+      const bar = out[existingIdx];
+      out[existingIdx] = {
+        ...bar,
+        open: candle.open,
+        high: candle.high,
+        low: candle.low,
+        close: candle.close,
+      };
+      continue;
+    }
+
     if (candle.time <= lastMergedTime + slackSec) continue;
     const duplicate = out.some((bar) => Math.abs(bar.time - candle.time) <= slackSec);
     if (duplicate) continue;
