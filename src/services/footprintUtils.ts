@@ -198,30 +198,40 @@ export function hasRealOhlc(bar: {
   return Math.abs(high - low) > 1e-9 || Math.abs(open - close) > 1e-9;
 }
 
-function findCandleForTime(
-  ts: number,
-  candleByTime: Map<number, OhlcCandle>,
-  sortedTimes: number[],
-  slackSec: number,
-): OhlcCandle | null {
-  const direct = candleByTime.get(ts);
-  if (direct) return direct;
+function bucketSeconds(timeframe: string): number {
+  return TIMEFRAME_MATCH_SLACK_SEC[timeframe] ?? 1800;
+}
 
-  for (const offset of [60, -60, 120, -120, 300, -300, 900, -900]) {
-    const hit = candleByTime.get(ts + offset);
-    if (hit) return hit;
+function pickExchangeCandleForBar(
+  barTime: number,
+  sortedCandles: OhlcCandle[],
+  candleByTime: Map<number, OhlcCandle>,
+  usedTimes: Set<number>,
+  bucketSec: number,
+): OhlcCandle | null {
+  const exact = candleByTime.get(barTime);
+  if (exact && !usedTimes.has(exact.time)) {
+    usedTimes.add(exact.time);
+    return exact;
   }
 
-  let best: number | null = null;
-  let bestDist = slackSec + 1;
-  for (const candidate of sortedTimes) {
-    const dist = Math.abs(candidate - ts);
-    if (dist <= slackSec && dist < bestDist) {
-      best = candidate;
-      bestDist = dist;
+  for (const candle of sortedCandles) {
+    if (usedTimes.has(candle.time)) continue;
+    if (candle.time >= barTime && candle.time < barTime + bucketSec) {
+      usedTimes.add(candle.time);
+      return candle;
     }
   }
-  return best != null ? candleByTime.get(best) ?? null : null;
+
+  for (const offset of [60, -60, 120, -120]) {
+    const hit = candleByTime.get(barTime + offset);
+    if (hit && !usedTimes.has(hit.time)) {
+      usedTimes.add(hit.time);
+      return hit;
+    }
+  }
+
+  return null;
 }
 
 /** Replace mark-only merged OHLC with exchange candles while keeping orderflow fields. */
@@ -232,12 +242,19 @@ export function overlayExchangeOhlcOnMerged(
 ): FootprintMergedBar[] {
   if (!merged.length || !candles?.length) return merged;
 
+  const bucketSec = bucketSeconds(timeframe);
   const candleByTime = new Map(candles.map((candle) => [candle.time, candle]));
-  const sortedTimes = candles.map((candle) => candle.time).sort((a, b) => a - b);
-  const slackSec = TIMEFRAME_MATCH_SLACK_SEC[timeframe] ?? 1800;
+  const sortedCandles = [...candles].sort((a, b) => a.time - b.time);
+  const usedTimes = new Set<number>();
 
   return merged.map((bar) => {
-    const candle = findCandleForTime(bar.time, candleByTime, sortedTimes, slackSec);
+    const candle = pickExchangeCandleForBar(
+      bar.time,
+      sortedCandles,
+      candleByTime,
+      usedTimes,
+      bucketSec,
+    );
     if (!candle || !hasRealOhlc(candle)) return bar;
     return {
       ...bar,
@@ -283,16 +300,14 @@ export function appendExchangeTailToMerged(
 ): FootprintMergedBar[] {
   if (!candles?.length) return merged;
 
-  const slackSec = TIMEFRAME_MATCH_SLACK_SEC[timeframe] ?? 1800;
+  const bucketSec = bucketSeconds(timeframe);
   const out = [...merged];
-  const lastMergedTime = out.at(-1)?.time ?? 0;
+  let lastMergedTime = out.at(-1)?.time ?? 0;
 
   for (const candle of candles) {
     if (!hasRealOhlc(candle)) continue;
 
-    const existingIdx = out.findIndex(
-      (bar) => Math.abs(bar.time - candle.time) <= slackSec,
-    );
+    const existingIdx = out.findIndex((bar) => bar.time === candle.time);
     if (existingIdx >= 0) {
       const bar = out[existingIdx];
       out[existingIdx] = {
@@ -302,13 +317,13 @@ export function appendExchangeTailToMerged(
         low: candle.low,
         close: candle.close,
       };
+      lastMergedTime = Math.max(lastMergedTime, out[existingIdx]?.time ?? 0);
       continue;
     }
 
-    if (candle.time <= lastMergedTime + slackSec) continue;
-    const duplicate = out.some((bar) => Math.abs(bar.time - candle.time) <= slackSec);
-    if (duplicate) continue;
+    if (candle.time < lastMergedTime + bucketSec) continue;
     out.push(emptyFootprintBar(candle.time, candle));
+    lastMergedTime = candle.time;
   }
 
   return out.sort((a, b) => a.time - b.time);

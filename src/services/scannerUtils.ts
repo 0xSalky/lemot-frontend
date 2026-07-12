@@ -308,6 +308,18 @@ function mergeCandleTail(
   return merged;
 }
 
+function dedupeCandlesByTime(
+  candles: ScannerChartPayload["candles"],
+): ScannerChartPayload["candles"] {
+  const byTime = new Map<number, ScannerChartPayload["candles"][number]>();
+  for (const candle of candles) {
+    byTime.set(candle.time, candle);
+  }
+  return [...byTime.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([, candle]) => candle);
+}
+
 /** Stable key so chart children re-render when last candle / mark changes. */
 export function chartRevisionKey(
   chart: ScannerChartPayload | null | undefined,
@@ -347,12 +359,15 @@ export function applyChartLivePatch(
     existing.last;
 
   if (last != null && candles.length > 0) {
-    const forming = { ...candles[candles.length - 1] };
+    const prev = candles[candles.length - 1];
+    const forming = { ...prev };
     forming.close = last;
     forming.high = Math.max(forming.high, last);
     forming.low = Math.min(forming.low, last);
     candles = [...candles.slice(0, -1), forming];
   }
+
+  candles = dedupeCandlesByTime(candles);
 
   return cloneChartPayload({
     ...existing,

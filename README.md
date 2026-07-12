@@ -1,41 +1,97 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/pages/api-reference/create-next-app).
+# lemot-frontend
 
-## Getting Started
+Next.js UI for the lemot trading bot.
 
-First, run the development server:
+## Getting started
 
 ```bash
-npm run dev
-# or
+yarn install
 yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open **http://localhost:3000**
 
-You can start editing the page by modifying `pages/index.tsx`. The page auto-updates as you edit the file.
+API routes: `http://localhost:3000/api/...`
 
-[API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.ts`.
+## Port 3000 conflict with Cursor
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) instead of React pages.
+Cursor can bind **localhost:3000** when a Simple Browser tab or port forward is active. Next.js also uses 3000, so the browser may hit Cursor instead of your app → `ERR_CONNECTION_RESET`.
 
-This project uses [`next/font`](https://nextjs.org/docs/pages/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Avoid it
 
-## Learn More
+- Do not open Cursor **Simple Browser** on `http://localhost:3000`
+- Terminal panel → **Ports** → do not forward port 3000 (or click **Stop** if it is forwarded)
+- Start `yarn dev` **before** opening any in-IDE browser preview
 
-To learn more about Next.js, take a look at the following resources:
+### Check who owns port 3000
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn-pages-router) - an interactive Next.js tutorial.
+```bash
+lsof -nP -iTCP:3000 -sTCP:LISTEN
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Example:
 
-## Deploy on Vercel
+```
+COMMAND   PID   USER   ...  NAME
+Cursor  34193  you    ...  TCP 127.0.0.1:3000 (LISTEN)
+node    94125  you    ...  TCP *:3000 (LISTEN)
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Free port 3000 — stale Next.js only
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/pages/building-your-application/deploying) for more details.
-# lemot-frontend
+```bash
+lsof -nP -iTCP:3000 -sTCP:LISTEN | awk '/node/ {print $2}' | xargs kill -9
+```
+
+Then:
+
+```bash
+yarn dev
+```
+
+### Free port 3000 — Cursor is listening
+
+Cursor’s port forward uses the **main Cursor process**. Killing it **closes the entire IDE** (reopen Cursor after).
+
+**1. Find Cursor’s PID on 3000**
+
+```bash
+lsof -nP -iTCP:3000 -sTCP:LISTEN | awk '/Cursor/ {print $2}'
+```
+
+**2. Kill Cursor (frees 3000; IDE will quit)**
+
+```bash
+kill -9 $(lsof -nP -iTCP:3000 -sTCP:LISTEN | awk '/Cursor/ {print $2}' | head -1)
+```
+
+Or one-liner:
+
+```bash
+lsof -nP -iTCP:3000 -sTCP:LISTEN | awk '/Cursor/ {print $2}' | xargs kill -9
+```
+
+**3. Reopen Cursor, then start the frontend**
+
+```bash
+cd lemot-frontend
+yarn dev
+```
+
+Open http://localhost:3000
+
+### Softer fix (no kill) — try this first
+
+1. Close all **Simple Browser** tabs in Cursor
+2. **Ports** panel → stop forwarding **3000**
+3. Run `lsof -nP -iTCP:3000 -sTCP:LISTEN` again — Cursor should be gone
+4. `yarn dev`
+
+### Kill everything on 3000 (node + Cursor)
+
+Only if you are fine closing Cursor and any dev server:
+
+```bash
+lsof -ti :3000 | xargs kill -9
+yarn dev
+```
