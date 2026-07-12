@@ -90,9 +90,11 @@ const HomePage = () => {
     const [activeTab, setActiveTab] = useState<HomeTabId>("pairs");
     const [tabRefreshKeys, setTabRefreshKeys] = useState(initialTabRefreshKeys);
 
-    const [refreshing, setRefreshing] = useState<Record<ScannerProfile, boolean>>({
-        b: false,
-        a: false,
+    const [refreshing, setRefreshing] = useState<
+        Record<ScannerProfile, { batch: boolean; charts: boolean }>
+    >({
+        b: { batch: false, charts: false },
+        a: { batch: false, charts: false },
     });
     const [chartsRefreshKey, setChartsRefreshKey] = useState<Record<ScannerProfile, number>>({
         b: 0,
@@ -105,12 +107,34 @@ const HomePage = () => {
         [],
     );
 
+    const refreshScannerCharts = useCallback(
+        (profile: ScannerProfile) => {
+            setRefreshing((prev) => ({
+                ...prev,
+                [profile]: { ...prev[profile], charts: true },
+            }));
+            setChartsRefreshKey((prev) => ({ ...prev, [profile]: prev[profile] + 1 }));
+            return loadScanner(profile, { fresh: true }).finally(() => {
+                setRefreshing((prev) => ({
+                    ...prev,
+                    [profile]: { ...prev[profile], charts: false },
+                }));
+            });
+        },
+        [loadScanner],
+    );
+
     const refreshScannerBatch = useCallback(
         (profile: ScannerProfile) => {
-            setRefreshing((prev) => ({ ...prev, [profile]: true }));
-            setChartsRefreshKey((prev) => ({ ...prev, [profile]: prev[profile] + 1 }));
-            return loadScanner(profile, { fresh: true, reload: true }).finally(() => {
-                setRefreshing((prev) => ({ ...prev, [profile]: false }));
+            setRefreshing((prev) => ({
+                ...prev,
+                [profile]: { ...prev[profile], batch: true },
+            }));
+            return loadScanner(profile, { reload: true }).finally(() => {
+                setRefreshing((prev) => ({
+                    ...prev,
+                    [profile]: { ...prev[profile], batch: false },
+                }));
             });
         },
         [loadScanner],
@@ -250,9 +274,11 @@ const HomePage = () => {
                         profile="a"
                         scannerView={views.a}
                         loading={loading.a}
-                        refreshing={refreshing.a}
+                        refreshingBatch={refreshing.a.batch}
+                        refreshingCharts={refreshing.a.charts}
                         chartsRefreshKey={chartsRefreshKey.a}
-                        onRefresh={() => void refreshScannerBatch("a")}
+                        onRefreshBatch={() => void refreshScannerBatch("a")}
+                        onRefreshCharts={() => void refreshScannerCharts("a")}
                     />
                 </Tabs.Content>
 
@@ -261,9 +287,11 @@ const HomePage = () => {
                         profile="b"
                         scannerView={views.b}
                         loading={loading.b}
-                        refreshing={refreshing.b}
+                        refreshingBatch={refreshing.b.batch}
+                        refreshingCharts={refreshing.b.charts}
                         chartsRefreshKey={chartsRefreshKey.b}
-                        onRefresh={() => void refreshScannerBatch("b")}
+                        onRefreshBatch={() => void refreshScannerBatch("b")}
+                        onRefreshCharts={() => void refreshScannerCharts("b")}
                     />
                 </Tabs.Content>
 

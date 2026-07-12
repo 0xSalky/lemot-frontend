@@ -45,9 +45,11 @@ type ScannerResultsProps = {
     profile: ScannerProfile;
     scannerView: ScannerViewFetchResult | null;
     loading?: boolean;
-    refreshing?: boolean;
+    refreshingBatch?: boolean;
+    refreshingCharts?: boolean;
     chartsRefreshKey?: number;
-    onRefresh?: () => void;
+    onRefreshBatch?: () => void;
+    onRefreshCharts?: () => void;
     refreshKey?: number;
 };
 
@@ -379,6 +381,29 @@ function BandBlock({ band }: { band: ScannerBandRow }) {
     );
 }
 
+function BatchRefreshIcon({ size = 20 }: { size?: number }) {
+    return (
+        <svg
+            width={size}
+            height={size}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+        >
+            <path d="M8 6h13" />
+            <path d="M8 12h13" />
+            <path d="M8 18h13" />
+            <path d="M3 6h.01" />
+            <path d="M3 12h.01" />
+            <path d="M3 18h.01" />
+        </svg>
+    );
+}
+
 function RefreshIcon({ size = 20 }: { size?: number }) {
     return (
         <svg
@@ -402,9 +427,11 @@ const ScannerResults = ({
     profile,
     scannerView,
     loading = false,
-    refreshing = false,
+    refreshingBatch = false,
+    refreshingCharts = false,
     chartsRefreshKey = 0,
-    onRefresh,
+    onRefreshBatch,
+    onRefreshCharts,
 }: ScannerResultsProps) => {
     const { palette } = useThemeColor();
     const tokens = useThemeTokens(palette);
@@ -513,19 +540,36 @@ const ScannerResults = ({
                                     footprint {wsConnected ? "online" : "offline"}
                                 </Badge>
                             ) : null}
-                            {onRefresh ? (
+                            {onRefreshBatch ? (
                                 <IconButton
-                                    aria-label={`Refresh ${profileLabel} scanner charts`}
+                                    aria-label={`Refresh ${profileLabel} batch`}
+                                    title={`Refresh ${profileLabel} batch`}
+                                    size="sm"
+                                    variant="outline"
+                                    colorPalette={palette}
+                                    borderColor={tokens.panelBorder}
+                                    color={tokens.panelBody}
+                                    loading={refreshingBatch}
+                                    minW="33px"
+                                    minH="33px"
+                                    onClick={onRefreshBatch}
+                                >
+                                    <BatchRefreshIcon size={20} />
+                                </IconButton>
+                            ) : null}
+                            {onRefreshCharts ? (
+                                <IconButton
+                                    aria-label={`Refresh ${profileLabel} charts`}
                                     title={`Refresh ${profileLabel} charts`}
                                     size="sm"
                                     variant="outline"
                                     colorPalette={palette}
                                     borderColor={tokens.panelBorder}
                                     color={tokens.panelBody}
-                                    loading={refreshing}
+                                    loading={refreshingCharts}
                                     minW="33px"
                                     minH="33px"
-                                    onClick={onRefresh}
+                                    onClick={onRefreshCharts}
                                 >
                                     <RefreshIcon size={20} />
                                 </IconButton>
@@ -554,7 +598,7 @@ const ScannerResults = ({
                             defaultFootprintTimeframe={defaultFootprintTimeframe}
                             footprintPair={footprintPair}
                             managedChart={managedChart}
-                            chartsLoading={refreshing}
+                            chartsLoading={refreshingCharts}
                             footprintWatchlist={footprintWatchlist}
                             chartRevisionKey={revisionKey}
                         />

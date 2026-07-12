@@ -97,7 +97,7 @@ export default function ConfigPanel({ refreshKey = 0 }: ConfigPanelProps) {
     const label = scannerProfileLabel(profile);
     toaster.info({
       title: withAi ? `${label} scan + AI started` : `${label} scan started`,
-      description: "Results will be ready in a few minutes. Use the ↻ refresh button on the Scanner tab to reload charts when complete.",
+      description: "Results will be ready in a few minutes. Use the batch refresh on the Scanner tab to load new setups.",
     });
 
     void runScanner(profile, { analyze: withAi }).then((result) => {
