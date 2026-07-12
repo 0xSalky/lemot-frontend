@@ -13,7 +13,6 @@ import {
   scannerProfileLabel,
   type ScannerProfile,
 } from "@/services/scannerUtils";
-import { IS_PROFILE_B_ACTIVE } from "@/services/config";
 import { Box, Button, Separator, Stack, Text } from "@chakra-ui/react";
 import { useCallback, useState, type ReactNode } from "react";
 
@@ -224,20 +223,17 @@ export default function ConfigPanel({ onScannerRefresh, refreshKey = 0 }: Config
             />
           </ConfigSection>
 
-          {IS_PROFILE_B_ACTIVE && (
-            <>
-              <Separator borderColor={tokens.panelBorder} />
-              <ConfigSection title="Scalper">
-                <ScannerConfigPanel
-                  profile="b"
-                  loading={refreshing.b}
-                  onRefresh={() => handleRefresh("b")}
-                  onRequestScan={() => setPendingScan({ profile: "b", withAi: false })}
-                  onRequestScanWithAi={() => setPendingScan({ profile: "b", withAi: true })}
-                />
-              </ConfigSection>
-            </>
-          )}
+          <Separator borderColor={tokens.panelBorder} />
+
+          <ConfigSection title="Scalper">
+            <ScannerConfigPanel
+              profile="b"
+              loading={refreshing.b}
+              onRefresh={() => handleRefresh("b")}
+              onRequestScan={() => setPendingScan({ profile: "b", withAi: false })}
+              onRequestScanWithAi={() => setPendingScan({ profile: "b", withAi: true })}
+            />
+          </ConfigSection>
 
           <Separator borderColor={tokens.panelBorder} />
 

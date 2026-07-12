@@ -10,7 +10,7 @@ import TradeJournalPanel from "@/components/3_organisms/TradeJournalPanel/TradeJ
 import PairsAccountBar from "@/components/3_organisms/PairsAccountBar/PairsAccountBar";
 import ResponsiveCardGrid from "@/components/4_layouts/ResponsiveCardGrid/ResponsiveCardGrid";
 import { useThemeColor, useThemeTokens } from "@/components/ui/theme-color";
-import { TRADING_PAIRS, CONTENT_MAX_WIDTH, IS_PROFILE_B_ACTIVE } from "@/services/config";
+import { TRADING_PAIRS, CONTENT_MAX_WIDTH } from "@/services/config";
 import type { ScannerSetupRow, ScannerViewFetchResult } from "@/types/scannerTypes";
 import {
     fetchLatestScannerBatch,
@@ -191,13 +191,11 @@ const HomePage = () => {
                         Pairs
                     </ThemeTabTrigger>
                     <ThemeTabTrigger value="scanner-a" currentTab={activeTab} onReselect={bumpTabRefresh}>
-                        Scanner
+                        Scanner A
                     </ThemeTabTrigger>
-                    {IS_PROFILE_B_ACTIVE && (
-                        <ThemeTabTrigger value="scanner-b" currentTab={activeTab} onReselect={bumpTabRefresh}>
-                            Scanner B
-                        </ThemeTabTrigger>
-                    )}
+                    <ThemeTabTrigger value="scanner-b" currentTab={activeTab} onReselect={bumpTabRefresh}>
+                        Scanner B
+                    </ThemeTabTrigger>
                     <ThemeTabTrigger value="scanner-chat" currentTab={activeTab} onReselect={bumpTabRefresh}>
                         AI Chat
                     </ThemeTabTrigger>
@@ -242,17 +240,15 @@ const HomePage = () => {
                     />
                 </Tabs.Content>
 
-                {IS_PROFILE_B_ACTIVE && (
-                    <Tabs.Content value="scanner-b">
-                        <ScannerResults
-                            profile="b"
-                            scannerView={views.b}
-                            loading={loading.b}
-                            active={activeTab === "scanner-b"}
-                            refreshKey={tabRefreshKeys["scanner-b"]}
-                        />
-                    </Tabs.Content>
-                )}
+                <Tabs.Content value="scanner-b">
+                    <ScannerResults
+                        profile="b"
+                        scannerView={views.b}
+                        loading={loading.b}
+                        active={activeTab === "scanner-b"}
+                        refreshKey={tabRefreshKeys["scanner-b"]}
+                    />
+                </Tabs.Content>
 
                 <Tabs.Content value="scanner-chat">
                     <ScannerChat
