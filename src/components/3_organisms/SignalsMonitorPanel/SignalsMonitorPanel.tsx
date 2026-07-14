@@ -467,7 +467,7 @@ function TerminalLine({
     (meta?.ai_message != null || meta?.verdict != null);
   const showAiHint = hasAiTooltip(meta);
   const profileLabel = (event.profile ?? "—").toUpperCase();
-  const tf = event.timeframe ?? (event.profile === "a" ? "30m" : event.profile === "b" ? "4h" : null);
+  const tf = event.timeframe ?? (event.profile === "a" ? "5m" : event.profile === "b" ? "4h" : null);
   const detail = buildDetailLine(event, meta);
   const detailShort = detail ? truncateText(detail, 110) : null;
   const alertConditions =

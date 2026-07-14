@@ -81,7 +81,7 @@ export const SCANNER_PROFILE_CHART_TIMEFRAME: Record<
   ScannerChartTimeframe
 > = {
   b: "30m",
-  a: "30m",
+  a: "5m",
 };
 
 export function normalizeScannerChartTimeframe(
