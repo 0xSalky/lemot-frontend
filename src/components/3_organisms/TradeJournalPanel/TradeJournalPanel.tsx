@@ -4,9 +4,11 @@ import { closedTradesOnly } from "@/components/3_organisms/TradeJournalPanel/jou
 import JournalHistoryViz from "@/components/3_organisms/TradeJournalPanel/JournalHistoryViz";
 import JournalTradesTable from "@/components/3_organisms/TradeJournalPanel/JournalTradesTable";
 import ProfileSubTabs, { type ProfileFilter } from "@/components/2_molecules/ProfileSubTabs/ProfileSubTabs";
+import ProfileBalancesStrip from "@/components/2_molecules/ProfileBalancesStrip/ProfileBalancesStrip";
 import { useThemeColor, useThemeTokens } from "@/components/ui/theme-color";
 import { themedPanelStyle } from "@/components/ui/themed-panel";
 import { usePageVisible } from "@/hooks/usePageVisible";
+import { useProfileBalances } from "@/hooks/useProfileBalances";
 import { fetchTradeJournal } from "@/services/tradeJournal";
 import type { TradeJournalPayload } from "@/types/tradeJournalTypes";
 import { Box, Flex, Spinner, Stack, Text } from "@chakra-ui/react";
@@ -56,6 +58,7 @@ export default function TradeJournalPanel({ active = true, refreshKey = 0 }: Tra
   const [journal, setJournal] = useState<TradeJournalPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileFilter, setProfileFilter] = useState<ProfileFilter>("all");
+  const { balances, loading: balancesLoading } = useProfileBalances(active, refreshKey);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -175,6 +178,21 @@ export default function TradeJournalPanel({ active = true, refreshKey = 0 }: Tra
           <ProfileSubTabs value={profileFilter} onChange={setProfileFilter} />
         </Flex>
       </Flex>
+
+      <Box
+        px="4"
+        py="3"
+        borderBottomWidth="1px"
+        borderColor={tokens.panelBorder}
+        bg={tokens.blockquoteBg}
+      >
+        <ProfileBalancesStrip
+          balances={balances}
+          profileFilter={profileFilter}
+          loading={balancesLoading}
+          tokens={tokens}
+        />
+      </Box>
 
       {loading && !journal ? (
         <Flex py="12" justify="center">

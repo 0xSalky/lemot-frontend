@@ -2,9 +2,11 @@
 
 import ThemeTabTrigger from "@/components/2_molecules/ThemeTabTrigger/ThemeTabTrigger";
 import ProfileSubTabs, { type ProfileFilter } from "@/components/2_molecules/ProfileSubTabs/ProfileSubTabs";
+import ProfileBalancesStrip from "@/components/2_molecules/ProfileBalancesStrip/ProfileBalancesStrip";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useThemeColor, useThemeTokens, type ThemeTokens } from "@/components/ui/theme-color";
 import { usePageVisible } from "@/hooks/usePageVisible";
+import { useProfileBalances } from "@/hooks/useProfileBalances";
 import {
   fetchSignalsActivity,
   fetchSignalsHealth,
@@ -736,6 +738,7 @@ export default function SignalsMonitorPanel({ active = true, refreshKey = 0 }: S
   const [loading, setLoading] = useState(true);
   const [feedTab, setFeedTab] = useState("watchlist");
   const [profileFilter, setProfileFilter] = useState<ProfileFilter>("all");
+  const { balances, loading: balancesLoading } = useProfileBalances(active, refreshKey);
 
   useEffect(() => {
     if (!active || !pageVisible) return;
@@ -959,6 +962,24 @@ export default function SignalsMonitorPanel({ active = true, refreshKey = 0 }: S
           </Flex>
         </Flex>
 
+        <Box
+          px="4"
+          py="3"
+          borderBottomWidth="1px"
+          borderColor={tokens.panelBorder}
+          bg={tokens.blockquoteBg}
+        >
+          <Flex gap="3" align="center" justify="space-between" flexWrap="wrap">
+            <ProfileBalancesStrip
+              balances={balances}
+              profileFilter={profileFilter}
+              loading={balancesLoading}
+              tokens={tokens}
+            />
+            <ProfileSubTabs value={profileFilter} onChange={setProfileFilter} />
+          </Flex>
+        </Box>
+
         {showPaused ? (
           <Box
             px="4"
@@ -1009,29 +1030,22 @@ export default function SignalsMonitorPanel({ active = true, refreshKey = 0 }: S
           onValueChange={(event) => setFeedTab(event.value)}
           colorPalette={palette}
         >
-          <Flex
+          <Tabs.List
             px="3"
             pt="2"
-            pb="0"
+            bg="transparent"
             borderBottomWidth="1px"
             borderColor={tokens.panelBorder}
-            align="center"
-            justify="space-between"
             gap="2"
           >
-            <Tabs.List bg="transparent" gap="2" borderBottom="none">
-              <ThemeTabTrigger value="watchlist" currentTab={feedTab}>
-                Watchlist
-                {filteredWatchlistEntries.length > 0 ? ` · ${filteredWatchlistEntries.length}` : ""}
-              </ThemeTabTrigger>
-              <ThemeTabTrigger value="historic" currentTab={feedTab}>
-                Historic{historicEvents.length > 0 ? ` · ${historicEvents.length}` : ""}
-              </ThemeTabTrigger>
-            </Tabs.List>
-            <Box pb="2">
-              <ProfileSubTabs value={profileFilter} onChange={setProfileFilter} />
-            </Box>
-          </Flex>
+            <ThemeTabTrigger value="watchlist" currentTab={feedTab}>
+              Watchlist
+              {filteredWatchlistEntries.length > 0 ? ` · ${filteredWatchlistEntries.length}` : ""}
+            </ThemeTabTrigger>
+            <ThemeTabTrigger value="historic" currentTab={feedTab}>
+              Historic{historicEvents.length > 0 ? ` · ${historicEvents.length}` : ""}
+            </ThemeTabTrigger>
+          </Tabs.List>
 
           <Tabs.Content value="watchlist" p="0">
             {loading && filteredWatchlistEntries.length === 0 ? (

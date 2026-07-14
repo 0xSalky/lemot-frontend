@@ -6,8 +6,10 @@ import { ProfileBadge } from "@/components/3_organisms/TradeJournalPanel/profile
 import TradeMgmtCore from "@/components/3_organisms/RiskDeskPanel/TradeMgmtCore";
 import RPerformanceCore from "@/components/3_organisms/RiskDeskPanel/RPerformanceCore";
 import ProfileSubTabs, { type ProfileFilter } from "@/components/2_molecules/ProfileSubTabs/ProfileSubTabs";
+import ProfileBalancesStrip from "@/components/2_molecules/ProfileBalancesStrip/ProfileBalancesStrip";
 import { useThemeColor, useThemeTokens, type ThemeTokens } from "@/components/ui/theme-color";
 import { usePageVisible } from "@/hooks/usePageVisible";
+import { useProfileBalances } from "@/hooks/useProfileBalances";
 import { fetchRiskDesk } from "@/services/riskDesk";
 import type {
   RiskDeskPayload,
@@ -302,6 +304,7 @@ export default function RiskDeskPanel({
   const [desk, setDesk] = useState<RiskDeskPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileFilter, setProfileFilter] = useState<ProfileFilter>("all");
+  const { balances, loading: balancesLoading } = useProfileBalances(active, refreshKey);
 
   useEffect(() => {
     if (!active || !pageVisible) return;
@@ -339,14 +342,6 @@ export default function RiskDeskPanel({
     if (profileFilter === "all") return allProfileDesks;
     return allProfileDesks.filter((p) => p.profile === profileFilter);
   }, [allProfileDesks, profileFilter]);
-
-  // Equity to display in header — per-profile when a specific one is selected.
-  const displayEquity = useMemo(() => {
-    if (profileFilter !== "all" && desk?.profiles?.[profileFilter]) {
-      return (desk.profiles[profileFilter] as RiskProfileDesk & { equity_usd?: number }).equity_usd ?? desk?.equity_usd;
-    }
-    return desk?.equity_usd;
-  }, [desk, profileFilter]);
 
   const liveColor =
     loading && !desk
@@ -411,20 +406,8 @@ export default function RiskDeskPanel({
               </Text>
             </Stack>
           </Flex>
-          <Flex gap="3" align="center" flexWrap="wrap">
-            <Flex gap="4" fontFamily="mono" fontSize="2xs" color={tokens.panelMuted} flexWrap="wrap">
-              <Text>
-                equity{" "}
-                <Box as="span" color={tokens.panelBody}>
-                  {formatUsd(displayEquity)}
-                </Box>
-              </Text>
-              <Text>
-                1R{" "}
-                <Box as="span" color={tokens.panelBody}>
-                  {formatUsd(desk?.risk_unit_usd)} ({desk?.risk_percent ?? 1}%)
-                </Box>
-              </Text>
+          <Flex gap="3" align="center" flexWrap="wrap" justify="flex-end">
+            <Flex gap="4" fontFamily="mono" fontSize="2xs" color={tokens.panelMuted} flexWrap="wrap" align="center">
               <Text>
                 book{" "}
                 <Box as="span" color={netSideColor(tokens, desk?.net_side ?? "flat")}>
@@ -438,6 +421,22 @@ export default function RiskDeskPanel({
             <ProfileSubTabs value={profileFilter} onChange={setProfileFilter} />
           </Flex>
         </Flex>
+
+        <Box
+          px="4"
+          py="3"
+          borderBottomWidth="1px"
+          borderColor={tokens.panelBorder}
+          bg={tokens.blockquoteBg}
+        >
+          <ProfileBalancesStrip
+            balances={balances}
+            profileFilter={profileFilter}
+            riskPercent={desk?.risk_percent}
+            loading={balancesLoading}
+            tokens={tokens}
+          />
+        </Box>
 
         {loading && !desk ? (
           <Flex py="12" justify="center">

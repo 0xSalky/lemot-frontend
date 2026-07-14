@@ -5,9 +5,11 @@ import JournalStatsBar from "@/components/3_organisms/JournalAnalyticsPanel/Jour
 import { closedTradesOnly } from "@/components/3_organisms/TradeJournalPanel/journalClosedStats";
 import JournalTradesTable from "@/components/3_organisms/TradeJournalPanel/JournalTradesTable";
 import ProfileSubTabs, { type ProfileFilter } from "@/components/2_molecules/ProfileSubTabs/ProfileSubTabs";
+import ProfileBalancesStrip from "@/components/2_molecules/ProfileBalancesStrip/ProfileBalancesStrip";
 import { useThemeColor, useThemeTokens } from "@/components/ui/theme-color";
 import { themedPanelStyle } from "@/components/ui/themed-panel";
 import { usePageVisible } from "@/hooks/usePageVisible";
+import { useProfileBalances } from "@/hooks/useProfileBalances";
 import {
   applyJournalFilters,
   buildJournalFilterCatalog,
@@ -38,6 +40,7 @@ export default function JournalAnalyticsPanel({
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState(EMPTY_JOURNAL_FILTERS);
   const [profileFilter, setProfileFilter] = useState<ProfileFilter>("all");
+  const { balances, loading: balancesLoading } = useProfileBalances(active, refreshKey);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -109,6 +112,21 @@ export default function JournalAnalyticsPanel({
           <ProfileSubTabs value={profileFilter} onChange={setProfileFilter} />
         </Flex>
       </Flex>
+
+      <Box
+        px="4"
+        py="3"
+        borderBottomWidth="1px"
+        borderColor={tokens.panelBorder}
+        bg={tokens.blockquoteBg}
+      >
+        <ProfileBalancesStrip
+          balances={balances}
+          profileFilter={profileFilter}
+          loading={balancesLoading}
+          tokens={tokens}
+        />
+      </Box>
 
       {loading && !journal ? (
         <Flex py="12" justify="center">
