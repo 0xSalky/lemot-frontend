@@ -20,6 +20,7 @@ export interface SignalsProfileHealth {
   enabled: boolean;
   timeframe: string;
   fractal_timing: string;
+  trade_with_bias: boolean;
   symbols_watched: number;
   last_poll_symbols_evaluated: number;
   last_bar_processed_at: string | null;
@@ -202,6 +203,7 @@ export function normalizeSignalsHealth(raw: unknown): SignalsMonitorHealth {
       enabled: Boolean(p.enabled),
       timeframe: String(p.timeframe ?? ""),
       fractal_timing: String(p.fractal_timing ?? ""),
+      trade_with_bias: p.trade_with_bias === true,
       symbols_watched: Number(p.symbols_watched ?? 0),
       last_poll_symbols_evaluated: Number(p.last_poll_symbols_evaluated ?? 0),
       last_bar_processed_at:

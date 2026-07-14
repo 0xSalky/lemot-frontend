@@ -917,6 +917,30 @@ export default function SignalsMonitorPanel({ active = true, refreshKey = 0 }: S
                 {health?.b_entry_advice_enabled ? "on" : "off"}
               </Box>
             </Text>
+            <Text>
+              bias A{" "}
+              <Box
+                as="span"
+                color={
+                  health?.profiles?.a?.trade_with_bias
+                    ? tokens.tagBlue.color
+                    : tokens.panelMuted
+                }
+              >
+                {health?.profiles?.a?.trade_with_bias ? "on" : "off"}
+              </Box>
+              {" · "}B{" "}
+              <Box
+                as="span"
+                color={
+                  health?.profiles?.b?.trade_with_bias
+                    ? tokens.tagBlue.color
+                    : tokens.panelMuted
+                }
+              >
+                {health?.profiles?.b?.trade_with_bias ? "on" : "off"}
+              </Box>
+            </Text>
             <Text animation={`${blink} 1.2s step-end infinite`} color={tokens.title}>
               _
             </Text>

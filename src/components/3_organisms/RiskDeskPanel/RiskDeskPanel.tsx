@@ -203,6 +203,16 @@ function ProfileBookSection({
           PROFILE {profileDesk.profile.toUpperCase()}
         </Text>
         <Flex gap="2" flexWrap="wrap">
+          {profileDesk.trade_with_bias ? (
+            <EventTag
+              label="BIAS ON"
+              tone={{
+                bg: tokens.blockquoteBg,
+                color: tokens.tagBlue.color,
+                border: tokens.tagBlue.color,
+              }}
+            />
+          ) : null}
           <EventTag
             label={`NET ${profileDesk.net_side.toUpperCase()}`}
             tone={{

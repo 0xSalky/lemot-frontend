@@ -152,6 +152,7 @@ export interface RiskDeskBookView {
 
 export interface RiskProfileDesk extends RiskDeskBookView {
   profile: string;
+  trade_with_bias?: boolean;
 }
 
 export interface RiskDeskGlobalView {
@@ -347,7 +348,12 @@ export function normalizeRiskDesk(body: unknown): RiskDeskPayload {
     for (const [key, value] of Object.entries(profilesRaw)) {
       if (!value || typeof value !== "object") continue;
       const book = normalizeBookView(value as Record<string, unknown>);
-      profiles[key] = { ...book, profile: str((value as Record<string, unknown>).profile) ?? key };
+      const row = value as Record<string, unknown>;
+      profiles[key] = {
+        ...book,
+        profile: str(row.profile) ?? key,
+        trade_with_bias: row.trade_with_bias === true,
+      };
     }
   }
 
