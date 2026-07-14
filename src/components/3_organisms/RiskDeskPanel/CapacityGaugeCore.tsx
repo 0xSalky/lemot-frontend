@@ -122,6 +122,7 @@ export default function CapacityGaugeCore({
                     </Text>
                     <Text color={tokens.panelMuted} lineHeight="1.2">
                       {side?.toUpperCase() ?? "—"} · {formatR(pos.r_multiple)}
+                      {pos.target_tp_rr != null ? ` → ${pos.target_tp_rr}R` : ""}
                     </Text>
                   </Stack>
                 ) : (

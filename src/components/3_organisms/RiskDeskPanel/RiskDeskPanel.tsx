@@ -128,6 +128,11 @@ function PositionRow({
           <ProfileBadge profile={pos.profile} tokens={tokens} />
         ) : null}
         <Text color={tokens.panelBody}>{formatR(pos.r_multiple)}</Text>
+        {pos.target_tp_rr != null ? (
+          <Text color={tokens.tagAccent.color} title={pos.tp_strategy_id ?? undefined}>
+            → {pos.target_tp_rr}R
+          </Text>
+        ) : null}
         <Text color={tokens.panelMuted}>{formatUsd(pos.unrealized_pnl_usd)}</Text>
         {pos.leverage != null ? (
           <Text color={tokens.panelMuted}>{pos.leverage}x</Text>
@@ -158,6 +163,14 @@ function PositionRow({
           {pos.stop_loss_price != null ? (
             <Text>
               stop <Box as="span">{pos.stop_loss_price}</Box>
+            </Text>
+          ) : null}
+          {pos.target_tp_rr != null ? (
+            <Text title={pos.tp_strategy_id ?? undefined}>
+              target{" "}
+              <Box as="span" color={tokens.tagAccent.color}>
+                {pos.target_tp_rr}R
+              </Box>
             </Text>
           ) : null}
           {pos.main_order_id ? (

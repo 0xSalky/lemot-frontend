@@ -18,6 +18,9 @@ export interface RiskDeskPosition {
   in_profit?: boolean;
   unrealized_pnl_usd?: number;
   r_multiple?: number;
+  /** Planned reward R from journal TP preset (e.g. 1.8 / 2 / 2.5). */
+  target_tp_rr?: number | null;
+  tp_strategy_id?: string | null;
   journal_id?: number | null;
   main_order_id?: string | null;
   profile?: string | null;
@@ -319,6 +322,8 @@ function normalizePositions(value: unknown): RiskDeskPosition[] {
       in_profit: typeof row.in_profit === "boolean" ? row.in_profit : undefined,
       unrealized_pnl_usd: num(row.unrealized_pnl_usd) ?? undefined,
       r_multiple: num(row.r_multiple) ?? undefined,
+      target_tp_rr: num(row.target_tp_rr),
+      tp_strategy_id: str(row.tp_strategy_id),
       journal_id: num(row.journal_id),
       main_order_id: str(row.main_order_id),
       profile: str(row.profile),
