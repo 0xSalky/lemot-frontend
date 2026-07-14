@@ -5,6 +5,7 @@ import { RiskGateList, RiskModeBanner } from "@/components/3_organisms/RiskDeskP
 import { ProfileBadge } from "@/components/3_organisms/TradeJournalPanel/profileBadge";
 import TradeMgmtCore from "@/components/3_organisms/RiskDeskPanel/TradeMgmtCore";
 import RPerformanceCore from "@/components/3_organisms/RiskDeskPanel/RPerformanceCore";
+import ProfileSubTabs, { type ProfileFilter } from "@/components/2_molecules/ProfileSubTabs/ProfileSubTabs";
 import { useThemeColor, useThemeTokens, type ThemeTokens } from "@/components/ui/theme-color";
 import { usePageVisible } from "@/hooks/usePageVisible";
 import { fetchRiskDesk } from "@/services/riskDesk";
@@ -300,6 +301,7 @@ export default function RiskDeskPanel({
   const pageVisible = usePageVisible();
   const [desk, setDesk] = useState<RiskDeskPayload | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileFilter, setProfileFilter] = useState<ProfileFilter>("all");
 
   useEffect(() => {
     if (!active || !pageVisible) return;
@@ -323,7 +325,7 @@ export default function RiskDeskPanel({
     };
   }, [active, pageVisible, refreshKey]);
 
-  const profileDesks = useMemo(() => {
+  const allProfileDesks = useMemo(() => {
     if (!desk?.profiles) return [] as RiskProfileDesk[];
     return (["a", "b"] as const)
       .map((key) => desk.profiles[key])
@@ -332,6 +334,19 @@ export default function RiskDeskPanel({
           Boolean(p) && (p.max_open_trades ?? 0) > 0,
       );
   }, [desk]);
+
+  const profileDesks = useMemo(() => {
+    if (profileFilter === "all") return allProfileDesks;
+    return allProfileDesks.filter((p) => p.profile === profileFilter);
+  }, [allProfileDesks, profileFilter]);
+
+  // Equity to display in header — per-profile when a specific one is selected.
+  const displayEquity = useMemo(() => {
+    if (profileFilter !== "all" && desk?.profiles?.[profileFilter]) {
+      return (desk.profiles[profileFilter] as RiskProfileDesk & { equity_usd?: number }).equity_usd ?? desk?.equity_usd;
+    }
+    return desk?.equity_usd;
+  }, [desk, profileFilter]);
 
   const liveColor =
     loading && !desk
@@ -396,28 +411,31 @@ export default function RiskDeskPanel({
               </Text>
             </Stack>
           </Flex>
-          <Flex gap="4" fontFamily="mono" fontSize="2xs" color={tokens.panelMuted} flexWrap="wrap">
-            <Text>
-              equity{" "}
-              <Box as="span" color={tokens.panelBody}>
-                {formatUsd(desk?.equity_usd)}
-              </Box>
-            </Text>
-            <Text>
-              1R{" "}
-              <Box as="span" color={tokens.panelBody}>
-                {formatUsd(desk?.risk_unit_usd)} ({desk?.risk_percent ?? 1}%)
-              </Box>
-            </Text>
-            <Text>
-              book{" "}
-              <Box as="span" color={netSideColor(tokens, desk?.net_side ?? "flat")}>
-                {(desk?.net_side ?? "—").toUpperCase()}
-              </Box>
-            </Text>
-            <Text animation={`${blink} 1.2s step-end infinite`} color={tokens.title}>
-              _
-            </Text>
+          <Flex gap="3" align="center" flexWrap="wrap">
+            <Flex gap="4" fontFamily="mono" fontSize="2xs" color={tokens.panelMuted} flexWrap="wrap">
+              <Text>
+                equity{" "}
+                <Box as="span" color={tokens.panelBody}>
+                  {formatUsd(displayEquity)}
+                </Box>
+              </Text>
+              <Text>
+                1R{" "}
+                <Box as="span" color={tokens.panelBody}>
+                  {formatUsd(desk?.risk_unit_usd)} ({desk?.risk_percent ?? 1}%)
+                </Box>
+              </Text>
+              <Text>
+                book{" "}
+                <Box as="span" color={netSideColor(tokens, desk?.net_side ?? "flat")}>
+                  {(desk?.net_side ?? "—").toUpperCase()}
+                </Box>
+              </Text>
+              <Text animation={`${blink} 1.2s step-end infinite`} color={tokens.title}>
+                _
+              </Text>
+            </Flex>
+            <ProfileSubTabs value={profileFilter} onChange={setProfileFilter} />
           </Flex>
         </Flex>
 
@@ -431,17 +449,21 @@ export default function RiskDeskPanel({
               <RiskModeBanner mode={desk.risk_mode} tokens={tokens} />
             </Box>
 
-            <Box px="4" pt="4" pb="0">
-              <RPerformanceCore desk={desk} tokens={tokens} />
-            </Box>
+            {profileFilter === "all" ? (
+              <Box px="4" pt="4" pb="0">
+                <RPerformanceCore desk={desk} tokens={tokens} />
+              </Box>
+            ) : null}
 
-            <Box px="4" py="4" borderBottomWidth="1px" borderColor={tokens.panelBorder}>
-              <CapacityGaugeCore
-                book={desk}
-                tokens={tokens}
-                title={`Account slots · ${desk.slots_used}/${desk.max_open_trades}`}
-              />
-            </Box>
+            {profileFilter === "all" ? (
+              <Box px="4" py="4" borderBottomWidth="1px" borderColor={tokens.panelBorder}>
+                <CapacityGaugeCore
+                  book={desk}
+                  tokens={tokens}
+                  title={`Account slots · ${desk.slots_used}/${desk.max_open_trades}`}
+                />
+              </Box>
+            ) : null}
 
             {desk.trade_mgmt ? (
               <Box px="4" py="4" borderBottomWidth="1px" borderColor={tokens.panelBorder}>

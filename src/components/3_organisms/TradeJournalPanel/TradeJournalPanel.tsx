@@ -3,6 +3,7 @@
 import { closedTradesOnly } from "@/components/3_organisms/TradeJournalPanel/journalClosedStats";
 import JournalHistoryViz from "@/components/3_organisms/TradeJournalPanel/JournalHistoryViz";
 import JournalTradesTable from "@/components/3_organisms/TradeJournalPanel/JournalTradesTable";
+import ProfileSubTabs, { type ProfileFilter } from "@/components/2_molecules/ProfileSubTabs/ProfileSubTabs";
 import { useThemeColor, useThemeTokens } from "@/components/ui/theme-color";
 import { themedPanelStyle } from "@/components/ui/themed-panel";
 import { usePageVisible } from "@/hooks/usePageVisible";
@@ -54,6 +55,7 @@ export default function TradeJournalPanel({ active = true, refreshKey = 0 }: Tra
   const polling = active && pageVisible;
   const [journal, setJournal] = useState<TradeJournalPayload | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileFilter, setProfileFilter] = useState<ProfileFilter>("all");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -71,14 +73,27 @@ export default function TradeJournalPanel({ active = true, refreshKey = 0 }: Tra
     return () => window.clearInterval(id);
   }, [load, polling, refreshKey]);
 
+  const filteredTrades = useMemo(() => {
+    const all = journal?.trades ?? [];
+    if (profileFilter === "all") return all;
+    return all.filter((t) => t.profile === profileFilter);
+  }, [journal?.trades, profileFilter]);
+
   const closedTrades = useMemo(
-    () => closedTradesOnly(journal?.trades ?? []),
-    [journal?.trades],
+    () => closedTradesOnly(filteredTrades),
+    [filteredTrades],
   );
   const openCount = useMemo(
-    () => (journal?.trades ?? []).filter((t) => t.lifecycle === "open").length,
-    [journal?.trades],
+    () => filteredTrades.filter((t) => t.lifecycle === "open").length,
+    [filteredTrades],
   );
+  // Profile stats from API (pre-computed) — falls back to computing from trades.
+  const profileStats = useMemo(() => {
+    if (profileFilter !== "all" && journal?.profiles?.[profileFilter]) {
+      return journal.profiles[profileFilter];
+    }
+    return null;
+  }, [journal, profileFilter]);
   const liveColor = journal?.exchange_available ? tokens.tagGreen.color : tokens.warn;
   const alien = tokens.tagAccent.color;
 
@@ -136,25 +151,28 @@ export default function TradeJournalPanel({ active = true, refreshKey = 0 }: Tra
             </Text>
           </Stack>
         </Flex>
-        <Flex gap="4" fontFamily="mono" fontSize="2xs" color={tokens.panelMuted} flexWrap="wrap">
-          <Text>
-            closed{" "}
-            <Box as="span" color={tokens.panelBody}>
-              {closedTrades.length}
-            </Box>
-          </Text>
-          <Text>
-            journal{" "}
-            <Box as="span" color={tokens.panelBody}>
-              {journal?.journal_count ?? 0}
-            </Box>
-          </Text>
-          <Text>
-            updated {formatTime(journal?.fetched_at ?? null)}
-          </Text>
-          <Text animation={`${blink} 1.2s step-end infinite`} color={alien}>
-            _
-          </Text>
+        <Flex gap="3" align="center" flexWrap="wrap">
+          <Flex gap="4" fontFamily="mono" fontSize="2xs" color={tokens.panelMuted} flexWrap="wrap">
+            <Text>
+              closed{" "}
+              <Box as="span" color={tokens.panelBody}>
+                {closedTrades.length}
+              </Box>
+            </Text>
+            <Text>
+              journal{" "}
+              <Box as="span" color={tokens.panelBody}>
+                {journal?.journal_count ?? 0}
+              </Box>
+            </Text>
+            <Text>
+              updated {formatTime(journal?.fetched_at ?? null)}
+            </Text>
+            <Text animation={`${blink} 1.2s step-end infinite`} color={alien}>
+              _
+            </Text>
+          </Flex>
+          <ProfileSubTabs value={profileFilter} onChange={setProfileFilter} />
         </Flex>
       </Flex>
 
@@ -171,12 +189,55 @@ export default function TradeJournalPanel({ active = true, refreshKey = 0 }: Tra
               </Text>
             </Box>
           ) : null}
+          {profileFilter !== "all" && profileStats ? (
+            <Box
+              px="4"
+              py="2"
+              borderBottomWidth="1px"
+              borderColor={tokens.panelBorder}
+              bg={tokens.blockquoteBg}
+            >
+              <Flex gap="4" fontFamily="mono" fontSize="2xs" color={tokens.panelMuted} flexWrap="wrap">
+                <Text color={profileFilter === "b" ? tokens.tagBlue.color : tokens.panelLabel} fontWeight="bold">
+                  PROFILE {profileFilter.toUpperCase()}
+                </Text>
+                <Text>
+                  trades{" "}
+                  <Box as="span" color={tokens.panelBody}>{profileStats.closed_trades}</Box>
+                </Text>
+                <Text>
+                  W/L{" "}
+                  <Box as="span" color={tokens.tagGreen.color}>{profileStats.wins}</Box>
+                  {"/"}
+                  <Box as="span" color={tokens.tagRed.color}>{profileStats.losses}</Box>
+                </Text>
+                {profileStats.win_rate_pct != null ? (
+                  <Text>
+                    win rate{" "}
+                    <Box as="span" color={tokens.panelBody}>{profileStats.win_rate_pct.toFixed(0)}%</Box>
+                  </Text>
+                ) : null}
+                <Text>
+                  total R{" "}
+                  <Box as="span" color={profileStats.total_r >= 0 ? tokens.tagGreen.color : tokens.tagRed.color}>
+                    {profileStats.total_r >= 0 ? "+" : ""}{profileStats.total_r.toFixed(2)}R
+                  </Box>
+                </Text>
+                {profileStats.avg_r != null ? (
+                  <Text>
+                    avg{" "}
+                    <Box as="span" color={tokens.panelBody}>{profileStats.avg_r >= 0 ? "+" : ""}{profileStats.avg_r.toFixed(2)}R</Box>
+                  </Text>
+                ) : null}
+              </Flex>
+            </Box>
+          ) : null}
           <Box px="4" py="4" borderBottomWidth="1px" borderColor={tokens.panelBorder}>
             <JournalHistoryViz
-              trades={journal.trades}
-              growth={journal.growth}
-              journalCount={journal.journal_count}
-              closedPnlRows={journal.closed_pnl_rows}
+              trades={filteredTrades}
+              growth={profileFilter === "all" ? journal.growth : journal.growth}
+              journalCount={profileFilter === "all" ? journal.journal_count : closedTrades.length + openCount}
+              closedPnlRows={profileFilter === "all" ? journal.closed_pnl_rows : closedTrades.length}
               openCount={openCount}
               tokens={tokens}
             />

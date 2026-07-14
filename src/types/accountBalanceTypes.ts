@@ -16,8 +16,14 @@ export type AccountBalanceAccountPayload = {
 export type AccountBalanceResponse = {
   success: boolean;
   accounts: {
-    signals: AccountBalanceAccountPayload;
+    /** Profile A auto-trade account */
+    a: AccountBalanceAccountPayload;
+    /** Profile B auto-trade account */
+    b: AccountBalanceAccountPayload;
+    /** Manual /trade account */
     manual: AccountBalanceAccountPayload;
+    /** Legacy alias — kept for backward compat */
+    signals?: AccountBalanceAccountPayload;
   };
   reason?: string;
   hint?: string;
@@ -64,11 +70,16 @@ export function normalizeAccountBalanceResponse(raw: unknown): AccountBalanceRes
       ? (body.accounts as Record<string, unknown>)
       : {};
 
+  // Backend sends 'a'/'b'/'manual'. Legacy shape sent 'signals'/'manual'.
+  const profileA = accounts.a ?? accounts.signals;
+  const profileB = accounts.b;
   return {
     success: Boolean(body.success),
     accounts: {
-      signals: normalizeAccountPayload(accounts.signals, "signals"),
+      a: normalizeAccountPayload(profileA, "a"),
+      b: normalizeAccountPayload(profileB, "b"),
       manual: normalizeAccountPayload(accounts.manual, "manual"),
+      signals: normalizeAccountPayload(profileA, "signals"),
     },
     reason: typeof body.reason === "string" ? body.reason : undefined,
     hint: typeof body.hint === "string" ? body.hint : undefined,

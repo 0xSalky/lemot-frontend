@@ -4,6 +4,7 @@ import JournalFilters from "@/components/3_organisms/JournalAnalyticsPanel/Journ
 import JournalStatsBar from "@/components/3_organisms/JournalAnalyticsPanel/JournalStatsBar";
 import { closedTradesOnly } from "@/components/3_organisms/TradeJournalPanel/journalClosedStats";
 import JournalTradesTable from "@/components/3_organisms/TradeJournalPanel/JournalTradesTable";
+import ProfileSubTabs, { type ProfileFilter } from "@/components/2_molecules/ProfileSubTabs/ProfileSubTabs";
 import { useThemeColor, useThemeTokens } from "@/components/ui/theme-color";
 import { themedPanelStyle } from "@/components/ui/themed-panel";
 import { usePageVisible } from "@/hooks/usePageVisible";
@@ -36,6 +37,7 @@ export default function JournalAnalyticsPanel({
   const [journal, setJournal] = useState<TradeJournalPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState(EMPTY_JOURNAL_FILTERS);
+  const [profileFilter, setProfileFilter] = useState<ProfileFilter>("all");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -53,9 +55,15 @@ export default function JournalAnalyticsPanel({
     return () => window.clearInterval(id);
   }, [load, polling, refreshKey]);
 
+  const profileTrades = useMemo(() => {
+    const all = journal?.trades ?? [];
+    if (profileFilter === "all") return all;
+    return all.filter((t) => t.profile === profileFilter);
+  }, [journal?.trades, profileFilter]);
+
   const closedTrades = useMemo(
-    () => closedTradesOnly(journal?.trades ?? []),
-    [journal?.trades],
+    () => closedTradesOnly(profileTrades),
+    [profileTrades],
   );
 
   const baselineTrades = useMemo(
@@ -92,11 +100,14 @@ export default function JournalAnalyticsPanel({
             Filter closed trades by setup context and see how they performed
           </Text>
         </Stack>
-        {journal ? (
-          <Text fontSize="xs" color={tokens.panelMuted}>
-            {baselineTrades.length} trades with setup data
-          </Text>
-        ) : null}
+        <Flex gap="3" align="center" flexWrap="wrap">
+          {journal ? (
+            <Text fontSize="xs" color={tokens.panelMuted}>
+              {baselineTrades.length} trades with setup data
+            </Text>
+          ) : null}
+          <ProfileSubTabs value={profileFilter} onChange={setProfileFilter} />
+        </Flex>
       </Flex>
 
       {loading && !journal ? (

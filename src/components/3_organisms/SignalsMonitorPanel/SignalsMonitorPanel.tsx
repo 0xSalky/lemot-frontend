@@ -1,6 +1,7 @@
 "use client";
 
 import ThemeTabTrigger from "@/components/2_molecules/ThemeTabTrigger/ThemeTabTrigger";
+import ProfileSubTabs, { type ProfileFilter } from "@/components/2_molecules/ProfileSubTabs/ProfileSubTabs";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useThemeColor, useThemeTokens, type ThemeTokens } from "@/components/ui/theme-color";
 import { usePageVisible } from "@/hooks/usePageVisible";
@@ -734,6 +735,7 @@ export default function SignalsMonitorPanel({ active = true, refreshKey = 0 }: S
   const [tick, setTick] = useState(0);
   const [loading, setLoading] = useState(true);
   const [feedTab, setFeedTab] = useState("watchlist");
+  const [profileFilter, setProfileFilter] = useState<ProfileFilter>("all");
 
   useEffect(() => {
     if (!active || !pageVisible) return;
@@ -802,15 +804,25 @@ export default function SignalsMonitorPanel({ active = true, refreshKey = 0 }: S
     return rows;
   }, [profileEntries]);
 
+  const filteredWatchlistEntries = useMemo(() => {
+    if (profileFilter === "all") return watchlistEntries;
+    return watchlistEntries.filter(({ profileKey }) => profileKey === profileFilter);
+  }, [watchlistEntries, profileFilter]);
+
   const watchlistNearCount = useMemo(
-    () => watchlistEntries.filter(({ entry }) => entry.near_band).length,
-    [watchlistEntries],
+    () => filteredWatchlistEntries.filter(({ entry }) => entry.near_band).length,
+    [filteredWatchlistEntries],
   );
 
-  const historicEvents = useMemo(
+  const allHistoricEvents = useMemo(
     () => mergeHistoricSignalEvents(liveEvents, historyEvents),
     [liveEvents, historyEvents],
   );
+
+  const historicEvents = useMemo(() => {
+    if (profileFilter === "all") return allHistoricEvents;
+    return allHistoricEvents.filter((e) => !e.profile || e.profile === profileFilter);
+  }, [allHistoricEvents, profileFilter]);
 
   const nearBandMaxPct = health?.monitor_near_band_max_dist_pct ?? 2;
   const showPaused = Boolean(health && (health.paused || !health.signals_enabled));
@@ -997,32 +1009,39 @@ export default function SignalsMonitorPanel({ active = true, refreshKey = 0 }: S
           onValueChange={(event) => setFeedTab(event.value)}
           colorPalette={palette}
         >
-          <Tabs.List
+          <Flex
             px="3"
             pt="2"
-            bg="transparent"
+            pb="0"
             borderBottomWidth="1px"
             borderColor={tokens.panelBorder}
+            align="center"
+            justify="space-between"
             gap="2"
           >
-            <ThemeTabTrigger value="watchlist" currentTab={feedTab}>
-              Watchlist
-              {watchlistEntries.length > 0 ? ` · ${watchlistEntries.length}` : ""}
-            </ThemeTabTrigger>
-            <ThemeTabTrigger value="historic" currentTab={feedTab}>
-              Historic{historicEvents.length > 0 ? ` · ${historicEvents.length}` : ""}
-            </ThemeTabTrigger>
-          </Tabs.List>
+            <Tabs.List bg="transparent" gap="2" borderBottom="none">
+              <ThemeTabTrigger value="watchlist" currentTab={feedTab}>
+                Watchlist
+                {filteredWatchlistEntries.length > 0 ? ` · ${filteredWatchlistEntries.length}` : ""}
+              </ThemeTabTrigger>
+              <ThemeTabTrigger value="historic" currentTab={feedTab}>
+                Historic{historicEvents.length > 0 ? ` · ${historicEvents.length}` : ""}
+              </ThemeTabTrigger>
+            </Tabs.List>
+            <Box pb="2">
+              <ProfileSubTabs value={profileFilter} onChange={setProfileFilter} />
+            </Box>
+          </Flex>
 
           <Tabs.Content value="watchlist" p="0">
-            {loading && watchlistEntries.length === 0 ? (
+            {loading && filteredWatchlistEntries.length === 0 ? (
               <Flex p="6" gap="3" align="center" justify="center" color={tokens.panelMuted}>
                 <Spinner size="sm" color={tokens.panelHeading} />
                 <Text fontFamily="mono" fontSize="xs">
                   Loading watchlist…
                 </Text>
               </Flex>
-            ) : watchlistEntries.length > 0 ? (
+            ) : filteredWatchlistEntries.length > 0 ? (
               <>
                 <Box
                   px="3"
@@ -1033,9 +1052,10 @@ export default function SignalsMonitorPanel({ active = true, refreshKey = 0 }: S
                 >
                   <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
                     {watchlistNearCount} near band · ≤{nearBandMaxPct}% threshold
+                    {profileFilter !== "all" ? ` · profile ${profileFilter.toUpperCase()}` : ""}
                   </Text>
                 </Box>
-                {watchlistEntries.map(({ profileKey, entry }, index) => (
+                {filteredWatchlistEntries.map(({ profileKey, entry }, index) => (
                   <BandWatchRow
                     key={`${profileKey}-${entry.symbol}-${entry.band_low ?? "x"}-${entry.band_high ?? "x"}`}
                     entry={entry}
@@ -1047,7 +1067,9 @@ export default function SignalsMonitorPanel({ active = true, refreshKey = 0 }: S
               </>
             ) : (
               <Text p="4" fontFamily="mono" fontSize="xs" color={tokens.panelMuted} lineHeight="1.6">
-                {`// no symbols in watchlist — run scanner and enable profile A or B.`}
+                {profileFilter !== "all"
+                  ? `// no symbols for profile ${profileFilter.toUpperCase()} — run scanner and enable the profile.`
+                  : `// no symbols in watchlist — run scanner and enable profile A or B.`}
               </Text>
             )}
           </Tabs.Content>
