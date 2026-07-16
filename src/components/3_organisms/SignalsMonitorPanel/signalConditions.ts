@@ -221,6 +221,80 @@ function fmtBandRange(low: unknown, high: unknown): string | null {
   return `${Math.min(lo, hi).toFixed(2)}–${Math.max(lo, hi).toFixed(2)}`;
 }
 
+function volScoreState(
+  score: number | null | undefined,
+  floor: number,
+): SignalConditionState {
+  if (floor <= 0) return "unknown";
+  if (score == null || Number.isNaN(Number(score))) return "unknown";
+  return Number(score) >= floor ? "met" : "unmet";
+}
+
+function biasSideShort(bias: string | null | undefined): string {
+  const upper = String(bias ?? "").toUpperCase();
+  if (upper.includes("BULL")) return "BULL";
+  if (upper.includes("BEAR")) return "BEAR";
+  return "BIAS";
+}
+
+function isBtcSymbol(symbol: string): boolean {
+  return symbol.toUpperCase().includes("BTC");
+}
+
+function appendBiasVolConditions(
+  conditions: SignalCondition[],
+  entry: SignalsBandWatchEntry,
+): SignalCondition[] {
+  if (!entry.trade_with_bias) return conditions;
+
+  const floor = entry.trade_with_bias_min_vol_score ?? 3;
+  const altVol = entry.alt_vol_score;
+  const btcVol = entry.btc_vol_score;
+  const altBias = entry.alt_setup_bias;
+  const btcBias = entry.btc_setup_bias;
+  const showBtc = !isBtcSymbol(entry.symbol);
+
+  const out = [...conditions];
+
+  out.push({
+    id: "alt_vol",
+    short: "VOL",
+    label: "Alt HTF vol score",
+    state: volScoreState(altVol, floor),
+    detail:
+      altVol != null && !Number.isNaN(Number(altVol))
+        ? `${Math.round(Number(altVol))}/10 · need ≥ ${floor}`
+        : "vol score unavailable from scanner",
+  });
+
+  if (showBtc) {
+    out.push({
+      id: "btc_vol",
+      short: "BTC-V",
+      label: "BTC HTF vol score",
+      state: volScoreState(btcVol, floor),
+      detail:
+        btcVol != null && !Number.isNaN(Number(btcVol))
+          ? `${Math.round(Number(btcVol))}/10 · need ≥ ${floor}`
+          : "BTC vol score unavailable",
+    });
+    out.push({
+      id: "bias_pair",
+      short: "REG",
+      label: "Alt + BTC HTF bias",
+      state:
+        altBias && btcBias
+          ? altBias.toUpperCase() === btcBias.toUpperCase()
+            ? "met"
+            : "unmet"
+          : "unknown",
+      detail: `alt ${biasSideShort(altBias)} · btc ${biasSideShort(btcBias)}`,
+    });
+  }
+
+  return out;
+}
+
 /** Proximity checklist for watchlist rows. */
 export function buildBandWatchConditions(entry: SignalsBandWatchEntry): SignalCondition[] {
   const side = entry.band_side;
@@ -240,43 +314,46 @@ export function buildBandWatchConditions(entry: SignalsBandWatchEntry): SignalCo
     side === "SUP" ? "Support band" : side === "RES" ? "Resistance band" : "Band role";
 
   if (!hasBand) {
-    return [
-      {
-        id: "near",
-        short: "NEAR",
-        label: "Near band edge",
-        state: "unmet",
-        detail: "no actionable band from scanner",
-      },
-      {
-        id: "inside",
-        short: "ZONE",
-        label: "Inside band",
-        state: "unmet",
-        detail: "price not in a tracked zone",
-      },
-      {
-        id: "side",
-        short: "BAND",
-        label: "Band role",
-        state: "unknown",
-        detail: "awaiting scanner bands",
-      },
-      {
-        id: "intact",
-        short: "HOLD",
-        label: "Band still valid",
-        state: "unmet",
-        detail: "no band to validate",
-      },
-      {
-        id: "dist",
-        short: "DIST",
-        label: "Distance",
-        state: "unknown",
-        detail: "—",
-      },
-    ];
+    return appendBiasVolConditions(
+      [
+        {
+          id: "near",
+          short: "NEAR",
+          label: "Near band edge",
+          state: "unmet",
+          detail: "no actionable band from scanner",
+        },
+        {
+          id: "inside",
+          short: "ZONE",
+          label: "Inside band",
+          state: "unmet",
+          detail: "price not in a tracked zone",
+        },
+        {
+          id: "side",
+          short: "BAND",
+          label: "Band role",
+          state: "unknown",
+          detail: "awaiting scanner bands",
+        },
+        {
+          id: "intact",
+          short: "HOLD",
+          label: "Band still valid",
+          state: "unmet",
+          detail: "no band to validate",
+        },
+        {
+          id: "dist",
+          short: "DIST",
+          label: "Distance",
+          state: "unknown",
+          detail: "—",
+        },
+      ],
+      entry,
+    );
   }
 
   const distDetail =
@@ -284,48 +361,51 @@ export function buildBandWatchConditions(entry: SignalsBandWatchEntry): SignalCo
       ? `${entry.distance_pct.toFixed(2)}% from nearest edge`
       : "at band edge";
 
-  return [
-    {
-      id: "near",
-      short: "NEAR",
-      label: "Near band edge",
-      state: isNear ? "met" : "unmet",
-      detail: isNear ? `within ${cap}% threshold` : `${distDetail} (>${cap}%)`,
-    },
-    {
-      id: "inside",
-      short: "ZONE",
-      label: "Inside band",
-      state: entry.at_band ? "met" : "unmet",
-      detail: entry.at_band ? "price inside SUP/RES zone" : `price ${position} the zone`,
-    },
-    {
-      id: "side",
-      short: sideShort,
-      label: sideLabel,
-      state: "met",
-      detail: `${side} · weight ${entry.band_weight}`,
-    },
-    {
-      id: "intact",
-      short: "HOLD",
-      label: "Band still valid",
-      state: intact ? "met" : "unmet",
-      detail:
-        side === "SUP"
-          ? "SUP not broken — price still ≥ band low"
-          : side === "RES"
-            ? "RES not broken — price still ≤ band high"
-            : "actionable zone",
-    },
-    {
-      id: "dist",
-      short: "DIST",
-      label: "Distance to edge",
-      state: entry.distance_pct === 0 || entry.at_band ? "met" : isNear ? "met" : "unmet",
-      detail: distDetail,
-    },
-  ];
+  return appendBiasVolConditions(
+    [
+      {
+        id: "near",
+        short: "NEAR",
+        label: "Near band edge",
+        state: isNear ? "met" : "unmet",
+        detail: isNear ? `within ${cap}% threshold` : `${distDetail} (>${cap}%)`,
+      },
+      {
+        id: "inside",
+        short: "ZONE",
+        label: "Inside band",
+        state: entry.at_band ? "met" : "unmet",
+        detail: entry.at_band ? "price inside SUP/RES zone" : `price ${position} the zone`,
+      },
+      {
+        id: "side",
+        short: sideShort,
+        label: sideLabel,
+        state: "met",
+        detail: `${side} · weight ${entry.band_weight}`,
+      },
+      {
+        id: "intact",
+        short: "HOLD",
+        label: "Band still valid",
+        state: intact ? "met" : "unmet",
+        detail:
+          side === "SUP"
+            ? "SUP not broken — price still ≥ band low"
+            : side === "RES"
+              ? "RES not broken — price still ≤ band high"
+              : "actionable zone",
+      },
+      {
+        id: "dist",
+        short: "DIST",
+        label: "Distance to edge",
+        state: entry.distance_pct === 0 || entry.at_band ? "met" : isNear ? "met" : "unmet",
+        detail: distDetail,
+      },
+    ],
+    entry,
+  );
 }
 
 export function countMetConditions(conditions: SignalCondition[]): number {

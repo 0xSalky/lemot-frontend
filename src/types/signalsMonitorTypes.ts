@@ -14,6 +14,12 @@ export interface SignalsBandWatchEntry {
   span_pct?: number | null;
   price_vs_band?: string | null;
   max_dist_pct?: number;
+  alt_setup_bias?: string | null;
+  alt_vol_score?: number | null;
+  btc_setup_bias?: string | null;
+  btc_vol_score?: number | null;
+  trade_with_bias?: boolean;
+  trade_with_bias_min_vol_score?: number;
 }
 
 export interface SignalsProfileHealth {
@@ -21,6 +27,7 @@ export interface SignalsProfileHealth {
   timeframe: string;
   fractal_timing: string;
   trade_with_bias: boolean;
+  trade_with_bias_min_vol_score?: number;
   symbols_watched: number;
   last_poll_symbols_evaluated: number;
   last_bar_processed_at: string | null;
@@ -187,6 +194,15 @@ function normalizeBandWatchEntry(raw: unknown): SignalsBandWatchEntry | null {
     span_pct: row.span_pct != null ? Number(row.span_pct) : null,
     price_vs_band: typeof row.price_vs_band === "string" ? row.price_vs_band : null,
     max_dist_pct: row.max_dist_pct != null ? Number(row.max_dist_pct) : undefined,
+    alt_setup_bias: typeof row.alt_setup_bias === "string" ? row.alt_setup_bias : null,
+    alt_vol_score: row.alt_vol_score != null ? Number(row.alt_vol_score) : null,
+    btc_setup_bias: typeof row.btc_setup_bias === "string" ? row.btc_setup_bias : null,
+    btc_vol_score: row.btc_vol_score != null ? Number(row.btc_vol_score) : null,
+    trade_with_bias: row.trade_with_bias === true,
+    trade_with_bias_min_vol_score:
+      row.trade_with_bias_min_vol_score != null
+        ? Number(row.trade_with_bias_min_vol_score)
+        : undefined,
   };
 }
 
@@ -204,6 +220,10 @@ export function normalizeSignalsHealth(raw: unknown): SignalsMonitorHealth {
       timeframe: String(p.timeframe ?? ""),
       fractal_timing: String(p.fractal_timing ?? ""),
       trade_with_bias: p.trade_with_bias === true,
+      trade_with_bias_min_vol_score:
+        p.trade_with_bias_min_vol_score != null
+          ? Number(p.trade_with_bias_min_vol_score)
+          : undefined,
       symbols_watched: Number(p.symbols_watched ?? 0),
       last_poll_symbols_evaluated: Number(p.last_poll_symbols_evaluated ?? 0),
       last_bar_processed_at:
