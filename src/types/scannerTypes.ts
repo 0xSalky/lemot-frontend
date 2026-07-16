@@ -89,6 +89,7 @@ export interface ScannerSetupRow {
   signal?: string | null;
   adx: number;
   adx_regime: string;
+  vol_score?: number | null;
   price: number;
   quote_volume_24h: number;
   bands: ScannerBandRow[];

@@ -221,7 +221,7 @@ function ProfileBookSection({
         <Flex gap="2" flexWrap="wrap">
           {profileDesk.trade_with_bias ? (
             <EventTag
-              label="BIAS ON"
+              label="BIAS+VOL ON"
               tone={{
                 bg: tokens.blockquoteBg,
                 color: tokens.tagBlue.color,

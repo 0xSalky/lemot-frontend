@@ -203,6 +203,7 @@ function normalizeSetupContext(raw: unknown): TradeSetupContext {
     band_anchor_level_keys: strList(row.band_anchor_level_keys),
     htf_setup_bias: str(row.htf_setup_bias),
     htf_adx_regime: str(row.htf_adx_regime),
+    htf_vol_score: num(row.htf_vol_score),
     htf_composite_read: str(row.htf_composite_read),
     htf_favored_side: str(row.htf_favored_side),
     htf_aligned: row.htf_aligned == null ? null : Boolean(row.htf_aligned),

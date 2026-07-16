@@ -12,6 +12,7 @@ export type TradeSetupContext = {
   band_anchor_level_keys: string[];
   htf_setup_bias: string | null;
   htf_adx_regime: string | null;
+  htf_vol_score: number | null;
   htf_composite_read: string | null;
   htf_favored_side: string | null;
   htf_aligned: boolean | null;
