@@ -109,6 +109,8 @@ function PositionRow({
   const accent = side === "long" ? tokens.tagGreen.color : tokens.tagRed.color;
   const stripe = index % 2 === 1 ? tokens.blockquoteBg : "transparent";
   const linked = pos.match_method === "order_id" && pos.journal_id != null;
+  const riskMult =
+    pos.risk_mult != null && Number.isFinite(pos.risk_mult) ? pos.risk_mult : null;
 
   return (
     <Box
@@ -131,6 +133,9 @@ function PositionRow({
           <ProfileBadge profile={pos.profile} tokens={tokens} />
         ) : null}
         <Text color={tokens.panelBody}>{formatR(pos.r_multiple)}</Text>
+        {linked && riskMult != null ? (
+          <Text color={tokens.panelMuted}>{`×${riskMult.toFixed(2)}`}</Text>
+        ) : null}
         {pos.target_tp_rr != null ? (
           <Text color={tokens.tagAccent.color} title={pos.tp_strategy_id ?? undefined}>
             → {pos.target_tp_rr}R
@@ -166,6 +171,14 @@ function PositionRow({
           {pos.stop_loss_price != null ? (
             <Text>
               stop <Box as="span">{pos.stop_loss_price}</Box>
+            </Text>
+          ) : null}
+          {riskMult != null ? (
+            <Text>
+              risk <Box as="span">{`×${riskMult.toFixed(2)}`}</Box>
+              {pos.system_setup_grade ? (
+                <Box as="span" color={tokens.panelLabel}>{` · ${pos.system_setup_grade}`}</Box>
+              ) : null}
             </Text>
           ) : null}
           {pos.target_tp_rr != null ? (
