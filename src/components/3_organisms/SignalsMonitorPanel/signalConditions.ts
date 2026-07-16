@@ -249,7 +249,6 @@ function appendBiasVolConditions(
 
   const floor = entry.trade_with_bias_min_vol_score ?? 3;
   const altVol = entry.alt_vol_score;
-  const btcVol = entry.btc_vol_score;
   const altBias = entry.alt_setup_bias;
   const btcBias = entry.btc_setup_bias;
   const showBtc = !isBtcSymbol(entry.symbol);
@@ -268,16 +267,6 @@ function appendBiasVolConditions(
   });
 
   if (showBtc) {
-    out.push({
-      id: "btc_vol",
-      short: "BTC-V",
-      label: "BTC HTF vol score",
-      state: volScoreState(btcVol, floor),
-      detail:
-        btcVol != null && !Number.isNaN(Number(btcVol))
-          ? `${Math.round(Number(btcVol))}/10 · need ≥ ${floor}`
-          : "BTC vol score unavailable",
-    });
     out.push({
       id: "bias_pair",
       short: "REG",
