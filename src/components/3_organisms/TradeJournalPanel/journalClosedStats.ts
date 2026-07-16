@@ -33,12 +33,11 @@ export function computeClosedStats(trades: TradeJournalRow[]): ClosedHistoryStat
 
   const rs: number[] = [];
   for (const trade of closed) {
-    const realized = trade.realized_pnl_usd;
-    if (realized != null) {
-      if (realized > 0.01) stats.wins += 1;
-      else if (realized < -0.01) stats.losses += 1;
-      else stats.breakeven += 1;
-    }
+    const outcome = tradeOutcome(trade);
+    if (outcome === "win") stats.wins += 1;
+    else if (outcome === "loss") stats.losses += 1;
+    else if (outcome === "breakeven") stats.breakeven += 1;
+
     if (trade.r_multiple != null && Number.isFinite(trade.r_multiple)) {
       const r = trade.r_multiple;
       rs.push(r);
@@ -67,8 +66,16 @@ export function tradeOutcome(
 ): "win" | "loss" | "breakeven" | "unknown" {
   if (trade.lifecycle !== "closed") return "unknown";
   const realized = trade.realized_pnl_usd;
-  if (realized == null) return "unknown";
-  if (realized > 0.01) return "win";
-  if (realized < -0.01) return "loss";
-  return "breakeven";
+  if (realized != null) {
+    if (realized > 0.01) return "win";
+    if (realized < -0.01) return "loss";
+    return "breakeven";
+  }
+  const r = trade.r_multiple;
+  if (r != null && Number.isFinite(r)) {
+    if (r > 0.02) return "win";
+    if (r < -0.02) return "loss";
+    return "breakeven";
+  }
+  return "unknown";
 }
