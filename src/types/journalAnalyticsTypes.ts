@@ -39,6 +39,10 @@ export type TradeSetupContext = {
   sup_long_reclaim: boolean;
   base_probability_pct: number | null;
   setup_grade: string | null;
+  system_setup_grade: string | null;
+  risk_mult: number;
+  risk_percent: number | null;
+  risk_percent_base: number | null;
   enter_probability_pct: number | null;
   setup_factors: string[];
   fractal_volume_vs_median: number | null;

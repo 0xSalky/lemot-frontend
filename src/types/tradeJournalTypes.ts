@@ -68,6 +68,11 @@ export type TradeJournalRow = {
   advice_confidence: string | null;
   enter_probability_pct: number | null;
   setup_grade: string | null;
+  system_setup_grade: string | null;
+  /** Size mult from system grade. Missing/legacy → 1. */
+  risk_mult: number;
+  risk_percent: number | null;
+  risk_percent_base: number | null;
   realized_pnl_usd: number | null;
   unrealized_pnl_usd: number | null;
   r_multiple: number | null;
@@ -231,6 +236,10 @@ function normalizeSetupContext(raw: unknown): TradeSetupContext {
     sup_long_reclaim: Boolean(row.sup_long_reclaim),
     base_probability_pct: num(row.base_probability_pct),
     setup_grade: str(row.setup_grade),
+    system_setup_grade: str(row.system_setup_grade),
+    risk_mult: num(row.risk_mult) ?? 1,
+    risk_percent: num(row.risk_percent),
+    risk_percent_base: num(row.risk_percent_base),
     enter_probability_pct: num(row.enter_probability_pct),
     setup_factors: strList(row.setup_factors),
     fractal_volume_vs_median: num(row.fractal_volume_vs_median),
@@ -308,6 +317,10 @@ function normalizeTrade(raw: unknown): TradeJournalRow | null {
     advice_confidence: str(row.advice_confidence),
     enter_probability_pct: num(row.enter_probability_pct),
     setup_grade: str(row.setup_grade),
+    system_setup_grade: str(row.system_setup_grade),
+    risk_mult: num(row.risk_mult) ?? 1,
+    risk_percent: num(row.risk_percent),
+    risk_percent_base: num(row.risk_percent_base),
     realized_pnl_usd: num(row.realized_pnl_usd),
     unrealized_pnl_usd: num(row.unrealized_pnl_usd),
     r_multiple: num(row.r_multiple),

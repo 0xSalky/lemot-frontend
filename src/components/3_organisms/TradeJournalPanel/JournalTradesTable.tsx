@@ -59,6 +59,8 @@ function TradeCard({
   const outcome = outcomeStyle(tradeOutcome(trade), tokens);
   const rVal = trade.r_multiple;
   const alien = tokens.tagAccent.color;
+  const riskMult = trade.risk_mult > 0 && Number.isFinite(trade.risk_mult) ? trade.risk_mult : 1;
+  const riskMultLabel = `×${Number(riskMult.toFixed(2))}`;
 
   return (
     <Box
@@ -143,6 +145,9 @@ function TradeCard({
                 lineHeight="1"
               >
                 {formatR(rVal)}
+              </Text>
+              <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted} lineHeight="1">
+                risk {riskMultLabel}
               </Text>
               <Box
                 px="1.5"
@@ -264,16 +269,21 @@ function TradeCard({
         </Stack>
 
         {/* R */}
-        <Text
-          fontFamily="mono"
-          fontSize="sm"
-          fontWeight="semibold"
-          color={rColor(tokens, rVal)}
-          lineHeight="1"
-          textAlign="center"
-        >
-          {formatR(rVal)}
-        </Text>
+        <Stack gap="0.5" align="center">
+          <Text
+            fontFamily="mono"
+            fontSize="sm"
+            fontWeight="semibold"
+            color={rColor(tokens, rVal)}
+            lineHeight="1"
+            textAlign="center"
+          >
+            {formatR(rVal)}
+          </Text>
+          <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted} lineHeight="1">
+            {riskMultLabel}
+          </Text>
+        </Stack>
 
         {/* Date */}
         <Text
@@ -346,6 +356,18 @@ function TradeCard({
                 <Text color={alien}>{trade.setup_grade}</Text>
               </Stack>
             ) : null}
+            <Stack gap="0">
+              <Text color={tokens.panelLabel} letterSpacing="0.08em">RISK</Text>
+              <Text color={tokens.panelBody}>
+                {riskMultLabel}
+                {trade.risk_percent != null
+                  ? ` · ${Number(trade.risk_percent.toFixed(3))}%`
+                  : ""}
+                {trade.system_setup_grade
+                  ? ` · sys ${trade.system_setup_grade}`
+                  : ""}
+              </Text>
+            </Stack>
             {trade.fractal_level != null ? (
               <Stack gap="0">
                 <Text color={tokens.panelLabel} letterSpacing="0.08em">FRACTAL</Text>
