@@ -42,20 +42,9 @@ function adxPalette(regime: string): string {
   return "gray";
 }
 
-function volPalette(score: number | null | undefined): string {
-  if (score == null || Number.isNaN(score)) return "gray";
-  if (score >= 7) return "orange";
-  if (score >= 3) return "blue";
-  return "gray";
-}
-
 export default function SetupHeaderTags({ setup, tokens }: SetupHeaderTagsProps) {
   const base = scannerSymbolToBase(setup.symbol);
   const signal = signalLabel(setup.signal);
-  const vol =
-    setup.vol_score == null || Number.isNaN(Number(setup.vol_score))
-      ? null
-      : Math.max(0, Math.min(10, Math.round(Number(setup.vol_score))));
 
   return (
     <Flex
@@ -86,11 +75,6 @@ export default function SetupHeaderTags({ setup, tokens }: SetupHeaderTagsProps)
       <Badge colorPalette={adxPalette(setup.adx_regime)} variant="outline" fontFamily="mono" fontSize="2xs">
         ADX {setup.adx.toFixed(1)} {adxRegimeShort(setup.adx_regime)}
       </Badge>
-      {vol != null ? (
-        <Badge colorPalette={volPalette(vol)} variant="outline" fontFamily="mono" fontSize="2xs">
-          VOL {vol}/10
-        </Badge>
-      ) : null}
       <Badge colorPalette="gray" variant="outline" fontFamily="mono" fontSize="2xs">
         24h {formatVolDollar(setup.quote_volume_24h)}
       </Badge>

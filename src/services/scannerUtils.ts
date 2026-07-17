@@ -517,9 +517,6 @@ export function formatSetupHeaderLine1(setup: ScannerSetupRow): string {
     return (
       `#${setup.rank} | ${setup.symbol} | score=${setup.score.toFixed(1)} | ` +
       `${formatBiasLabel(setup.bias)}${signalPart} | ${formatAdxLine(setup.adx, setup.adx_regime)}` +
-      (setup.vol_score != null && !Number.isNaN(Number(setup.vol_score))
-        ? ` | vol=${Math.round(Number(setup.vol_score))}/10`
-        : "") +
       ` | price=${formatLevelPrice(setup.price)} | 24h vol=${formatVolDollar(setup.quote_volume_24h)}`
     );
 }

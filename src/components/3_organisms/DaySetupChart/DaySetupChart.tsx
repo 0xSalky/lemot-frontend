@@ -32,6 +32,7 @@ type DaySetupChartProps = {
   managedChart?: ScannerChartPayload | null;
   managedChartLoading?: boolean;
   chartRevisionKey?: string;
+  volScore?: number | null;
 };
 
 const FOOTPRINT_CHART_HEIGHT = FOOTPRINT_CHART_TOTAL_HEIGHT;
@@ -91,6 +92,7 @@ export default function DaySetupChart({
   managedChart,
   managedChartLoading,
   chartRevisionKey: chartRevisionKeyProp,
+  volScore = null,
 }: DaySetupChartProps) {
   const footprintTimeframe =
     defaultFootprintTimeframe ??
@@ -111,8 +113,24 @@ export default function DaySetupChart({
   }
 
   if (showOrderflow && footprintPair) {
+    const vol =
+      volScore == null || Number.isNaN(Number(volScore))
+        ? null
+        : Math.max(0, Math.min(10, Math.round(Number(volScore))));
     return (
       <DayChartBleed tokens={tokens} minHeight={FOOTPRINT_CHART_HEIGHT}>
+        {vol != null ? (
+          <Box px="2" pt="1.5" pb="0">
+            <Text
+              fontFamily="mono"
+              fontSize="9px"
+              color={vol >= 7 ? tokens.warn : vol >= 3 ? tokens.tagAccent.color : tokens.panelMuted}
+              title="Trading TF NATR vol score"
+            >
+              VOL {vol}/10
+            </Text>
+          </Box>
+        ) : null}
         <FootprintPairChart
           bars={displayBars}
           timeframe={footprintTimeframe}
@@ -138,6 +156,7 @@ export default function DaySetupChart({
         managedChart={managedChart}
         managedChartLoading={managedChartLoading}
         chartRevisionKey={resolvedChartRevisionKey}
+        volScore={volScore}
       />
     </DayChartBleed>
   );

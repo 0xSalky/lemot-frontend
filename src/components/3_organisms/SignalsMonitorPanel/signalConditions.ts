@@ -258,7 +258,7 @@ function appendBiasVolConditions(
   out.push({
     id: "alt_vol",
     short: "VOL",
-    label: "Alt HTF vol score",
+    label: "Signal TF vol score",
     state: volScoreState(altVol, floor),
     detail:
       altVol != null && !Number.isNaN(Number(altVol))
