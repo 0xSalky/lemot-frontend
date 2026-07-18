@@ -16,8 +16,10 @@ import { FOOTPRINT_SIGNAL_SEVERITY_ORDER } from "@/types/footprintTypes";
 import { Badge, Flex, Stack, Text } from "@chakra-ui/react";
 
 type FootprintOrderflowTagsProps = {
-  summary: FootprintPairView["summary"];
+  summary?: FootprintPairView["summary"] | null;
   tokens: ThemeTokens;
+  /** Today's daily open vs prior-day value area. */
+  openVsVa?: string | null;
 };
 
 // Short labels shown in the badge; full label shown in title tooltip on hover
@@ -42,28 +44,58 @@ function isRedundantHtfSignal(label: string): boolean {
   return lower.includes("htf") && (lower.includes("bullish") || lower.includes("bearish"));
 }
 
-export default function FootprintOrderflowTags({ summary, tokens }: FootprintOrderflowTagsProps) {
-  const bias = summary.flow_bias ?? summary.bias;
-  const lastDelta = summary.last_delta;
-  const cvdWindow = summary.last_cvd_window;
-  const oiWindowPct = summary.window_oi_change_pct;
-  const funding = summary.last_funding_rate;
+function openVsVaBadge(openVsVa: string | null | undefined): {
+  label: string;
+  title: string;
+  colorPalette: string;
+} | null {
+  if (openVsVa === "above_vah") {
+    return {
+      label: "Above VAH",
+      title: "Today's daily open is above yesterday's value area high",
+      colorPalette: "orange",
+    };
+  }
+  if (openVsVa === "below_val") {
+    return {
+      label: "Below VAL",
+      title: "Today's daily open is below yesterday's value area low",
+      colorPalette: "cyan",
+    };
+  }
+  return null;
+}
+
+export default function FootprintOrderflowTags({
+  summary,
+  tokens,
+  openVsVa,
+}: FootprintOrderflowTagsProps) {
+  const vaBadge = openVsVaBadge(openVsVa);
+  const bias = summary?.flow_bias ?? summary?.bias;
+  const lastDelta = summary?.last_delta;
+  const cvdWindow = summary?.last_cvd_window;
+  const oiWindowPct = summary?.window_oi_change_pct;
+  const funding = summary?.last_funding_rate;
 
   // Filter: skip HTF redundant, skip bare last_bar tags (covered by delta number), skip
   // parent `absorption` tag (keep the directional variants instead)
-  const signals = [...displaySignals(summary)]
-    .filter((s) => !isRedundantHtfSignal(s.label))
-    .filter(
-      (s) =>
-        s.id !== "last_bar_buyers" &&
-        s.id !== "last_bar_sellers" &&
-        s.id !== "absorption",
-    )
-    .sort(
-      (a, b) =>
-        FOOTPRINT_SIGNAL_SEVERITY_ORDER[a.severity] - FOOTPRINT_SIGNAL_SEVERITY_ORDER[b.severity],
-    )
-    .slice(0, 6);
+  const signals = summary
+    ? [...displaySignals(summary)]
+        .filter((s) => !isRedundantHtfSignal(s.label))
+        .filter(
+          (s) =>
+            s.id !== "last_bar_buyers" &&
+            s.id !== "last_bar_sellers" &&
+            s.id !== "absorption",
+        )
+        .sort(
+          (a, b) =>
+            FOOTPRINT_SIGNAL_SEVERITY_ORDER[a.severity] -
+            FOOTPRINT_SIGNAL_SEVERITY_ORDER[b.severity],
+        )
+        .slice(0, 6)
+    : [];
 
   const hasStats =
     bias != null ||
@@ -73,7 +105,7 @@ export default function FootprintOrderflowTags({ summary, tokens }: FootprintOrd
     funding != null;
   const hasSignals = signals.length > 0;
 
-  if (!hasStats && !hasSignals) return null;
+  if (!hasStats && !hasSignals && !vaBadge) return null;
 
   return (
     <Stack
@@ -99,13 +131,13 @@ export default function FootprintOrderflowTags({ summary, tokens }: FootprintOrd
             </Badge>
           )}
 
-          {summary.price_trend && summary.price_trend !== "unknown" && (
+          {summary?.price_trend && summary.price_trend !== "unknown" && (
             <Badge variant="outline" fontFamily="mono" fontSize="2xs" flexShrink={0}>
               {trendEmoji(summary.price_trend)} price {summary.price_trend}
             </Badge>
           )}
 
-          {summary.cvd_trend && summary.cvd_trend !== "unknown" && (
+          {summary?.cvd_trend && summary.cvd_trend !== "unknown" && (
             <Badge variant="outline" fontFamily="mono" fontSize="2xs" flexShrink={0}>
               {trendEmoji(summary.cvd_trend)} CVD {summary.cvd_trend}
             </Badge>
@@ -166,9 +198,21 @@ export default function FootprintOrderflowTags({ summary, tokens }: FootprintOrd
         </Flex>
       )}
 
-      {/* Row 2: event signal badges — hover for full explanation */}
-      {hasSignals && (
+      {/* Row 2: open-vs-VA + event signal badges — hover for full explanation */}
+      {(vaBadge || hasSignals) && (
         <Flex gap="1.5" flexWrap="wrap">
+          {vaBadge ? (
+            <Badge
+              colorPalette={vaBadge.colorPalette}
+              variant="subtle"
+              fontFamily="mono"
+              fontSize="2xs"
+              title={vaBadge.title}
+              cursor="default"
+            >
+              {vaBadge.label}
+            </Badge>
+          ) : null}
           {signals.map((signal) => (
             <Badge
               key={signal.id}

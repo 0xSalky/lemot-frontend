@@ -278,8 +278,14 @@ function SetupCard({
             {...themedPanelStyle(tokens)}
         >
             <SetupHeaderTags setup={setup} tokens={tokens} />
-            {hasOrderflowData(footprintPair) && footprintPair ? (
-                <FootprintOrderflowTags summary={footprintPair.summary} tokens={tokens} />
+            {hasOrderflowData(footprintPair) ||
+            setup.open_vs_va === "above_vah" ||
+            setup.open_vs_va === "below_val" ? (
+                <FootprintOrderflowTags
+                    summary={hasOrderflowData(footprintPair) ? footprintPair?.summary : null}
+                    tokens={tokens}
+                    openVsVa={setup.open_vs_va}
+                />
             ) : null}
             <DaySetupChart
                 symbol={setup.symbol}

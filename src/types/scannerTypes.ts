@@ -90,6 +90,8 @@ export interface ScannerSetupRow {
   adx: number;
   adx_regime: string;
   vol_score?: number | null;
+  outside_value?: boolean | null;
+  open_vs_va?: "above_vah" | "below_val" | "inside" | string | null;
   price: number;
   quote_volume_24h: number;
   bands: ScannerBandRow[];
