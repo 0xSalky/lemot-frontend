@@ -235,13 +235,13 @@ const HomePage = () => {
                         Pairs
                     </ThemeTabTrigger>
                     <ThemeTabTrigger value="scanner-a" currentTab={activeTab} onReselect={bumpTabRefresh}>
-                        Scanner A
+                        Scan A
                     </ThemeTabTrigger>
                     <ThemeTabTrigger value="scanner-b" currentTab={activeTab} onReselect={bumpTabRefresh}>
-                        Scanner B
+                        Scan B
                     </ThemeTabTrigger>
                     <ThemeTabTrigger value="scanner-c" currentTab={activeTab} onReselect={bumpTabRefresh}>
-                        Scanner C
+                        Scan C
                     </ThemeTabTrigger>
                     <ThemeTabTrigger value="scanner-chat" currentTab={activeTab} onReselect={bumpTabRefresh}>
                         AI Chat
