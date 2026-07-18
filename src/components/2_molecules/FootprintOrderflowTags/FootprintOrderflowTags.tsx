@@ -51,16 +51,16 @@ function openVsVaBadge(openVsVa: string | null | undefined): {
 } | null {
   if (openVsVa === "above_vah") {
     return {
-      label: "Above VAH",
+      label: "☀️ Above VAH",
       title: "Today's daily open is above yesterday's value area high",
-      colorPalette: "orange",
+      colorPalette: "green",
     };
   }
   if (openVsVa === "below_val") {
     return {
-      label: "Below VAL",
+      label: "☀️ Below VAL",
       title: "Today's daily open is below yesterday's value area low",
-      colorPalette: "cyan",
+      colorPalette: "red",
     };
   }
   return null;
@@ -82,19 +82,19 @@ export default function FootprintOrderflowTags({
   // parent `absorption` tag (keep the directional variants instead)
   const signals = summary
     ? [...displaySignals(summary)]
-        .filter((s) => !isRedundantHtfSignal(s.label))
-        .filter(
-          (s) =>
-            s.id !== "last_bar_buyers" &&
-            s.id !== "last_bar_sellers" &&
-            s.id !== "absorption",
-        )
-        .sort(
-          (a, b) =>
-            FOOTPRINT_SIGNAL_SEVERITY_ORDER[a.severity] -
-            FOOTPRINT_SIGNAL_SEVERITY_ORDER[b.severity],
-        )
-        .slice(0, 6)
+      .filter((s) => !isRedundantHtfSignal(s.label))
+      .filter(
+        (s) =>
+          s.id !== "last_bar_buyers" &&
+          s.id !== "last_bar_sellers" &&
+          s.id !== "absorption",
+      )
+      .sort(
+        (a, b) =>
+          FOOTPRINT_SIGNAL_SEVERITY_ORDER[a.severity] -
+          FOOTPRINT_SIGNAL_SEVERITY_ORDER[b.severity],
+      )
+      .slice(0, 6)
     : [];
 
   const hasStats =
@@ -204,11 +204,15 @@ export default function FootprintOrderflowTags({
           {vaBadge ? (
             <Badge
               colorPalette={vaBadge.colorPalette}
-              variant="subtle"
+              variant="solid"
               fontFamily="mono"
               fontSize="2xs"
+              fontWeight="bold"
+              letterSpacing="wide"
+              px="2"
               title={vaBadge.title}
               cursor="default"
+              boxShadow="0 0 10px color-mix(in srgb, currentColor 45%, transparent)"
             >
               {vaBadge.label}
             </Badge>
