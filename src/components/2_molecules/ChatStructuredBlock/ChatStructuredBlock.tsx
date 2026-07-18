@@ -14,7 +14,7 @@ const MONO = {
 type ChatStructuredBlockProps = {
   structured: ScannerChatStructuredBlock | null | undefined;
   tokens: ThemeTokens;
-  profile?: "a" | "b" | null;
+  profile?: "a" | "b" | "c" | null;
 };
 
 const ChatStructuredBlock = ({ structured, tokens, profile }: ChatStructuredBlockProps) => {

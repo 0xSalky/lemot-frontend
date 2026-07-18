@@ -1,5 +1,5 @@
 import { apiFetch } from "@/services/apiFetch";
-import { IS_PROFILE_B_ACTIVE } from "@/services/config";
+import { IS_PROFILE_B_ACTIVE, IS_PROFILE_C_ACTIVE } from "@/services/config";
 import type {
   ScannerBandRow,
   ScannerAiBatchSummary,
@@ -56,11 +56,17 @@ function apiErrorMessage(data: unknown, status: number): string {
   return `HTTP ${status}`;
 }
 
-/** Scanner profiles supported by the backend. */
-export type ScannerProfile = "a" | "b";
-export const SCANNER_PROFILES: readonly ScannerProfile[] = IS_PROFILE_B_ACTIVE
-  ? ["b", "a"]
-  : ["a"];
+/** Scanner profiles supported by the backend (bands only — not signals). */
+export type ScannerProfile = "a" | "b" | "c";
+
+function buildScannerProfiles(): ScannerProfile[] {
+  const profiles: ScannerProfile[] = ["a"];
+  if (IS_PROFILE_B_ACTIVE) profiles.unshift("b");
+  if (IS_PROFILE_C_ACTIVE) profiles.push("c");
+  return profiles;
+}
+
+export const SCANNER_PROFILES: readonly ScannerProfile[] = buildScannerProfiles();
 
 export const DEFAULT_SCANNER_PROFILE: ScannerProfile = SCANNER_PROFILES[0];
 
@@ -68,7 +74,7 @@ export const DEFAULT_SCANNER_PROFILE: ScannerProfile = SCANNER_PROFILES[0];
 export const SCANNER_PROFILE = DEFAULT_SCANNER_PROFILE;
 
 export function scannerProfileLabel(profile: ScannerProfile): string {
-  return profile === "a" ? "A" : "B";
+  return profile.toUpperCase();
 }
 
 /** @deprecated use scannerProfileLabel(profile) */
@@ -82,7 +88,18 @@ export const SCANNER_PROFILE_CHART_TIMEFRAME: Record<
 > = {
   b: "30m",
   a: "5m",
+  c: "5m",
 };
+
+export function emptyScannerProfileRecord<T>(
+  value: T | ((profile: ScannerProfile) => T),
+): Record<ScannerProfile, T> {
+  const factory =
+    typeof value === "function"
+      ? (value as (profile: ScannerProfile) => T)
+      : () => value;
+  return { a: factory("a"), b: factory("b"), c: factory("c") };
+}
 
 export function normalizeScannerChartTimeframe(
   value: string | null | undefined,

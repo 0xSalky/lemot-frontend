@@ -34,7 +34,7 @@ import {
     Textarea,
 } from "@chakra-ui/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { IS_PROFILE_B_ACTIVE } from "@/services/config";
+import { IS_PROFILE_B_ACTIVE, IS_PROFILE_C_ACTIVE } from "@/services/config";
 
 function ProfileChip({
     label,
@@ -321,7 +321,9 @@ function ChatHistoryMenu({
                                                 {title}
                                             </Text>
                                             <Flex gap="2" align="center" flexWrap="wrap">
-                                                {thread.profile === "a" || thread.profile === "b" ? (
+                                                {thread.profile === "a" ||
+                                                thread.profile === "b" ||
+                                                thread.profile === "c" ? (
                                                     <Badge
                                                         size="sm"
                                                         variant="outline"
@@ -489,7 +491,7 @@ const ScannerChat = ({
                 setThreadId(result.thread_id);
                 setMessages(result.messages);
                 const profile = result.profile ?? result.thread.profile;
-                if (profile === "a" || profile === "b") {
+                if (profile === "a" || profile === "b" || profile === "c") {
                     setLockedProfile(profile);
                     setSelectedProfile(profile);
                 }
@@ -544,6 +546,15 @@ const ScannerChat = ({
                             active={activeProfile === "b"}
                             disabled={Boolean(lockedProfile && lockedProfile !== "b")}
                             onClick={() => setSelectedProfile("b")}
+                            tokens={tokens}
+                        />
+                    )}
+                    {IS_PROFILE_C_ACTIVE && (
+                        <ProfileChip
+                            label="C"
+                            active={activeProfile === "c"}
+                            disabled={Boolean(lockedProfile && lockedProfile !== "c")}
+                            onClick={() => setSelectedProfile("c")}
                             tokens={tokens}
                         />
                     )}

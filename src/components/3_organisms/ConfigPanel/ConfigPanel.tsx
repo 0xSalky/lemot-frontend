@@ -204,6 +204,16 @@ export default function ConfigPanel({ refreshKey = 0 }: ConfigPanelProps) {
 
           <Separator borderColor={tokens.panelBorder} />
 
+          <ConfigSection title="Scanner C">
+            <ScannerConfigPanel
+              profile="c"
+              onRequestScan={() => setPendingScan({ profile: "c", withAi: false })}
+              onRequestScanWithAi={() => setPendingScan({ profile: "c", withAi: true })}
+            />
+          </ConfigSection>
+
+          <Separator borderColor={tokens.panelBorder} />
+
           <ConfigSection title="Signals (live)">
             <SignalsConfigPanel tokens={tokens} refreshKey={refreshKey} />
           </ConfigSection>

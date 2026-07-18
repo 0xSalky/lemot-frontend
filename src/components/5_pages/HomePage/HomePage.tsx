@@ -14,6 +14,7 @@ import { TRADING_PAIRS, CONTENT_MAX_WIDTH } from "@/services/config";
 import { sortTradingPairs } from "@/services/tradingPairs";
 import type { ScannerSetupRow, ScannerViewFetchResult } from "@/types/scannerTypes";
 import {
+    emptyScannerProfileRecord,
     fetchLatestScannerBatch,
     fetchScannerView,
     scannerSymbolToBase,
@@ -23,15 +24,13 @@ import {
 import { Stack, Tabs } from "@chakra-ui/react";
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 
-const INITIAL_SCANNER_LOADING: Record<ScannerProfile, boolean> = {
-    b: false,
-    a: false,
-};
+const INITIAL_SCANNER_LOADING = emptyScannerProfileRecord(false);
 
 type HomeTabId =
     | "pairs"
     | "scanner-a"
     | "scanner-b"
+    | "scanner-c"
     | "scanner-chat"
     | "signals"
     | "risk"
@@ -44,6 +43,7 @@ function initialTabRefreshKeys(): Record<HomeTabId, number> {
         pairs: 0,
         "scanner-a": 0,
         "scanner-b": 0,
+        "scanner-c": 0,
         "scanner-chat": 0,
         signals: 0,
         risk: 0,
@@ -78,30 +78,24 @@ function runScannerViewFetch(
 const HomePage = () => {
     const { palette } = useThemeColor();
     const tokens = useThemeTokens(palette);
-    const [views, setViews] = useState<Record<ScannerProfile, ScannerViewFetchResult | null>>({
-        b: null,
-        a: null,
-    });
+    const [views, setViews] = useState<Record<ScannerProfile, ScannerViewFetchResult | null>>(
+        emptyScannerProfileRecord(null),
+    );
     const [extraTradingPairs, setExtraTradingPairs] = useState<string[]>([]);
-    const [batchSetups, setBatchSetups] = useState<Record<ScannerProfile, ScannerSetupRow[]>>({
-        b: [],
-        a: [],
-    });
+    const [batchSetups, setBatchSetups] = useState<Record<ScannerProfile, ScannerSetupRow[]>>(
+        emptyScannerProfileRecord(() => [] as ScannerSetupRow[]),
+    );
     const [loading, setLoading] = useState<Record<ScannerProfile, boolean>>(INITIAL_SCANNER_LOADING);
-    const loadIdRef = useRef<Record<ScannerProfile, number>>({ b: 0, a: 0 });
+    const loadIdRef = useRef<Record<ScannerProfile, number>>(emptyScannerProfileRecord(0));
     const [activeTab, setActiveTab] = useState<HomeTabId>("pairs");
     const [tabRefreshKeys, setTabRefreshKeys] = useState(initialTabRefreshKeys);
 
     const [refreshing, setRefreshing] = useState<
         Record<ScannerProfile, { batch: boolean; charts: boolean }>
-    >({
-        b: { batch: false, charts: false },
-        a: { batch: false, charts: false },
-    });
-    const [chartsRefreshKey, setChartsRefreshKey] = useState<Record<ScannerProfile, number>>({
-        b: 0,
-        a: 0,
-    });
+    >(emptyScannerProfileRecord(() => ({ batch: false, charts: false })));
+    const [chartsRefreshKey, setChartsRefreshKey] = useState<Record<ScannerProfile, number>>(
+        emptyScannerProfileRecord(0),
+    );
 
     const loadScanner = useCallback(
         (profile: ScannerProfile, options?: { fresh?: boolean; reload?: boolean }) =>
@@ -173,6 +167,7 @@ const HomePage = () => {
     const pairsRefreshKey = tabRefreshKeys.pairs;
     const scannerARefreshKey = tabRefreshKeys["scanner-a"];
     const scannerBRefreshKey = tabRefreshKeys["scanner-b"];
+    const scannerCRefreshKey = tabRefreshKeys["scanner-c"];
 
     useEffect(() => {
         if (activeTab !== "pairs") return;
@@ -188,6 +183,11 @@ const HomePage = () => {
         if (activeTab !== "scanner-b") return;
         void loadScanner("b", { reload: true });
     }, [activeTab, loadScanner, scannerBRefreshKey]);
+
+    useEffect(() => {
+        if (activeTab !== "scanner-c") return;
+        void loadScanner("c", { reload: true });
+    }, [activeTab, loadScanner, scannerCRefreshKey]);
 
     const scannerPairs = useMemo(() => {
         const bases: string[] = [];
@@ -239,6 +239,9 @@ const HomePage = () => {
                     </ThemeTabTrigger>
                     <ThemeTabTrigger value="scanner-b" currentTab={activeTab} onReselect={bumpTabRefresh}>
                         Scanner B
+                    </ThemeTabTrigger>
+                    <ThemeTabTrigger value="scanner-c" currentTab={activeTab} onReselect={bumpTabRefresh}>
+                        Scanner C
                     </ThemeTabTrigger>
                     <ThemeTabTrigger value="scanner-chat" currentTab={activeTab} onReselect={bumpTabRefresh}>
                         AI Chat
@@ -299,6 +302,19 @@ const HomePage = () => {
                         chartsRefreshKey={chartsRefreshKey.b}
                         onRefreshBatch={() => void refreshScannerBatch("b")}
                         onRefreshCharts={() => void refreshScannerCharts("b")}
+                    />
+                </Tabs.Content>
+
+                <Tabs.Content value="scanner-c">
+                    <ScannerResults
+                        profile="c"
+                        scannerView={views.c}
+                        loading={loading.c}
+                        refreshingBatch={refreshing.c.batch}
+                        refreshingCharts={refreshing.c.charts}
+                        chartsRefreshKey={chartsRefreshKey.c}
+                        onRefreshBatch={() => void refreshScannerBatch("c")}
+                        onRefreshCharts={() => void refreshScannerCharts("c")}
                     />
                 </Tabs.Content>
 

@@ -44,3 +44,4 @@ export const NATR_MULTIPLIER = "2.5";
 export const CONTENT_MAX_WIDTH = { base: "100%", lg: "55vw" } as const;
 
 export const IS_PROFILE_B_ACTIVE = true;
+export const IS_PROFILE_C_ACTIVE = true;

@@ -9,7 +9,7 @@ import type {
   ScannerChatThreadsPayload,
 } from "@/types/scannerChatTypes";
 
-const PROFILE_TAG = /#(b|a)\b/gi;
+const PROFILE_TAG = /#(b|a|c)\b/gi;
 
 const CHAT_MODEL_STORAGE_KEY = "lemot.chat.model";
 
@@ -45,7 +45,7 @@ export function parseProfileTags(message: string): ScannerProfile[] {
 export function profileTagConflict(message: string): string | null {
   const tags = parseProfileTags(message);
   if (tags.length > 1) {
-    return "Use only one profile tag per message (#a or #b, not both).";
+    return "Use only one profile tag per message (#a, #b, or #c — not multiple).";
   }
   return null;
 }
