@@ -7,6 +7,7 @@ import {
 } from "@/components/3_organisms/TradeJournalPanel/journalClosedStats";
 import { formatR } from "@/components/3_organisms/TradeJournalPanel/journalFormat";
 import { PairLabel } from "@/components/3_organisms/TradeJournalPanel/profileBadge";
+import { IS_PROFILE_B_ACTIVE } from "@/services/config";
 import type { ThemeTokens } from "@/components/ui/theme-color";
 import type { TradeJournalGrowth, TradeJournalRow } from "@/types/tradeJournalTypes";
 import { Box, Flex, Grid, Stack, Text } from "@chakra-ui/react";
@@ -195,7 +196,7 @@ export default function JournalHistoryViz({
     [trades],
   );
   const hasProfileBTrades = useMemo(
-    () => trades.some((t) => t.profile === "b"),
+    () => IS_PROFILE_B_ACTIVE && trades.some((t) => t.profile === "b"),
     [trades],
   );
 

@@ -13,6 +13,7 @@ import {
   scannerProfileLabel,
   type ScannerProfile,
 } from "@/services/scannerUtils";
+import { IS_PROFILE_B_ACTIVE, IS_PROFILE_C_ACTIVE } from "@/services/config";
 import { Box, Button, Separator, Stack, Text } from "@chakra-ui/react";
 import { useCallback, useState, type ReactNode } from "react";
 
@@ -192,25 +193,31 @@ export default function ConfigPanel({ refreshKey = 0 }: ConfigPanelProps) {
             />
           </ConfigSection>
 
-          <Separator borderColor={tokens.panelBorder} />
+          {IS_PROFILE_B_ACTIVE ? (
+            <>
+              <Separator borderColor={tokens.panelBorder} />
+              <ConfigSection title="Scanner B">
+                <ScannerConfigPanel
+                  profile="b"
+                  onRequestScan={() => setPendingScan({ profile: "b", withAi: false })}
+                  onRequestScanWithAi={() => setPendingScan({ profile: "b", withAi: true })}
+                />
+              </ConfigSection>
+            </>
+          ) : null}
 
-          <ConfigSection title="Scanner B">
-            <ScannerConfigPanel
-              profile="b"
-              onRequestScan={() => setPendingScan({ profile: "b", withAi: false })}
-              onRequestScanWithAi={() => setPendingScan({ profile: "b", withAi: true })}
-            />
-          </ConfigSection>
-
-          <Separator borderColor={tokens.panelBorder} />
-
-          <ConfigSection title="Scanner C">
-            <ScannerConfigPanel
-              profile="c"
-              onRequestScan={() => setPendingScan({ profile: "c", withAi: false })}
-              onRequestScanWithAi={() => setPendingScan({ profile: "c", withAi: true })}
-            />
-          </ConfigSection>
+          {IS_PROFILE_C_ACTIVE ? (
+            <>
+              <Separator borderColor={tokens.panelBorder} />
+              <ConfigSection title="Scanner C">
+                <ScannerConfigPanel
+                  profile="c"
+                  onRequestScan={() => setPendingScan({ profile: "c", withAi: false })}
+                  onRequestScanWithAi={() => setPendingScan({ profile: "c", withAi: true })}
+                />
+              </ConfigSection>
+            </>
+          ) : null}
 
           <Separator borderColor={tokens.panelBorder} />
 

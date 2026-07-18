@@ -1,5 +1,5 @@
 import { apiFetch } from "@/services/apiFetch";
-import { IS_PROFILE_B_ACTIVE, IS_PROFILE_C_ACTIVE } from "@/services/config";
+import { isProfileActive, type AppProfile } from "@/services/config";
 import type {
   ScannerBandRow,
   ScannerAiBatchSummary,
@@ -57,18 +57,16 @@ function apiErrorMessage(data: unknown, status: number): string {
 }
 
 /** Scanner profiles supported by the backend (bands only — not signals). */
-export type ScannerProfile = "a" | "b" | "c";
+export type ScannerProfile = AppProfile;
 
 function buildScannerProfiles(): ScannerProfile[] {
-  const profiles: ScannerProfile[] = ["a"];
-  if (IS_PROFILE_B_ACTIVE) profiles.unshift("b");
-  if (IS_PROFILE_C_ACTIVE) profiles.push("c");
-  return profiles;
+  const order: ScannerProfile[] = ["b", "a", "c"];
+  return order.filter((p) => isProfileActive(p));
 }
 
 export const SCANNER_PROFILES: readonly ScannerProfile[] = buildScannerProfiles();
 
-export const DEFAULT_SCANNER_PROFILE: ScannerProfile = SCANNER_PROFILES[0];
+export const DEFAULT_SCANNER_PROFILE: ScannerProfile = SCANNER_PROFILES[0] ?? "a";
 
 /** @deprecated use DEFAULT_SCANNER_PROFILE or pass profile explicitly */
 export const SCANNER_PROFILE = DEFAULT_SCANNER_PROFILE;

@@ -1,9 +1,11 @@
 "use client";
 
 import { useThemeTokens, useThemeColor, type ThemeTokens } from "@/components/ui/theme-color";
+import { activeSignalsProfiles, type SignalsProfile } from "@/services/config";
 import { Box, Flex } from "@chakra-ui/react";
+import { useEffect, useMemo } from "react";
 
-export type ProfileFilter = "all" | "a" | "b";
+export type ProfileFilter = "all" | SignalsProfile;
 
 const PROFILE_LABELS: Record<ProfileFilter, string> = {
   all: "ALL",
@@ -60,6 +62,21 @@ export default function ProfileSubTabs({ value, onChange, label }: ProfileSubTab
   const { palette } = useThemeColor();
   const tokens = useThemeTokens(palette);
 
+  const tabs = useMemo((): ProfileFilter[] => {
+    const signals = activeSignalsProfiles();
+    if (signals.length <= 1) return signals;
+    return ["all", ...signals];
+  }, []);
+
+  useEffect(() => {
+    if (!tabs.includes(value)) {
+      onChange(tabs[0] ?? "a");
+    }
+  }, [tabs, value, onChange]);
+
+  // Single active trading profile — no filter UI needed.
+  if (tabs.length <= 1) return null;
+
   const accentA = tokens.panelLabel;
   const accentB = tokens.tagBlue.color;
   const accentAll = tokens.tagNeutral.color;
@@ -77,7 +94,7 @@ export default function ProfileSubTabs({ value, onChange, label }: ProfileSubTab
           {label}
         </Box>
       ) : null}
-      {(["all", "a", "b"] as ProfileFilter[]).map((tab) => (
+      {tabs.map((tab) => (
         <Chip
           key={tab}
           label={PROFILE_LABELS[tab]}

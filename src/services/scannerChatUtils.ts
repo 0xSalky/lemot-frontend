@@ -1,5 +1,9 @@
 import { apiFetch } from "@/services/apiFetch";
-import type { ScannerProfile } from "@/services/scannerUtils";
+import { isProfileActive } from "@/services/config";
+import {
+  DEFAULT_SCANNER_PROFILE,
+  type ScannerProfile,
+} from "@/services/scannerUtils";
 import type {
   ScannerChatModel,
   ScannerChatSendOptions,
@@ -14,7 +18,7 @@ const PROFILE_TAG = /#(b|a|c)\b/gi;
 const CHAT_MODEL_STORAGE_KEY = "lemot.chat.model";
 
 export function scannerChatDefaultProfile(): ScannerProfile {
-  return "a";
+  return DEFAULT_SCANNER_PROFILE;
 }
 
 export function loadChatModelPreference(): ScannerChatModel {
@@ -34,7 +38,11 @@ export function parseProfileTags(message: string): ScannerProfile[] {
   const out: ScannerProfile[] = [];
   for (const match of message.matchAll(PROFILE_TAG)) {
     const tag = match[1]?.toLowerCase();
-    if ((tag === "b" || tag === "a") && !seen.has(tag)) {
+    if (
+      (tag === "a" || tag === "b" || tag === "c") &&
+      isProfileActive(tag) &&
+      !seen.has(tag)
+    ) {
       seen.add(tag);
       out.push(tag);
     }

@@ -6,6 +6,7 @@ import { closedTradesOnly } from "@/components/3_organisms/TradeJournalPanel/jou
 import JournalTradesTable from "@/components/3_organisms/TradeJournalPanel/JournalTradesTable";
 import ProfileSubTabs, { type ProfileFilter } from "@/components/2_molecules/ProfileSubTabs/ProfileSubTabs";
 import ProfileBalancesStrip from "@/components/2_molecules/ProfileBalancesStrip/ProfileBalancesStrip";
+import { activeSignalsProfiles } from "@/services/config";
 import { useThemeColor, useThemeTokens } from "@/components/ui/theme-color";
 import { themedPanelStyle } from "@/components/ui/themed-panel";
 import { usePageVisible } from "@/hooks/usePageVisible";
@@ -59,7 +60,10 @@ export default function JournalAnalyticsPanel({
   }, [load, polling, refreshKey]);
 
   const profileTrades = useMemo(() => {
-    const all = journal?.trades ?? [];
+    const allowed = new Set(activeSignalsProfiles());
+    const all = (journal?.trades ?? []).filter(
+      (t) => !t.profile || allowed.has(t.profile as "a" | "b"),
+    );
     if (profileFilter === "all") return all;
     return all.filter((t) => t.profile === profileFilter);
   }, [journal?.trades, profileFilter]);

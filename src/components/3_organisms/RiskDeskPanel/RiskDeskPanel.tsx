@@ -11,6 +11,7 @@ import { useThemeColor, useThemeTokens, type ThemeTokens } from "@/components/ui
 import { usePageVisible } from "@/hooks/usePageVisible";
 import { useProfileBalances } from "@/hooks/useProfileBalances";
 import { fetchRiskDesk } from "@/services/riskDesk";
+import { activeSignalsProfiles } from "@/services/config";
 import type {
   RiskDeskPayload,
   RiskDeskPosition,
@@ -333,7 +334,7 @@ export default function RiskDeskPanel({
 
   const allProfileDesks = useMemo(() => {
     if (!desk?.profiles) return [] as RiskProfileDesk[];
-    return (["a", "b"] as const)
+    return activeSignalsProfiles()
       .map((key) => desk.profiles[key])
       .filter(
         (p): p is RiskProfileDesk =>

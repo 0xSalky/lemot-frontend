@@ -391,7 +391,7 @@ const ScannerChat = ({
         setThreadId(id);
         setMessages(payload.messages);
         const resolved = payload.thread.profile;
-        if (resolved === "a" || resolved === "b") {
+        if (resolved === "a" || resolved === "b" || resolved === "c") {
             setLockedProfile(resolved);
             setSelectedProfile(resolved);
         }

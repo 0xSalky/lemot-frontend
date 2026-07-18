@@ -28,6 +28,7 @@ import {
   FOOTPRINT_SIGNAL_SEVERITY_ORDER,
   FOOTPRINT_TIMEFRAMES,
 } from "@/types/footprintTypes";
+import { SCANNER_PROFILES } from "@/services/scannerUtils";
 import {
   Badge,
   Box,
@@ -269,7 +270,7 @@ export default function FootprintPanel() {
             {profile}.yaml
           </Text>
           <Flex gap="2" flexWrap="wrap">
-            {(["a", "b", "c"] as FootprintProfile[]).map((p) => (
+            {(SCANNER_PROFILES as readonly FootprintProfile[]).map((p) => (
               <Button
                 key={p}
                 size="xs"

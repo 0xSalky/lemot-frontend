@@ -12,6 +12,7 @@ import {
   fetchSignalsHealth,
   fetchSignalsStats,
 } from "@/services/signalsMonitor";
+import { IS_PROFILE_B_ACTIVE, activeSignalsProfiles } from "@/services/config";
 import ProfileCountdownCore from "./ProfileCountdownCore";
 import { SignalConditionDots } from "./SignalConditionDots";
 import { buildAlertConditions, buildBandWatchConditions, mergeHistoricSignalEvents } from "./signalConditions";
@@ -777,7 +778,10 @@ export default function SignalsMonitorPanel({ active = true, refreshKey = 0 }: S
 
   const profileEntries = useMemo(() => {
     if (!health) return [];
-    return Object.entries(health.profiles);
+    const allowed = new Set(activeSignalsProfiles());
+    return Object.entries(health.profiles).filter(([key]) =>
+      allowed.has(key as "a" | "b"),
+    );
   }, [health]);
 
   const liveStatusColor = loading && !health
@@ -823,8 +827,12 @@ export default function SignalsMonitorPanel({ active = true, refreshKey = 0 }: S
   );
 
   const historicEvents = useMemo(() => {
-    if (profileFilter === "all") return allHistoricEvents;
-    return allHistoricEvents.filter((e) => !e.profile || e.profile === profileFilter);
+    const allowed = new Set(activeSignalsProfiles());
+    const activeOnly = allHistoricEvents.filter(
+      (e) => !e.profile || allowed.has(e.profile as "a" | "b"),
+    );
+    if (profileFilter === "all") return activeOnly;
+    return activeOnly.filter((e) => !e.profile || e.profile === profileFilter);
   }, [allHistoricEvents, profileFilter]);
 
   const nearBandMaxPct = health?.monitor_near_band_max_dist_pct ?? 2;
@@ -920,17 +928,21 @@ export default function SignalsMonitorPanel({ active = true, refreshKey = 0 }: S
               >
                 {health?.a_entry_advice_enabled ? "on" : "off"}
               </Box>
-              {" · "}B{" "}
-              <Box
-                as="span"
-                color={
-                  health?.b_entry_advice_enabled
-                    ? tokens.tagAccent.color
-                    : tokens.panelMuted
-                }
-              >
-                {health?.b_entry_advice_enabled ? "on" : "off"}
-              </Box>
+              {IS_PROFILE_B_ACTIVE ? (
+                <>
+                  {" · "}B{" "}
+                  <Box
+                    as="span"
+                    color={
+                      health?.b_entry_advice_enabled
+                        ? tokens.tagAccent.color
+                        : tokens.panelMuted
+                    }
+                  >
+                    {health?.b_entry_advice_enabled ? "on" : "off"}
+                  </Box>
+                </>
+              ) : null}
             </Text>
             <Text>
               bias A{" "}
@@ -944,17 +956,21 @@ export default function SignalsMonitorPanel({ active = true, refreshKey = 0 }: S
               >
                 {health?.profiles?.a?.trade_with_bias ? "on" : "off"}
               </Box>
-              {" · "}B{" "}
-              <Box
-                as="span"
-                color={
-                  health?.profiles?.b?.trade_with_bias
-                    ? tokens.tagBlue.color
-                    : tokens.panelMuted
-                }
-              >
-                {health?.profiles?.b?.trade_with_bias ? "on" : "off"}
-              </Box>
+              {IS_PROFILE_B_ACTIVE ? (
+                <>
+                  {" · "}B{" "}
+                  <Box
+                    as="span"
+                    color={
+                      health?.profiles?.b?.trade_with_bias
+                        ? tokens.tagBlue.color
+                        : tokens.panelMuted
+                    }
+                  >
+                    {health?.profiles?.b?.trade_with_bias ? "on" : "off"}
+                  </Box>
+                </>
+              ) : null}
             </Text>
             <Text animation={`${blink} 1.2s step-end infinite`} color={tokens.title}>
               _

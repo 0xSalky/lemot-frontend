@@ -10,7 +10,7 @@ import TradeJournalPanel from "@/components/3_organisms/TradeJournalPanel/TradeJ
 import PairsAccountBar from "@/components/3_organisms/PairsAccountBar/PairsAccountBar";
 import ResponsiveCardGrid from "@/components/4_layouts/ResponsiveCardGrid/ResponsiveCardGrid";
 import { useThemeColor, useThemeTokens } from "@/components/ui/theme-color";
-import { TRADING_PAIRS, CONTENT_MAX_WIDTH } from "@/services/config";
+import { TRADING_PAIRS, CONTENT_MAX_WIDTH, IS_PROFILE_B_ACTIVE, IS_PROFILE_C_ACTIVE } from "@/services/config";
 import { sortTradingPairs } from "@/services/tradingPairs";
 import type { ScannerSetupRow, ScannerViewFetchResult } from "@/types/scannerTypes";
 import {
@@ -180,12 +180,12 @@ const HomePage = () => {
     }, [activeTab, loadScanner, scannerARefreshKey]);
 
     useEffect(() => {
-        if (activeTab !== "scanner-b") return;
+        if (activeTab !== "scanner-b" || !IS_PROFILE_B_ACTIVE) return;
         void loadScanner("b", { reload: true });
     }, [activeTab, loadScanner, scannerBRefreshKey]);
 
     useEffect(() => {
-        if (activeTab !== "scanner-c") return;
+        if (activeTab !== "scanner-c" || !IS_PROFILE_C_ACTIVE) return;
         void loadScanner("c", { reload: true });
     }, [activeTab, loadScanner, scannerCRefreshKey]);
 
@@ -237,13 +237,16 @@ const HomePage = () => {
                     <ThemeTabTrigger value="scanner-a" currentTab={activeTab} onReselect={bumpTabRefresh}>
                         Scan A
                     </ThemeTabTrigger>
-                    <ThemeTabTrigger value="scanner-b" currentTab={activeTab} onReselect={bumpTabRefresh}>
-                        Scan B
-                    </ThemeTabTrigger>
-                    <ThemeTabTrigger value="scanner-c" currentTab={activeTab} onReselect={bumpTabRefresh}>
-                        Scan C
-                    </ThemeTabTrigger>
-                    <ThemeTabTrigger value="scanner-chat" currentTab={activeTab} onReselect={bumpTabRefresh}>
+                    {IS_PROFILE_B_ACTIVE ? (
+                        <ThemeTabTrigger value="scanner-b" currentTab={activeTab} onReselect={bumpTabRefresh}>
+                            Scan B
+                        </ThemeTabTrigger>
+                    ) : null}
+                    {IS_PROFILE_C_ACTIVE ? (
+                        <ThemeTabTrigger value="scanner-c" currentTab={activeTab} onReselect={bumpTabRefresh}>
+                            Scan C
+                        </ThemeTabTrigger>
+                    ) : null}                    <ThemeTabTrigger value="scanner-chat" currentTab={activeTab} onReselect={bumpTabRefresh}>
                         AI Chat
                     </ThemeTabTrigger>
                     <ThemeTabTrigger value="signals" currentTab={activeTab} onReselect={bumpTabRefresh}>
@@ -292,31 +295,35 @@ const HomePage = () => {
                     />
                 </Tabs.Content>
 
-                <Tabs.Content value="scanner-b">
-                    <ScannerResults
-                        profile="b"
-                        scannerView={views.b}
-                        loading={loading.b}
-                        refreshingBatch={refreshing.b.batch}
-                        refreshingCharts={refreshing.b.charts}
-                        chartsRefreshKey={chartsRefreshKey.b}
-                        onRefreshBatch={() => void refreshScannerBatch("b")}
-                        onRefreshCharts={() => void refreshScannerCharts("b")}
-                    />
-                </Tabs.Content>
+                {IS_PROFILE_B_ACTIVE ? (
+                    <Tabs.Content value="scanner-b">
+                        <ScannerResults
+                            profile="b"
+                            scannerView={views.b}
+                            loading={loading.b}
+                            refreshingBatch={refreshing.b.batch}
+                            refreshingCharts={refreshing.b.charts}
+                            chartsRefreshKey={chartsRefreshKey.b}
+                            onRefreshBatch={() => void refreshScannerBatch("b")}
+                            onRefreshCharts={() => void refreshScannerCharts("b")}
+                        />
+                    </Tabs.Content>
+                ) : null}
 
-                <Tabs.Content value="scanner-c">
-                    <ScannerResults
-                        profile="c"
-                        scannerView={views.c}
-                        loading={loading.c}
-                        refreshingBatch={refreshing.c.batch}
-                        refreshingCharts={refreshing.c.charts}
-                        chartsRefreshKey={chartsRefreshKey.c}
-                        onRefreshBatch={() => void refreshScannerBatch("c")}
-                        onRefreshCharts={() => void refreshScannerCharts("c")}
-                    />
-                </Tabs.Content>
+                {IS_PROFILE_C_ACTIVE ? (
+                    <Tabs.Content value="scanner-c">
+                        <ScannerResults
+                            profile="c"
+                            scannerView={views.c}
+                            loading={loading.c}
+                            refreshingBatch={refreshing.c.batch}
+                            refreshingCharts={refreshing.c.charts}
+                            chartsRefreshKey={chartsRefreshKey.c}
+                            onRefreshBatch={() => void refreshScannerBatch("c")}
+                            onRefreshCharts={() => void refreshScannerCharts("c")}
+                        />
+                    </Tabs.Content>
+                ) : null}
 
                 <Tabs.Content value="scanner-chat">
                     <ScannerChat

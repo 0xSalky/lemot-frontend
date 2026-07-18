@@ -4,10 +4,11 @@ import type { ProfileFilter } from "@/components/2_molecules/ProfileSubTabs/Prof
 import { formatUsd } from "@/components/3_organisms/TradeJournalPanel/journalFormat";
 import type { ThemeTokens } from "@/components/ui/theme-color";
 import { profileAccountPayload } from "@/hooks/useProfileBalances";
+import { activeSignalsProfiles, type SignalsProfile } from "@/services/config";
 import type { AccountBalanceResponse } from "@/types/accountBalanceTypes";
 import { Box, Flex, Spinner, Stack, Text } from "@chakra-ui/react";
 
-function profileAccent(tokens: ThemeTokens, profile: "a" | "b"): string {
+function profileAccent(tokens: ThemeTokens, profile: SignalsProfile): string {
   return profile === "b" ? tokens.tagBlue.color : tokens.panelLabel;
 }
 
@@ -17,7 +18,7 @@ function ProfileBalanceRow({
   riskPercent,
   tokens,
 }: {
-  profile: "a" | "b";
+  profile: SignalsProfile;
   balances: AccountBalanceResponse | null;
   riskPercent?: number;
   tokens: ThemeTokens;
@@ -105,8 +106,8 @@ export default function ProfileBalancesStrip({
   loading = false,
   tokens,
 }: ProfileBalancesStripProps) {
-  const profiles: Array<"a" | "b"> =
-    profileFilter === "all" ? ["a", "b"] : [profileFilter];
+  const profiles: SignalsProfile[] =
+    profileFilter === "all" ? activeSignalsProfiles() : [profileFilter];
 
   if (loading && !balances) {
     return (
