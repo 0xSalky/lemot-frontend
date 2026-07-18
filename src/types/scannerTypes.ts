@@ -78,6 +78,14 @@ export interface ScannerAiBatchSummary {
   };
 }
 
+export interface ScannerOpenVsVa {
+  relation: "above_vah" | "below_val" | "inside" | string;
+  outside_value: boolean;
+  daily_open?: number | null;
+  prior_vah?: number | null;
+  prior_val?: number | null;
+}
+
 export interface ScannerSetupRow {
   id: number;
   batch_id: number;
@@ -90,8 +98,8 @@ export interface ScannerSetupRow {
   adx: number;
   adx_regime: string;
   vol_score?: number | null;
-  outside_value?: boolean | null;
-  open_vs_va?: "above_vah" | "below_val" | "inside" | string | null;
+  /** Today's daily open vs prior-day VAH/VAL (single payload). */
+  open_vs_va?: ScannerOpenVsVa | null;
   price: number;
   quote_volume_24h: number;
   bands: ScannerBandRow[];

@@ -11,15 +11,17 @@ import {
   signalSeverityPalette,
   trendEmoji,
 } from "@/services/footprintUtils";
+import { formatLevelPrice } from "@/services/scannerUtils";
 import type { FootprintPairView } from "@/types/footprintTypes";
 import { FOOTPRINT_SIGNAL_SEVERITY_ORDER } from "@/types/footprintTypes";
+import type { ScannerOpenVsVa } from "@/types/scannerTypes";
 import { Badge, Flex, Stack, Text } from "@chakra-ui/react";
 
 type FootprintOrderflowTagsProps = {
   summary?: FootprintPairView["summary"] | null;
   tokens: ThemeTokens;
   /** Today's daily open vs prior-day value area. */
-  openVsVa?: string | null;
+  openVsVa?: ScannerOpenVsVa | null;
 };
 
 // Short labels shown in the badge; full label shown in title tooltip on hover
@@ -44,22 +46,32 @@ function isRedundantHtfSignal(label: string): boolean {
   return lower.includes("htf") && (lower.includes("bullish") || lower.includes("bearish"));
 }
 
-function openVsVaBadge(openVsVa: string | null | undefined): {
+function openVsVaBadge(openVsVa: ScannerOpenVsVa | null | undefined): {
   label: string;
   title: string;
   colorPalette: string;
 } | null {
-  if (openVsVa === "above_vah") {
+  if (!openVsVa?.outside_value) return null;
+
+  const vah =
+    openVsVa.prior_vah != null ? formatLevelPrice(openVsVa.prior_vah) : "—";
+  const val =
+    openVsVa.prior_val != null ? formatLevelPrice(openVsVa.prior_val) : "—";
+  const open =
+    openVsVa.daily_open != null ? formatLevelPrice(openVsVa.daily_open) : "—";
+  const pricesLine = `Open ${open} · VAH ${vah} · VAL ${val}`;
+
+  if (openVsVa.relation === "above_vah") {
     return {
       label: "☀️ Above VAH",
-      title: "Today's daily open is above yesterday's value area high",
+      title: `Today's daily open is above yesterday's value area high\n${pricesLine}`,
       colorPalette: "green",
     };
   }
-  if (openVsVa === "below_val") {
+  if (openVsVa.relation === "below_val") {
     return {
       label: "☀️ Below VAL",
-      title: "Today's daily open is below yesterday's value area low",
+      title: `Today's daily open is below yesterday's value area low\n${pricesLine}`,
       colorPalette: "red",
     };
   }
