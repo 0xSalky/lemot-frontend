@@ -269,7 +269,7 @@ export default function FootprintPanel() {
             {profile}.yaml
           </Text>
           <Flex gap="2" flexWrap="wrap">
-            {(["a", "b"] as FootprintProfile[]).map((p) => (
+            {(["a", "b", "c"] as FootprintProfile[]).map((p) => (
               <Button
                 key={p}
                 size="xs"

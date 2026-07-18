@@ -39,7 +39,7 @@ import { Box, Badge, Flex, IconButton, Stack, Text } from "@chakra-ui/react";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 import type { FootprintPairView, FootprintTimeframe } from "@/types/footprintTypes";
-import { FOOTPRINT_PROFILE_DEFAULTS } from "@/types/footprintTypes";
+import { FOOTPRINT_PROFILE_DEFAULTS, resolveFootprintProfile } from "@/types/footprintTypes";
 
 type ScannerResultsProps = {
     profile: ScannerProfile;
@@ -448,7 +448,7 @@ const ScannerResults = ({
         scannerView != null && !("message" in scannerView)
             ? scannerView.footprint.timeframe
             : undefined,
-        FOOTPRINT_PROFILE_DEFAULTS[profile].defaultTimeframe,
+        FOOTPRINT_PROFILE_DEFAULTS[resolveFootprintProfile(profile)].defaultTimeframe,
     );
 
     const footprintHealth =

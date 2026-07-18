@@ -12,7 +12,15 @@ export const FOOTPRINT_TIMEFRAMES = [
 ] as const;
 export type FootprintTimeframe = (typeof FOOTPRINT_TIMEFRAMES)[number];
 
-export type FootprintProfile = "b" | "a";
+export type FootprintProfile = "b" | "a" | "c";
+
+/** Map scanner profile → footprint analysis profile (all three have YAML). */
+export function resolveFootprintProfile(
+  profile: string | null | undefined,
+): FootprintProfile {
+  if (profile === "b" || profile === "c") return profile;
+  return "a";
+}
 
 export type FootprintSignalSeverity = "high" | "medium" | "low";
 
@@ -199,6 +207,10 @@ export const FOOTPRINT_PROFILE_DEFAULTS: Record<
   a: {
     label: "A",
     defaultTimeframe: SCANNER_PROFILE_CHART_TIMEFRAME.a as FootprintTimeframe,
+  },
+  c: {
+    label: "C",
+    defaultTimeframe: SCANNER_PROFILE_CHART_TIMEFRAME.c as FootprintTimeframe,
   },
 };
 

@@ -11,6 +11,7 @@ import { hasOrderflowData, hasRealOhlc } from "@/services/footprintUtils";
 import { chartRevisionKey, type ScannerProfile } from "@/services/scannerUtils";
 import {
   FOOTPRINT_PROFILE_DEFAULTS,
+  resolveFootprintProfile,
   type FootprintPairView,
   type FootprintTimeframe,
 } from "@/types/footprintTypes";
@@ -97,7 +98,7 @@ export default function DaySetupChart({
   const footprintTimeframe =
     defaultFootprintTimeframe ??
     (footprintPair?.chart?.timeframe as FootprintTimeframe | undefined) ??
-    FOOTPRINT_PROFILE_DEFAULTS[profile].defaultTimeframe;
+    FOOTPRINT_PROFILE_DEFAULTS[resolveFootprintProfile(profile)].defaultTimeframe;
 
   const displayBars = footprintPair?.merged ?? [];
   const resolvedChartRevisionKey =
