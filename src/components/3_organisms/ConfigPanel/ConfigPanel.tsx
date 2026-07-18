@@ -184,7 +184,7 @@ export default function ConfigPanel({ refreshKey = 0 }: ConfigPanelProps) {
 
           <Separator borderColor={tokens.panelBorder} />
 
-          <ConfigSection title="Day">
+          <ConfigSection title="Scanner A">
             <ScannerConfigPanel
               profile="a"
               onRequestScan={() => setPendingScan({ profile: "a", withAi: false })}
@@ -194,7 +194,7 @@ export default function ConfigPanel({ refreshKey = 0 }: ConfigPanelProps) {
 
           <Separator borderColor={tokens.panelBorder} />
 
-          <ConfigSection title="Scalper">
+          <ConfigSection title="Scanner B">
             <ScannerConfigPanel
               profile="b"
               onRequestScan={() => setPendingScan({ profile: "b", withAi: false })}
