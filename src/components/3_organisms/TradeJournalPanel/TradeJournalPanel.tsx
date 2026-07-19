@@ -11,7 +11,10 @@ import { themedPanelStyle } from "@/components/ui/themed-panel";
 import { usePageVisible } from "@/hooks/usePageVisible";
 import { useProfileBalances } from "@/hooks/useProfileBalances";
 import { fetchTradeJournal } from "@/services/tradeJournal";
-import type { TradeJournalPayload } from "@/types/tradeJournalTypes";
+import {
+  EMPTY_TRADE_JOURNAL_GROWTH,
+  type TradeJournalPayload,
+} from "@/types/tradeJournalTypes";
 import { Box, Flex, Spinner, Stack, Text } from "@chakra-ui/react";
 import { keyframes } from "@emotion/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -85,6 +88,13 @@ export default function TradeJournalPanel({ active = true, refreshKey = 0 }: Tra
     if (profileFilter === "all") return all;
     return all.filter((t) => t.profile === profileFilter);
   }, [journal?.trades, profileFilter]);
+
+  const activeGrowth = useMemo(() => {
+    const byProfile = journal?.growth_by_profile;
+    if (byProfile?.[profileFilter]) return byProfile[profileFilter];
+    if (profileFilter === "all") return journal?.growth ?? EMPTY_TRADE_JOURNAL_GROWTH;
+    return EMPTY_TRADE_JOURNAL_GROWTH;
+  }, [journal?.growth, journal?.growth_by_profile, profileFilter]);
 
   const closedTrades = useMemo(
     () => closedTradesOnly(filteredTrades),
@@ -257,7 +267,7 @@ export default function TradeJournalPanel({ active = true, refreshKey = 0 }: Tra
           <Box px="4" py="4" borderBottomWidth="1px" borderColor={tokens.panelBorder}>
             <JournalHistoryViz
               trades={filteredTrades}
-              growth={profileFilter === "all" ? journal.growth : journal.growth}
+              growth={activeGrowth}
               journalCount={profileFilter === "all" ? journal.journal_count : closedTrades.length + openCount}
               closedPnlRows={profileFilter === "all" ? journal.closed_pnl_rows : closedTrades.length}
               openCount={openCount}

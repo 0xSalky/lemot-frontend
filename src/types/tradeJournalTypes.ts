@@ -106,8 +106,11 @@ export type TradeJournalPayload = {
   exchange_available: boolean;
   exchange_error: string | null;
   equity_usd: number | null;
+  equity_by_profile?: Partial<Record<"a" | "b", number | null>>;
   r_definition: string | null;
   growth: TradeJournalGrowth;
+  /** Per-tab curves: all (A+B), a, b. */
+  growth_by_profile?: Partial<Record<"all" | "a" | "b", TradeJournalGrowth>>;
   journal_count: number;
   closed_pnl_rows: number;
   overall: TradeJournalStats;
@@ -145,8 +148,14 @@ export const EMPTY_TRADE_JOURNAL: TradeJournalPayload = {
   exchange_available: false,
   exchange_error: null,
   equity_usd: null,
+  equity_by_profile: {},
   r_definition: null,
   growth: { ...EMPTY_TRADE_JOURNAL_GROWTH },
+  growth_by_profile: {
+    all: { ...EMPTY_TRADE_JOURNAL_GROWTH },
+    a: { ...EMPTY_TRADE_JOURNAL_GROWTH },
+    b: { ...EMPTY_TRADE_JOURNAL_GROWTH },
+  },
   journal_count: 0,
   closed_pnl_rows: 0,
   overall: { ...EMPTY_TRADE_JOURNAL_STATS },
@@ -367,14 +376,32 @@ export function normalizeTradeJournal(raw: unknown): TradeJournalPayload {
       ? (body.profiles as Record<string, unknown>)
       : {};
   const tradesRaw = Array.isArray(body.trades) ? body.trades : [];
+  const growth = normalizeGrowth(body.growth);
+  const growthByRaw =
+    body.growth_by_profile && typeof body.growth_by_profile === "object"
+      ? (body.growth_by_profile as Record<string, unknown>)
+      : {};
+  const equityByRaw =
+    body.equity_by_profile && typeof body.equity_by_profile === "object"
+      ? (body.equity_by_profile as Record<string, unknown>)
+      : {};
   return {
     ready: Boolean(body.ready),
     fetched_at: str(body.fetched_at),
     exchange_available: Boolean(body.exchange_available),
     exchange_error: str(body.exchange_error),
     equity_usd: num(body.equity_usd),
+    equity_by_profile: {
+      a: num(equityByRaw.a),
+      b: num(equityByRaw.b),
+    },
     r_definition: str(body.r_definition),
-    growth: normalizeGrowth(body.growth),
+    growth,
+    growth_by_profile: {
+      all: normalizeGrowth(growthByRaw.all ?? body.growth),
+      a: normalizeGrowth(growthByRaw.a),
+      b: normalizeGrowth(growthByRaw.b),
+    },
     journal_count: num(body.journal_count) ?? 0,
     closed_pnl_rows: num(body.closed_pnl_rows) ?? 0,
     overall: normalizeStats(body.overall),
