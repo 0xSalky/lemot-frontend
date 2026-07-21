@@ -239,6 +239,30 @@ function BandWatchRow({
       : entry.band_side === "RES"
         ? tokens.tagRed
         : tokens.tagBlue;
+  const biasUpper = String(entry.alt_setup_bias ?? "").toUpperCase();
+  const biasLabel = biasUpper.includes("BULL")
+    ? "BULL"
+    : biasUpper.includes("BEAR")
+      ? "BEAR"
+      : null;
+  const biasTone = biasUpper.includes("BULL")
+    ? tokens.tagGreen
+    : biasUpper.includes("BEAR")
+      ? tokens.tagRed
+      : tokens.tagNeutral;
+  const adxUpper = String(entry.alt_adx_regime ?? "").toUpperCase();
+  const adxLabel = adxUpper.includes("STRONG")
+    ? "STRONG"
+    : adxUpper.includes("RANGING")
+      ? "RANGING"
+      : adxUpper.includes("TREND")
+        ? "TRENDING"
+        : null;
+  const adxTone = adxUpper.includes("STRONG")
+    ? tokens.tagAccent
+    : adxUpper.includes("TREND") && !adxUpper.includes("RANGING")
+      ? tokens.tagBlue
+      : tokens.tagNeutral;
   const watchConditions = buildBandWatchConditions(entry);
 
   return (
@@ -258,13 +282,15 @@ function BandWatchRow({
       fontSize="xs"
     >
       <Flex gap="2" align="center" justify="space-between" minW="0">
-        <Flex gap="3" align="center" minW="0">
+        <Flex gap="2" align="center" minW="0" flexWrap="wrap">
           <Text color={tokens.panelLabel} fontSize="2xs" flexShrink={0}>
             {profileKey.toUpperCase()}
           </Text>
           <Text color={tokens.inlineStrong} fontWeight="bold" fontSize="sm" flexShrink={0}>
             {base}
           </Text>
+          {biasLabel ? <EventTag label={biasLabel} tone={biasTone} /> : null}
+          {adxLabel ? <EventTag label={adxLabel} tone={adxTone} /> : null}
         </Flex>
         <Tooltip
           showArrow
@@ -280,7 +306,8 @@ function BandWatchRow({
               fontSize="2xs"
               color={tokens.panelBody}
             >
-              Band confluence weight (same as scanner w=)
+              Band confluence weight (same as scanner w=). HTF bias/ADX tags
+              require TRENDING or STRONG when trade-with-bias is on.
             </Box>
           }
           contentProps={{ bg: "transparent", border: "none", p: 0 }}

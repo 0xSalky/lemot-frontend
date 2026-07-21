@@ -237,6 +237,24 @@ function biasSideShort(bias: string | null | undefined): string {
   return "BIAS";
 }
 
+function adxRegimeShort(regime: string | null | undefined): string {
+  const upper = String(regime ?? "").toUpperCase();
+  if (upper.includes("STRONG")) return "STRONG";
+  if (upper.includes("RANGING")) return "RANGING";
+  if (upper.includes("TREND")) return "TRENDING";
+  return upper || "—";
+}
+
+function adxTrendState(regime: string | null | undefined): SignalConditionState {
+  const upper = String(regime ?? "").toUpperCase();
+  if (!upper) return "unknown";
+  if (upper.includes("STRONG") || (upper.includes("TREND") && !upper.includes("RANGING"))) {
+    return "met";
+  }
+  if (upper.includes("RANGING")) return "unmet";
+  return "unknown";
+}
+
 function isBtcSymbol(symbol: string): boolean {
   return symbol.toUpperCase().includes("BTC");
 }
@@ -250,8 +268,11 @@ function appendBiasVolConditions(
   const floor = entry.trade_with_bias_min_vol_score ?? 3;
   const altVol = entry.alt_vol_score;
   const altBias = entry.alt_setup_bias;
+  const altAdx = entry.alt_adx_regime;
   const btcBias = entry.btc_setup_bias;
+  const btcAdx = entry.btc_adx_regime;
   const showBtc = !isBtcSymbol(entry.symbol);
+  const tradedAdx = isBtcSymbol(entry.symbol) ? (btcAdx ?? altAdx) : altAdx;
 
   const out = [...conditions];
 
@@ -266,6 +287,16 @@ function appendBiasVolConditions(
         : "vol score unavailable from scanner",
   });
 
+  out.push({
+    id: "htf_adx",
+    short: "ADX",
+    label: "HTF ADX trend",
+    state: adxTrendState(tradedAdx),
+    detail: tradedAdx
+      ? `${adxRegimeShort(tradedAdx)} · need TRENDING or STRONG`
+      : "ADX regime unavailable from scanner",
+  });
+
   if (showBtc) {
     out.push({
       id: "bias_pair",
@@ -277,7 +308,27 @@ function appendBiasVolConditions(
             ? "met"
             : "unmet"
           : "unknown",
-      detail: `alt ${biasSideShort(altBias)} · btc ${biasSideShort(btcBias)}`,
+      detail: [
+        `alt ${biasSideShort(altBias)}`,
+        altAdx ? adxRegimeShort(altAdx) : null,
+        `btc ${biasSideShort(btcBias)}`,
+        btcAdx ? adxRegimeShort(btcAdx) : null,
+      ]
+        .filter(Boolean)
+        .join(" · "),
+    });
+  } else {
+    out.push({
+      id: "bias_pair",
+      short: "BIAS",
+      label: "HTF bias",
+      state: altBias || btcBias ? "met" : "unknown",
+      detail: [
+        biasSideShort(btcBias ?? altBias),
+        tradedAdx ? adxRegimeShort(tradedAdx) : null,
+      ]
+        .filter(Boolean)
+        .join(" · "),
     });
   }
 

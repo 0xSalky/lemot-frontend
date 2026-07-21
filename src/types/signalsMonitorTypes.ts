@@ -15,8 +15,10 @@ export interface SignalsBandWatchEntry {
   price_vs_band?: string | null;
   max_dist_pct?: number;
   alt_setup_bias?: string | null;
+  alt_adx_regime?: string | null;
   alt_vol_score?: number | null;
   btc_setup_bias?: string | null;
+  btc_adx_regime?: string | null;
   trade_with_bias?: boolean;
   trade_with_bias_min_vol_score?: number;
 }
@@ -194,8 +196,10 @@ function normalizeBandWatchEntry(raw: unknown): SignalsBandWatchEntry | null {
     price_vs_band: typeof row.price_vs_band === "string" ? row.price_vs_band : null,
     max_dist_pct: row.max_dist_pct != null ? Number(row.max_dist_pct) : undefined,
     alt_setup_bias: typeof row.alt_setup_bias === "string" ? row.alt_setup_bias : null,
+    alt_adx_regime: typeof row.alt_adx_regime === "string" ? row.alt_adx_regime : null,
     alt_vol_score: row.alt_vol_score != null ? Number(row.alt_vol_score) : null,
     btc_setup_bias: typeof row.btc_setup_bias === "string" ? row.btc_setup_bias : null,
+    btc_adx_regime: typeof row.btc_adx_regime === "string" ? row.btc_adx_regime : null,
     trade_with_bias: row.trade_with_bias === true,
     trade_with_bias_min_vol_score:
       row.trade_with_bias_min_vol_score != null
