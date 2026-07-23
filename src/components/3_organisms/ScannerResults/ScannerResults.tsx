@@ -301,7 +301,6 @@ function SetupCard({
                 managedChartLoading={chartsLoading}
                 footprintLoading={chartsLoading}
                 chartRevisionKey={chartRevisionKeyProp}
-                volScore={setup.vol_score}
             />
             <Stack gap="3" mt="2">
                 {bands.map((band, bandIdx) => (

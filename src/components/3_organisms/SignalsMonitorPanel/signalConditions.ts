@@ -221,15 +221,6 @@ function fmtBandRange(low: unknown, high: unknown): string | null {
   return `${Math.min(lo, hi).toFixed(2)}–${Math.max(lo, hi).toFixed(2)}`;
 }
 
-function volScoreState(
-  score: number | null | undefined,
-  floor: number,
-): SignalConditionState {
-  if (floor <= 0) return "unknown";
-  if (score == null || Number.isNaN(Number(score))) return "unknown";
-  return Number(score) >= floor ? "met" : "unmet";
-}
-
 function biasSideShort(bias: string | null | undefined): string {
   const upper = String(bias ?? "").toUpperCase();
   if (upper.includes("BULL")) return "BULL";
@@ -265,8 +256,6 @@ function appendBiasVolConditions(
 ): SignalCondition[] {
   if (!entry.trade_with_bias) return conditions;
 
-  const floor = entry.trade_with_bias_min_vol_score ?? 3;
-  const altVol = entry.alt_vol_score;
   const altBias = entry.alt_setup_bias;
   const altAdx = entry.alt_adx_regime;
   const btcBias = entry.btc_setup_bias;
@@ -275,17 +264,6 @@ function appendBiasVolConditions(
   const tradedAdx = isBtcSymbol(entry.symbol) ? (btcAdx ?? altAdx) : altAdx;
 
   const out = [...conditions];
-
-  out.push({
-    id: "alt_vol",
-    short: "VOL",
-    label: "Signal TF vol score",
-    state: volScoreState(altVol, floor),
-    detail:
-      altVol != null && !Number.isNaN(Number(altVol))
-        ? `${Math.round(Number(altVol))}/10 · need ≥ ${floor}`
-        : "vol score unavailable from scanner",
-  });
 
   out.push({
     id: "htf_adx",

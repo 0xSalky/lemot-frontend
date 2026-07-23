@@ -50,8 +50,6 @@ type ScannerSetupChartProps = {
   managedChart?: ScannerChartPayload | null;
   managedChartLoading?: boolean;
   chartRevisionKey?: string;
-  /** Trading-TF NATR percentile (0–10), shown on the chart chrome. */
-  volScore?: number | null;
 };
 
 function computeChartBounds(
@@ -100,7 +98,6 @@ function ScannerSetupChart({
   managedChart,
   managedChartLoading = false,
   chartRevisionKey,
-  volScore = null,
 }: ScannerSetupChartProps) {
   const pageVisible = usePageVisible();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -133,18 +130,6 @@ function ScannerSetupChart({
     : fetchState.key === fetchKey
       ? fetchState.error
       : null;
-  const vol =
-    volScore == null || Number.isNaN(Number(volScore))
-      ? null
-      : Math.max(0, Math.min(10, Math.round(Number(volScore))));
-  const volColor =
-    vol == null
-      ? tokens.panelMuted
-      : vol >= 7
-        ? tokens.warn
-        : vol >= 3
-          ? tokens.tagAccent.color
-          : tokens.panelMuted;
 
   useEffect(() => {
     const el = containerRef.current;
@@ -305,28 +290,6 @@ function ScannerSetupChart({
         ) : (
           <>
             <Flex position="absolute" top="2" left="2" zIndex={5} gap="1" align="center" flexWrap="wrap">
-              {vol != null ? (
-                <Box
-                  px="1.5"
-                  py="0.5"
-                  bg={tokens.panelBgUser}
-                  borderWidth="1px"
-                  borderColor={tokens.panelBorder}
-                  rounded="sm"
-                  pointerEvents="none"
-                  title={`${timeframe} NATR vol score`}
-                >
-                  <Text
-                    fontFamily="mono"
-                    fontSize="9px"
-                    lineHeight="1.5rem"
-                    color={volColor}
-                    fontWeight="semibold"
-                  >
-                    VOL {vol}/10
-                  </Text>
-                </Box>
-              ) : null}
               <Box
                 as="button"
                 aria-label="Zoom in"
