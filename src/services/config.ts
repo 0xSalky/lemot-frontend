@@ -44,8 +44,8 @@ export const NATR_MULTIPLIER = "2.5";
 export const CONTENT_MAX_WIDTH = { base: "100%", lg: "55vw" } as const;
 
 /** Feature flags — when false, hide that profile everywhere (tabs, signals, PnL, journal, config). */
-export const IS_PROFILE_B_ACTIVE = false;
-export const IS_PROFILE_C_ACTIVE = true;
+export const IS_PROFILE_B_ACTIVE = true;
+export const IS_PROFILE_C_ACTIVE = false;
 
 export type AppProfile = "a" | "b" | "c";
 
