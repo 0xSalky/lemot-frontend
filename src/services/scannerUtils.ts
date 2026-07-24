@@ -64,9 +64,11 @@ function buildScannerProfiles(): ScannerProfile[] {
   return order.filter((p) => isProfileActive(p));
 }
 
-export const SCANNER_PROFILES: readonly ScannerProfile[] = buildScannerProfiles();
+export const SCANNER_PROFILES: readonly ScannerProfile[] =
+  buildScannerProfiles();
 
-export const DEFAULT_SCANNER_PROFILE: ScannerProfile = SCANNER_PROFILES[0] ?? "a";
+export const DEFAULT_SCANNER_PROFILE: ScannerProfile =
+  SCANNER_PROFILES[0] ?? "a";
 
 /** @deprecated use DEFAULT_SCANNER_PROFILE or pass profile explicitly */
 export const SCANNER_PROFILE = DEFAULT_SCANNER_PROFILE;
@@ -84,9 +86,9 @@ export const SCANNER_PROFILE_CHART_TIMEFRAME: Record<
   ScannerProfile,
   ScannerChartTimeframe
 > = {
-  b: "30m",
+  b: "1h",
   a: "5m",
-  c: "5m",
+  c: "30m",
 };
 
 export function emptyScannerProfileRecord<T>(
@@ -529,11 +531,11 @@ export function formatSetupHeaderLine1(setup: ScannerSetupRow): string {
   const signalPart = setup.signal
     ? ` | ${formatSignalLabel(setup.signal)}`
     : "";
-    return (
-      `#${setup.rank} | ${setup.symbol} | score=${setup.score.toFixed(1)} | ` +
-      `${formatBiasLabel(setup.bias)}${signalPart} | ${formatAdxLine(setup.adx, setup.adx_regime)}` +
-      ` | price=${formatLevelPrice(setup.price)} | 24h vol=${formatVolDollar(setup.quote_volume_24h)}`
-    );
+  return (
+    `#${setup.rank} | ${setup.symbol} | score=${setup.score.toFixed(1)} | ` +
+    `${formatBiasLabel(setup.bias)}${signalPart} | ${formatAdxLine(setup.adx, setup.adx_regime)}` +
+    ` | price=${formatLevelPrice(setup.price)} | 24h vol=${formatVolDollar(setup.quote_volume_24h)}`
+  );
 }
 
 export function formatSetupHeader(setup: ScannerSetupRow): string {
