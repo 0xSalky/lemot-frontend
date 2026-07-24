@@ -16,7 +16,7 @@ import {
   type FootprintTimeframe,
 } from "@/types/footprintTypes";
 import type { ScannerBandRow, ScannerChartPayload, ScannerChartTimeframe } from "@/types/scannerTypes";
-import { Box } from "@chakra-ui/react";
+import { Box, Text } from "@chakra-ui/react";
 import type { ReactNode } from "react";
 
 type DaySetupChartProps = {
