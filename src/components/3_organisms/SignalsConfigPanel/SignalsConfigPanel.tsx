@@ -244,7 +244,7 @@ export default function SignalsConfigPanel({ tokens, refreshKey = 0 }: SignalsCo
           <>
             <RuntimeSwitchRow
               label="Profile B signals"
-              description="5m fractal band alerts from the profile B scanner universe (scalping)."
+              description="30m fractal band alerts from the profile B scanner universe (12h HTF bias)."
               checked={controls.b_enabled}
               disabled={panelDisabled || masterOff}
               colorPalette="orange"

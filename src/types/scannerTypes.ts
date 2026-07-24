@@ -1,4 +1,8 @@
-import type { FootprintPairView, FootprintTimeframe, FootprintViewPayload } from "@/types/footprintTypes";
+import type {
+  FootprintPairView,
+  FootprintTimeframe,
+  FootprintViewPayload,
+} from "@/types/footprintTypes";
 
 /**
  * Mirrors `scanner_v2_batches` / `scanner_v2_setups` from the Python backend.
@@ -121,7 +125,12 @@ export type ScannerLatestBatchFetchResult =
 
 export interface ScannerViewSections {
   batch: { ok: boolean };
-  charts: { ok: boolean; requested?: number; ok_count?: number; elapsed_ms?: number };
+  charts: {
+    ok: boolean;
+    requested?: number;
+    ok_count?: number;
+    elapsed_ms?: number;
+  };
   footprint: {
     ok: boolean;
     requested?: number;
@@ -152,9 +161,7 @@ export interface ScannerViewPayload {
   sections: ScannerViewSections;
 }
 
-export type ScannerViewFetchResult =
-  | ScannerViewPayload
-  | { message: string };
+export type ScannerViewFetchResult = ScannerViewPayload | { message: string };
 
 export interface ScannerChartCandle {
   time: number;
@@ -172,5 +179,14 @@ export interface ScannerChartPayload {
   candles: ScannerChartCandle[];
 }
 
-export const SCANNER_CHART_TIMEFRAMES = ["5m", "15m", "30m", "1h", "2h", "4h", "1d"] as const;
+export const SCANNER_CHART_TIMEFRAMES = [
+  "5m",
+  "15m",
+  "30m",
+  "1h",
+  "2h",
+  "4h",
+  "12h",
+  "1d",
+] as const;
 export type ScannerChartTimeframe = (typeof SCANNER_CHART_TIMEFRAMES)[number];
