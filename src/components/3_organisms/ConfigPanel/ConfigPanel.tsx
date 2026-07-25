@@ -14,6 +14,7 @@ import {
   type ScannerProfile,
 } from "@/services/scannerUtils";
 import { IS_PROFILE_B_ACTIVE, IS_PROFILE_C_ACTIVE } from "@/services/config";
+import { syncClosedPnlJournal } from "@/services/tradeJournal";
 import { Box, Button, Separator, Stack, Text } from "@chakra-ui/react";
 import { useCallback, useState, type ReactNode } from "react";
 
@@ -45,10 +46,14 @@ function ScannerConfigPanel({
   profile,
   onRequestScan,
   onRequestScanWithAi,
+  onSyncClosedPnl,
+  syncing,
 }: {
   profile: ScannerProfile;
   onRequestScan: () => void;
   onRequestScanWithAi: () => void;
+  onSyncClosedPnl?: () => void;
+  syncing?: boolean;
 }) {
   const { palette } = useThemeColor();
   const tokens = useThemeTokens(palette);
@@ -79,7 +84,26 @@ function ScannerConfigPanel({
         >
           Run {label} scan + AI
         </Button>
+        {onSyncClosedPnl ? (
+          <Button
+            size="xs"
+            variant="outline"
+            colorPalette="cyan"
+            borderColor={tokens.panelBorder}
+            loading={syncing}
+            disabled={syncing}
+            onClick={onSyncClosedPnl}
+          >
+            Sync closed PnL
+          </Button>
+        ) : null}
       </Stack>
+      {onSyncClosedPnl ? (
+        <Text fontSize="2xs" fontFamily="mono" color={tokens.panelMuted} lineHeight="1.4">
+          Pulls Bybit closed trades for profile {profile.toUpperCase()} into the journal DB
+          (full ~14d lookback).
+        </Text>
+      ) : null}
     </Stack>
   );
 }
@@ -93,6 +117,7 @@ export default function ConfigPanel({ refreshKey = 0 }: ConfigPanelProps) {
   const tokens = useThemeTokens();
   const { serverConfigured, signOut } = useTradingAccess();
   const [pendingScan, setPendingScan] = useState<PendingScan | null>(null);
+  const [syncingProfile, setSyncingProfile] = useState<"a" | "b" | null>(null);
 
   const runScannerJob = useCallback((profile: ScannerProfile, withAi: boolean) => {
     const label = scannerProfileLabel(profile);
@@ -115,6 +140,35 @@ export default function ConfigPanel({ refreshKey = 0 }: ConfigPanelProps) {
         description: e instanceof Error ? e.message : "Request failed",
       });
     });
+  }, []);
+
+  const runClosedPnlSync = useCallback(async (profile: "a" | "b") => {
+    setSyncingProfile(profile);
+    try {
+      const result = await syncClosedPnlJournal({ full: true, profile });
+      const stats = result.profiles?.[profile];
+      if (result.error || stats?.error) {
+        toaster.error({
+          title: `Profile ${profile.toUpperCase()} PnL sync failed`,
+          description: result.error || stats?.error || "Unknown error",
+        });
+        return;
+      }
+      toaster.success({
+        title: `Profile ${profile.toUpperCase()} closed PnL synced`,
+        description: stats
+          ? `${stats.fetched ?? 0} fetched · ${stats.upserted ?? 0} stored · ${stats.linked ?? 0} linked`
+          : "Done",
+      });
+    } catch (e) {
+      console.error(`[closed pnl sync ${profile}]`, e);
+      toaster.error({
+        title: `Profile ${profile.toUpperCase()} PnL sync failed`,
+        description: e instanceof Error ? e.message : "Request failed",
+      });
+    } finally {
+      setSyncingProfile(null);
+    }
   }, []);
 
   const pendingLabel = pendingScan ? scannerProfileLabel(pendingScan.profile) : "";
@@ -190,6 +244,8 @@ export default function ConfigPanel({ refreshKey = 0 }: ConfigPanelProps) {
               profile="a"
               onRequestScan={() => setPendingScan({ profile: "a", withAi: false })}
               onRequestScanWithAi={() => setPendingScan({ profile: "a", withAi: true })}
+              onSyncClosedPnl={() => void runClosedPnlSync("a")}
+              syncing={syncingProfile === "a"}
             />
           </ConfigSection>
 
@@ -201,6 +257,8 @@ export default function ConfigPanel({ refreshKey = 0 }: ConfigPanelProps) {
                   profile="b"
                   onRequestScan={() => setPendingScan({ profile: "b", withAi: false })}
                   onRequestScanWithAi={() => setPendingScan({ profile: "b", withAi: true })}
+                  onSyncClosedPnl={() => void runClosedPnlSync("b")}
+                  syncing={syncingProfile === "b"}
                 />
               </ConfigSection>
             </>
