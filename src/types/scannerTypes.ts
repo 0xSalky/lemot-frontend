@@ -186,6 +186,7 @@ export const SCANNER_CHART_TIMEFRAMES = [
   "1h",
   "2h",
   "4h",
+  "6h",
   "12h",
   "1d",
 ] as const;

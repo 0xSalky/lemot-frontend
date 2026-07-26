@@ -184,7 +184,7 @@ export default function SignalsConfigPanel({ tokens, refreshKey = 0 }: SignalsCo
 
         <RuntimeSwitchRow
           label="Profile A signals"
-          description="30m fractal band alerts — day-trade profile A scanner watchlist."
+          description="5m fractal band alerts — profile A scanner watchlist (1h HTF bias)."
           checked={controls.a_enabled}
           disabled={panelDisabled || masterOff}
           colorPalette="orange"
@@ -244,7 +244,7 @@ export default function SignalsConfigPanel({ tokens, refreshKey = 0 }: SignalsCo
           <>
             <RuntimeSwitchRow
               label="Profile B signals"
-              description="30m fractal band alerts from the profile B scanner universe (12h HTF bias)."
+              description="30m fractal band alerts from the profile B scanner universe (6h HTF bias)."
               checked={controls.b_enabled}
               disabled={panelDisabled || masterOff}
               colorPalette="orange"
