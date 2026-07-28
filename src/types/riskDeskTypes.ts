@@ -159,6 +159,7 @@ export interface RiskDeskBookView {
 export interface RiskProfileDesk extends RiskDeskBookView {
   profile: string;
   trade_with_bias?: boolean;
+  trade_with_trend?: boolean;
 }
 
 export interface RiskDeskGlobalView {
@@ -364,6 +365,7 @@ export function normalizeRiskDesk(body: unknown): RiskDeskPayload {
         ...book,
         profile: str(row.profile) ?? key,
         trade_with_bias: row.trade_with_bias === true,
+        trade_with_trend: row.trade_with_trend === true,
       };
     }
   }

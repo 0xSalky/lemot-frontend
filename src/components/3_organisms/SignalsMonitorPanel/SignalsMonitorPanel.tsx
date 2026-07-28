@@ -983,9 +983,20 @@ export default function SignalsMonitorPanel({ active = true, refreshKey = 0 }: S
               >
                 {health?.profiles?.a?.trade_with_bias ? "on" : "off"}
               </Box>
+              {" · "}trend A{" "}
+              <Box
+                as="span"
+                color={
+                  health?.profiles?.a?.trade_with_trend
+                    ? tokens.tagBlue.color
+                    : tokens.panelMuted
+                }
+              >
+                {health?.profiles?.a?.trade_with_trend ? "on" : "off"}
+              </Box>
               {IS_PROFILE_B_ACTIVE ? (
                 <>
-                  {" · "}B{" "}
+                  {" · "}B bias{" "}
                   <Box
                     as="span"
                     color={
@@ -995,6 +1006,17 @@ export default function SignalsMonitorPanel({ active = true, refreshKey = 0 }: S
                     }
                   >
                     {health?.profiles?.b?.trade_with_bias ? "on" : "off"}
+                  </Box>
+                  {" · "}trend{" "}
+                  <Box
+                    as="span"
+                    color={
+                      health?.profiles?.b?.trade_with_trend
+                        ? tokens.tagBlue.color
+                        : tokens.panelMuted
+                    }
+                  >
+                    {health?.profiles?.b?.trade_with_trend ? "on" : "off"}
                   </Box>
                 </>
               ) : null}

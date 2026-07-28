@@ -254,7 +254,9 @@ function appendBiasVolConditions(
   conditions: SignalCondition[],
   entry: SignalsBandWatchEntry,
 ): SignalCondition[] {
-  if (!entry.trade_with_bias) return conditions;
+  const showBias = entry.trade_with_bias === true;
+  const showTrend = entry.trade_with_trend === true;
+  if (!showBias && !showTrend) return conditions;
 
   const altBias = entry.alt_setup_bias;
   const altAdx = entry.alt_adx_regime;
@@ -265,15 +267,21 @@ function appendBiasVolConditions(
 
   const out = [...conditions];
 
-  out.push({
-    id: "htf_adx",
-    short: "ADX",
-    label: "HTF ADX trend",
-    state: adxTrendState(tradedAdx),
-    detail: tradedAdx
-      ? `${adxRegimeShort(tradedAdx)} · need TRENDING or STRONG`
-      : "ADX regime unavailable from scanner",
-  });
+  if (showTrend) {
+    out.push({
+      id: "htf_adx",
+      short: "ADX",
+      label: "HTF ADX trend",
+      state: adxTrendState(tradedAdx),
+      detail: tradedAdx
+        ? `${adxRegimeShort(tradedAdx)} · need TRENDING or STRONG`
+        : "ADX regime unavailable from scanner",
+    });
+  }
+
+  if (!showBias) {
+    return out;
+  }
 
   if (showBtc) {
     out.push({
