@@ -983,6 +983,17 @@ export default function SignalsMonitorPanel({ active = true, refreshKey = 0 }: S
               >
                 {health?.profiles?.a?.trade_with_bias ? "on" : "off"}
               </Box>
+              {" · "}btc A{" "}
+              <Box
+                as="span"
+                color={
+                  health?.profiles?.a?.trade_with_btc_bias
+                    ? tokens.tagBlue.color
+                    : tokens.panelMuted
+                }
+              >
+                {health?.profiles?.a?.trade_with_btc_bias ? "on" : "off"}
+              </Box>
               {" · "}trend A{" "}
               <Box
                 as="span"
@@ -1006,6 +1017,17 @@ export default function SignalsMonitorPanel({ active = true, refreshKey = 0 }: S
                     }
                   >
                     {health?.profiles?.b?.trade_with_bias ? "on" : "off"}
+                  </Box>
+                  {" · "}btc{" "}
+                  <Box
+                    as="span"
+                    color={
+                      health?.profiles?.b?.trade_with_btc_bias
+                        ? tokens.tagBlue.color
+                        : tokens.panelMuted
+                    }
+                  >
+                    {health?.profiles?.b?.trade_with_btc_bias ? "on" : "off"}
                   </Box>
                   {" · "}trend{" "}
                   <Box

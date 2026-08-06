@@ -172,7 +172,7 @@ export default function SignalsConfigPanel({ tokens, refreshKey = 0 }: SignalsCo
 
         <RuntimeSwitchRow
           label="Risk desk · strict mode"
-          description="On: one side only, hedge protection, max slots. Off: same side + HTF required, no hedge block. Daily loss cap applies in both modes. Profile YAML trade_with_bias (EMA) and trade_with_trend (ADX) are separate and shown on Risk Desk."
+          description="On: one side only, hedge protection, max slots. Off: same side + HTF required, no hedge block. Daily loss cap applies in both modes. Profile YAML trade_with_bias (asset EMA), trade_with_btc_bias (BTC EMA on alts), and trade_with_trend (ADX) are separate and shown on Risk Desk."
           checked={controls.risk_desk_strict}
           disabled={panelDisabled || masterOff}
           colorPalette="cyan"

@@ -255,14 +255,16 @@ function appendBiasVolConditions(
   entry: SignalsBandWatchEntry,
 ): SignalCondition[] {
   const showBias = entry.trade_with_bias === true;
+  const showBtcBias = entry.trade_with_btc_bias === true;
   const showTrend = entry.trade_with_trend === true;
-  if (!showBias && !showTrend) return conditions;
+  if (!showBias && !showBtcBias && !showTrend) return conditions;
 
   const altBias = entry.alt_setup_bias;
   const altAdx = entry.alt_adx_regime;
   const btcBias = entry.btc_setup_bias;
   const btcAdx = entry.btc_adx_regime;
   const showBtc = !isBtcSymbol(entry.symbol);
+  const tradedBias = isBtcSymbol(entry.symbol) ? (btcBias ?? altBias) : altBias;
   const tradedAdx = isBtcSymbol(entry.symbol) ? (btcAdx ?? altAdx) : altAdx;
 
   const out = [...conditions];
@@ -279,39 +281,30 @@ function appendBiasVolConditions(
     });
   }
 
-  if (!showBias) {
-    return out;
-  }
-
-  if (showBtc) {
+  if (showBias) {
     out.push({
-      id: "bias_pair",
-      short: "REG",
-      label: "Alt + BTC HTF bias",
-      state:
-        altBias && btcBias
-          ? altBias.toUpperCase() === btcBias.toUpperCase()
-            ? "met"
-            : "unmet"
-          : "unknown",
+      id: "bias_asset",
+      short: "BIAS",
+      label: isBtcSymbol(entry.symbol) ? "BTC HTF bias" : "Asset HTF bias",
+      state: tradedBias ? "met" : "unknown",
       detail: [
-        `alt ${biasSideShort(altBias)}`,
-        altAdx ? adxRegimeShort(altAdx) : null,
-        `btc ${biasSideShort(btcBias)}`,
-        btcAdx ? adxRegimeShort(btcAdx) : null,
+        biasSideShort(tradedBias),
+        tradedAdx ? adxRegimeShort(tradedAdx) : null,
       ]
         .filter(Boolean)
         .join(" · "),
     });
-  } else {
+  }
+
+  if (showBtcBias && showBtc) {
     out.push({
-      id: "bias_pair",
-      short: "BIAS",
-      label: "HTF bias",
-      state: altBias || btcBias ? "met" : "unknown",
+      id: "bias_btc",
+      short: "BTC",
+      label: "BTC HTF bias",
+      state: btcBias ? "met" : "unknown",
       detail: [
-        biasSideShort(btcBias ?? altBias),
-        tradedAdx ? adxRegimeShort(tradedAdx) : null,
+        biasSideShort(btcBias),
+        btcAdx ? adxRegimeShort(btcAdx) : null,
       ]
         .filter(Boolean)
         .join(" · "),
