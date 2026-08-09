@@ -3,6 +3,7 @@
 import ConfirmDialog from "@/components/2_molecules/ConfirmDialog/ConfirmDialog";
 import { useThemeColor, useThemeTokens } from "@/components/ui/theme-color";
 import { themedPanelStyle } from "@/components/ui/themed-panel";
+import { usePageVisible } from "@/hooks/usePageVisible";
 import {
   createAlert,
   deleteAlert,
@@ -37,6 +38,7 @@ type FormState = {
 };
 
 const EMPTY_FORM: FormState = { symbol: "", price: "", comment: "" };
+const POLL_MS = 5_000;
 
 const pulse = keyframes`
   0%, 100% { opacity: 1; box-shadow: 0 0 8px currentColor; }
@@ -86,6 +88,8 @@ export default function AlertsPanel({ active, refreshKey }: AlertsPanelProps) {
   const { palette } = useThemeColor();
   const tokens = useThemeTokens(palette);
   const accent = tokens.tagAccent.color;
+  const pageVisible = usePageVisible();
+  const polling = active && pageVisible;
 
   const [alerts, setAlerts] = useState<PriceAlert[]>([]);
   const [timeframe, setTimeframe] = useState("5m");
@@ -99,25 +103,36 @@ export default function AlertsPanel({ active, refreshKey }: AlertsPanelProps) {
   const [deleteTarget, setDeleteTarget] = useState<PriceAlert | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const reload = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const reload = useCallback(async (opts?: { silent?: boolean }) => {
+    const silent = Boolean(opts?.silent);
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const [list, h] = await Promise.all([fetchAlertsList(), fetchAlertsHealth()]);
       setAlerts(list.alerts);
       setTimeframe(list.timeframe);
       setHealth(h);
+      if (silent) setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load alerts");
+      // Keep the table on soft poll failures; surface errors on explicit loads.
+      if (!silent) {
+        setError(e instanceof Error ? e.message : "Failed to load alerts");
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (!active) return;
+    if (!polling) return;
     void reload();
-  }, [active, refreshKey, reload]);
+    const id = window.setInterval(() => {
+      if (document.visibilityState === "visible") void reload({ silent: true });
+    }, POLL_MS);
+    return () => window.clearInterval(id);
+  }, [polling, refreshKey, reload]);
 
   const openCreate = () => {
     setEditing(null);
@@ -244,7 +259,7 @@ export default function AlertsPanel({ active, refreshKey }: AlertsPanelProps) {
               PRICE_ALERTS
             </Text>
             <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
-              tf {timeframe} · closed candle touch · {statusLabel}
+              tf {timeframe} · closed candle touch · poll 5s · {statusLabel}
             </Text>
             {telegramHint ? (
               <Text fontFamily="mono" fontSize="2xs" color={tokens.warn} maxW="42rem">
