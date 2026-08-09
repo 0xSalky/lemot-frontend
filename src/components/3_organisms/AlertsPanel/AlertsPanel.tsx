@@ -1,7 +1,7 @@
 "use client";
 
 import ConfirmDialog from "@/components/2_molecules/ConfirmDialog/ConfirmDialog";
-import { useThemeTokens } from "@/components/ui/theme-color";
+import { useThemeColor, useThemeTokens } from "@/components/ui/theme-color";
 import { themedPanelStyle } from "@/components/ui/themed-panel";
 import {
   createAlert,
@@ -15,13 +15,15 @@ import {
   Box,
   Button,
   Flex,
+  IconButton,
   Input,
   Portal,
+  Spinner,
   Stack,
-  Table,
   Text,
 } from "@chakra-ui/react";
-import { useCallback, useEffect, useState } from "react";
+import { keyframes } from "@emotion/react";
+import { useCallback, useEffect, useState, type MouseEvent } from "react";
 
 type AlertsPanelProps = {
   active: boolean;
@@ -36,8 +38,56 @@ type FormState = {
 
 const EMPTY_FORM: FormState = { symbol: "", price: "", comment: "" };
 
+const pulse = keyframes`
+  0%, 100% { opacity: 1; box-shadow: 0 0 8px currentColor; }
+  50% { opacity: 0.45; box-shadow: 0 0 2px currentColor; }
+`;
+
+const blink = keyframes`
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+`;
+
+function MonoAction({
+  label,
+  color,
+  onClick,
+  danger,
+}: {
+  label: string;
+  color: string;
+  onClick: () => void;
+  danger?: boolean;
+}) {
+  return (
+    <Box
+      as="button"
+      type="button"
+      fontFamily="mono"
+      fontSize="2xs"
+      letterSpacing="0.08em"
+      color={danger ? "red.400" : color}
+      bg="transparent"
+      border="none"
+      cursor="pointer"
+      px="1"
+      py="0.5"
+      _hover={{ color: danger ? "red.300" : undefined, opacity: 0.85 }}
+      onClick={(e: MouseEvent) => {
+        e.stopPropagation();
+        onClick();
+      }}
+    >
+      [{label}]
+    </Box>
+  );
+}
+
 export default function AlertsPanel({ active, refreshKey }: AlertsPanelProps) {
-  const tokens = useThemeTokens();
+  const { palette } = useThemeColor();
+  const tokens = useThemeTokens(palette);
+  const accent = tokens.tagAccent.color;
+
   const [alerts, setAlerts] = useState<PriceAlert[]>([]);
   const [timeframe, setTimeframe] = useState("5m");
   const [health, setHealth] = useState<AlertsHealth | null>(null);
@@ -73,6 +123,7 @@ export default function AlertsPanel({ active, refreshKey }: AlertsPanelProps) {
   const openCreate = () => {
     setEditing(null);
     setForm(EMPTY_FORM);
+    setError(null);
     setModalOpen(true);
   };
 
@@ -83,6 +134,7 @@ export default function AlertsPanel({ active, refreshKey }: AlertsPanelProps) {
       price: String(row.price),
       comment: row.comment,
     });
+    setError(null);
     setModalOpen(true);
   };
 
@@ -140,94 +192,258 @@ export default function AlertsPanel({ active, refreshKey }: AlertsPanelProps) {
     }
   };
 
+  const liveColor = health?.telegram_configured
+    ? tokens.tagGreen.color
+    : tokens.warn;
+  const statusLabel = !health
+    ? "loading"
+    : health.telegram_configured
+      ? "armed"
+      : "telegram off";
+
   return (
-    <Box {...themedPanelStyle(tokens)} p="4">
-      <Flex justify="space-between" align="flex-start" gap="3" mb="4" flexWrap="wrap">
-        <Stack gap="1">
-          <Text fontSize="lg" fontWeight="semibold" color={tokens.title}>
-            Price alerts
-          </Text>
-          <Text fontSize="sm" color={tokens.panelMuted}>
-            Watch TF <Box as="span" color={tokens.tagBlue.color}>{timeframe}</Box>
-            {" · "}fires when alert price sits inside the newly closed candle, then deletes
-            {health ? (
-              <>
-                {" · "}telegram{" "}
-                <Box
-                  as="span"
-                  color={
-                    health.telegram_configured
-                      ? tokens.tagAccent.color
-                      : tokens.panelMuted
-                  }
-                >
-                  {health.telegram_configured ? "on" : "off"}
+    <Box
+      rounded="md"
+      overflow="hidden"
+      position="relative"
+      {...themedPanelStyle(tokens, "strong")}
+    >
+      <Box
+        position="absolute"
+        inset="0"
+        pointerEvents="none"
+        opacity={0.04}
+        backgroundImage={`repeating-linear-gradient(0deg, transparent, transparent 2px, ${tokens.title} 3px)`}
+      />
+
+      <Flex
+        px="4"
+        py="3"
+        borderBottomWidth="1px"
+        borderColor={tokens.panelBorder}
+        align="center"
+        justify="space-between"
+        flexWrap="wrap"
+        gap="2"
+        position="relative"
+      >
+        <Flex align="center" gap="3">
+          <Box
+            w="2.5"
+            h="2.5"
+            rounded="full"
+            bg={liveColor}
+            color={liveColor}
+            animation={
+              health?.telegram_configured ? `${pulse} 2s ease-in-out infinite` : undefined
+            }
+          />
+          <Stack gap="0">
+            <Text
+              fontFamily="mono"
+              fontSize="sm"
+              fontWeight="bold"
+              color={tokens.title}
+              letterSpacing="0.14em"
+            >
+              PRICE_ALERTS
+            </Text>
+            <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
+              tf {timeframe} · closed candle touch · {statusLabel}
+            </Text>
+          </Stack>
+        </Flex>
+
+        <Flex gap="3" align="center" flexWrap="wrap" justify="flex-end">
+          <Flex
+            gap="4"
+            fontFamily="mono"
+            fontSize="2xs"
+            color={tokens.panelMuted}
+            flexWrap="wrap"
+            align="center"
+          >
+            <Text>
+              pending{" "}
+              <Box as="span" color={tokens.panelBody}>
+                {alerts.length}
+              </Box>
+            </Text>
+            {health?.last_poll_at ? (
+              <Text>
+                poll{" "}
+                <Box as="span" color={tokens.panelBody}>
+                  {health.last_poll_at.slice(0, 19)}
                 </Box>
-                {health.last_poll_at ? ` · polled ${health.last_poll_at}` : null}
-              </>
+              </Text>
             ) : null}
-          </Text>
-        </Stack>
-        <Button size="sm" colorPalette="blue" onClick={openCreate}>
-          Add alert
-        </Button>
+            <Text animation={`${blink} 1.2s step-end infinite`} color={tokens.title}>
+              _
+            </Text>
+          </Flex>
+          <IconButton
+            aria-label="Add price alert"
+            title="Add price alert"
+            size="sm"
+            variant="outline"
+            colorPalette={palette}
+            borderColor={tokens.panelBorder}
+            color={tokens.panelBody}
+            minW="33px"
+            minH="33px"
+            onClick={openCreate}
+          >
+            <Text fontFamily="mono" fontSize="lg" lineHeight="1">
+              +
+            </Text>
+          </IconButton>
+        </Flex>
       </Flex>
 
-      {error ? (
-        <Text mb="3" fontSize="sm" color="red.400">
+      {error && !modalOpen ? (
+        <Text
+          px="4"
+          py="2"
+          fontFamily="mono"
+          fontSize="2xs"
+          color="red.400"
+          borderBottomWidth="1px"
+          borderColor={tokens.panelBorder}
+        >
           {error}
         </Text>
       ) : null}
 
       {loading && alerts.length === 0 ? (
-        <Text color={tokens.panelMuted}>Loading…</Text>
+        <Flex py="12" justify="center">
+          <Spinner size="sm" color={accent} />
+        </Flex>
       ) : alerts.length === 0 ? (
-        <Text color={tokens.panelMuted}>No pending alerts.</Text>
+        <Flex py="10" justify="center" direction="column" align="center" gap="2">
+          <Text fontFamily="mono" fontSize="sm" color={tokens.panelMuted}>
+            {"// no pending alerts"}
+          </Text>
+          <Box
+            as="button"
+            type="button"
+            fontFamily="mono"
+            fontSize="2xs"
+            letterSpacing="0.1em"
+            color={accent}
+            bg="transparent"
+            border="none"
+            cursor="pointer"
+            _hover={{ opacity: 0.8 }}
+            onClick={openCreate}
+          >
+            [+ ADD]
+          </Box>
+        </Flex>
       ) : (
-        <Box overflowX="auto">
-          <Table.Root size="sm" variant="line">
-            <Table.Header>
-              <Table.Row>
-                <Table.ColumnHeader>Pair</Table.ColumnHeader>
-                <Table.ColumnHeader textAlign="right">Price</Table.ColumnHeader>
-                <Table.ColumnHeader>Comment</Table.ColumnHeader>
-                <Table.ColumnHeader>Updated</Table.ColumnHeader>
-                <Table.ColumnHeader textAlign="right">Actions</Table.ColumnHeader>
-              </Table.Row>
-            </Table.Header>
-            <Table.Body>
-              {alerts.map((row) => (
-                <Table.Row key={row.id}>
-                  <Table.Cell fontWeight="medium">{row.base}</Table.Cell>
-                  <Table.Cell textAlign="right" fontFamily="mono">
+        <Stack gap="0" position="relative">
+          <Flex
+            px={{ base: 3, md: 4 }}
+            py="2"
+            borderBottomWidth="1px"
+            borderColor={tokens.panelBorder}
+            bg={tokens.tableHeaderBg}
+            fontFamily="mono"
+            fontSize="2xs"
+            color={tokens.tableHeaderColor}
+            letterSpacing="0.12em"
+            display={{ base: "none", md: "flex" }}
+            gap="3"
+          >
+            <Text flex="0 0 5rem">PAIR</Text>
+            <Text flex="0 0 7rem" textAlign="right">
+              PRICE
+            </Text>
+            <Text flex="1">COMMENT</Text>
+            <Text flex="0 0 10rem">UPDATED</Text>
+            <Text flex="0 0 7rem" textAlign="right">
+              {" "}
+            </Text>
+          </Flex>
+
+          <Stack gap="1" px={{ base: 1, md: 2 }} py="2">
+            {alerts.map((row, index) => (
+              <Box
+                key={row.id}
+                position="relative"
+                overflow="hidden"
+                borderWidth="1px"
+                borderColor={tokens.panelBorder}
+                bg={index % 2 === 0 ? "transparent" : tokens.blockquoteBg}
+                rounded="sm"
+                transition="border-color 0.2s, box-shadow 0.2s"
+                _hover={{
+                  borderColor: `${accent}66`,
+                  boxShadow: `inset 0 0 32px ${accent}0a`,
+                }}
+              >
+                <Flex
+                  px={{ base: 3, md: 3 }}
+                  py="2.5"
+                  align={{ base: "stretch", md: "center" }}
+                  gap={{ base: 2, md: 3 }}
+                  direction={{ base: "column", md: "row" }}
+                  fontFamily="mono"
+                  fontSize="xs"
+                >
+                  <Text
+                    flex={{ md: "0 0 5rem" }}
+                    fontWeight="bold"
+                    color={tokens.title}
+                    letterSpacing="0.04em"
+                  >
+                    {row.base}
+                  </Text>
+                  <Text
+                    flex={{ md: "0 0 7rem" }}
+                    textAlign={{ md: "right" }}
+                    color={accent}
+                    fontWeight="semibold"
+                  >
                     {row.price}
-                  </Table.Cell>
-                  <Table.Cell color={tokens.panelMuted}>
+                  </Text>
+                  <Text
+                    flex={{ md: "1" }}
+                    color={tokens.panelMuted}
+                    lineClamp={2}
+                    minW="0"
+                  >
                     {row.comment || "—"}
-                  </Table.Cell>
-                  <Table.Cell color={tokens.panelMuted} fontSize="xs">
+                  </Text>
+                  <Text
+                    flex={{ md: "0 0 10rem" }}
+                    fontSize="2xs"
+                    color={tokens.panelMuted}
+                  >
                     {row.updated_at.slice(0, 19)}
-                  </Table.Cell>
-                  <Table.Cell textAlign="right">
-                    <Flex gap="2" justify="flex-end">
-                      <Button size="xs" variant="outline" onClick={() => openEdit(row)}>
-                        Edit
-                      </Button>
-                      <Button
-                        size="xs"
-                        variant="outline"
-                        colorPalette="red"
-                        onClick={() => setDeleteTarget(row)}
-                      >
-                        Delete
-                      </Button>
-                    </Flex>
-                  </Table.Cell>
-                </Table.Row>
-              ))}
-            </Table.Body>
-          </Table.Root>
-        </Box>
+                  </Text>
+                  <Flex
+                    flex={{ md: "0 0 7rem" }}
+                    gap="1"
+                    justify={{ md: "flex-end" }}
+                    align="center"
+                  >
+                    <MonoAction
+                      label="edit"
+                      color={tokens.panelLabel}
+                      onClick={() => openEdit(row)}
+                    />
+                    <MonoAction
+                      label="del"
+                      color={tokens.panelLabel}
+                      danger
+                      onClick={() => setDeleteTarget(row)}
+                    />
+                  </Flex>
+                </Flex>
+              </Box>
+            ))}
+          </Stack>
+        </Stack>
       )}
 
       {modalOpen ? (
@@ -246,57 +462,105 @@ export default function AlertsPanel({ active, refreshKey }: AlertsPanelProps) {
             zIndex={1501}
             align="center"
             justify="center"
+            p="4"
             pointerEvents="none"
           >
             <Box
-              {...themedPanelStyle(tokens)}
-              p="5"
-              w="100%"
-              maxW="420px"
+              role="dialog"
+              aria-modal="true"
               pointerEvents="auto"
+              w="full"
+              maxW="22rem"
+              p="4"
+              rounded="md"
               onClick={(e) => e.stopPropagation()}
+              {...themedPanelStyle(tokens)}
             >
-              <Text fontSize="md" fontWeight="semibold" mb="3" color={tokens.title}>
-                {editing ? "Edit alert" : "New alert"}
-              </Text>
-              <Stack gap="3">
-                <Box>
-                  <Text fontSize="xs" color={tokens.panelMuted} mb="1">
-                    Pair
+              <Stack gap="4">
+                <Stack gap="2">
+                  <Text
+                    fontFamily="mono"
+                    fontSize="sm"
+                    fontWeight="bold"
+                    color={tokens.title}
+                    letterSpacing="0.08em"
+                  >
+                    {editing ? "EDIT_ALERT" : "NEW_ALERT"}
                   </Text>
-                  <Input
-                    value={form.symbol}
-                    onChange={(e) => setForm((f) => ({ ...f, symbol: e.target.value }))}
-                    placeholder="BTC"
-                    autoFocus
-                  />
-                </Box>
-                <Box>
-                  <Text fontSize="xs" color={tokens.panelMuted} mb="1">
-                    Alert price
+                  <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
+                    Fires on {timeframe} closed candle if price is inside the bar, then deletes.
                   </Text>
-                  <Input
-                    value={form.price}
-                    onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
-                    placeholder="65000"
-                    inputMode="decimal"
-                  />
-                </Box>
-                <Box>
-                  <Text fontSize="xs" color={tokens.panelMuted} mb="1">
-                    Comment
+                </Stack>
+                <Stack gap="3">
+                  <Box>
+                    <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted} mb="1">
+                      PAIR
+                    </Text>
+                    <Input
+                      value={form.symbol}
+                      onChange={(e) => setForm((f) => ({ ...f, symbol: e.target.value }))}
+                      placeholder="BTC"
+                      size="sm"
+                      fontFamily="mono"
+                      fontSize="xs"
+                      autoFocus
+                    />
+                  </Box>
+                  <Box>
+                    <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted} mb="1">
+                      PRICE
+                    </Text>
+                    <Input
+                      value={form.price}
+                      onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
+                      placeholder="65000"
+                      inputMode="decimal"
+                      size="sm"
+                      fontFamily="mono"
+                      fontSize="xs"
+                    />
+                  </Box>
+                  <Box>
+                    <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted} mb="1">
+                      COMMENT
+                    </Text>
+                    <Input
+                      value={form.comment}
+                      onChange={(e) => setForm((f) => ({ ...f, comment: e.target.value }))}
+                      placeholder="optional note"
+                      size="sm"
+                      fontFamily="mono"
+                      fontSize="xs"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") void save();
+                      }}
+                    />
+                  </Box>
+                </Stack>
+                {error ? (
+                  <Text fontFamily="mono" fontSize="2xs" color="red.400">
+                    {error}
                   </Text>
-                  <Input
-                    value={form.comment}
-                    onChange={(e) => setForm((f) => ({ ...f, comment: e.target.value }))}
-                    placeholder="optional note"
-                  />
-                </Box>
-                <Flex gap="2" justify="flex-end" pt="2">
-                  <Button variant="ghost" onClick={closeModal} disabled={saving}>
+                ) : null}
+                <Flex gap="2" justify="flex-end">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    fontFamily="mono"
+                    color={tokens.panelMuted}
+                    onClick={closeModal}
+                    disabled={saving}
+                  >
                     Cancel
                   </Button>
-                  <Button colorPalette="blue" onClick={() => void save()} loading={saving}>
+                  <Button
+                    size="sm"
+                    variant="solid"
+                    colorPalette={palette}
+                    fontFamily="mono"
+                    onClick={() => void save()}
+                    loading={saving}
+                  >
                     Save
                   </Button>
                 </Flex>
@@ -308,7 +572,7 @@ export default function AlertsPanel({ active, refreshKey }: AlertsPanelProps) {
 
       <ConfirmDialog
         open={Boolean(deleteTarget)}
-        title="Delete alert"
+        title="DELETE_ALERT"
         description={
           deleteTarget
             ? `Remove ${deleteTarget.base} @ ${deleteTarget.price}?`
