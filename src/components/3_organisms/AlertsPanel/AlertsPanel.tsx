@@ -62,7 +62,6 @@ function MonoAction({
   return (
     <Box
       as="button"
-      type="button"
       fontFamily="mono"
       fontSize="2xs"
       letterSpacing="0.08em"
@@ -325,7 +324,6 @@ export default function AlertsPanel({ active, refreshKey }: AlertsPanelProps) {
           </Text>
           <Box
             as="button"
-            type="button"
             fontFamily="mono"
             fontSize="2xs"
             letterSpacing="0.1em"
