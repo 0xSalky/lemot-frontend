@@ -201,12 +201,7 @@ export default function AlertsPanel({ active, refreshKey }: AlertsPanelProps) {
       : "telegram off";
 
   return (
-    <Box
-      rounded="md"
-      overflow="hidden"
-      position="relative"
-      {...themedPanelStyle(tokens, "strong")}
-    >
+    <Box rounded="md" {...themedPanelStyle(tokens, "strong")}>
       <Box
         position="absolute"
         inset="0"
