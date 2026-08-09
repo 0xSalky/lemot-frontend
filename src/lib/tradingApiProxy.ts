@@ -237,3 +237,22 @@ export async function proxyTradingPatch(
 
   await forwardUpstreamResponse(res, upstream);
 }
+
+export async function proxyTradingDelete(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  path: string,
+): Promise<void> {
+  const creds = resolveTradingCredentials(req);
+  if (!creds) {
+    credentialsRequiredResponse(res);
+    return;
+  }
+
+  const upstream = await fetch(`${creds.baseUrl}${path}${upstreamQuery(req)}`, {
+    method: "DELETE",
+    headers: { "X-API-Key": creds.apiKey },
+  });
+
+  await forwardUpstreamResponse(res, upstream);
+}

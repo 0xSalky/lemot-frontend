@@ -1,0 +1,60 @@
+import { apiFetch } from "@/services/apiFetch";
+import type {
+  AlertWritePayload,
+  AlertsHealth,
+  AlertsListResponse,
+  PriceAlert,
+} from "@/types/alertsTypes";
+
+export async function fetchAlertsList(): Promise<AlertsListResponse> {
+  const res = await apiFetch("/api/alerts");
+  if (!res.ok) {
+    throw new Error(`alerts list failed (${res.status})`);
+  }
+  return (await res.json()) as AlertsListResponse;
+}
+
+export async function fetchAlertsHealth(): Promise<AlertsHealth> {
+  const res = await apiFetch("/api/alerts/health");
+  if (!res.ok) {
+    throw new Error(`alerts health failed (${res.status})`);
+  }
+  return (await res.json()) as AlertsHealth;
+}
+
+export async function createAlert(payload: AlertWritePayload): Promise<PriceAlert> {
+  const res = await apiFetch("/api/alerts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(detail || `create failed (${res.status})`);
+  }
+  return (await res.json()) as PriceAlert;
+}
+
+export async function updateAlert(
+  id: number,
+  payload: Partial<AlertWritePayload>,
+): Promise<PriceAlert> {
+  const res = await apiFetch(`/api/alerts/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(detail || `update failed (${res.status})`);
+  }
+  return (await res.json()) as PriceAlert;
+}
+
+export async function deleteAlert(id: number): Promise<void> {
+  const res = await apiFetch(`/api/alerts/${id}`, { method: "DELETE" });
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(detail || `delete failed (${res.status})`);
+  }
+}

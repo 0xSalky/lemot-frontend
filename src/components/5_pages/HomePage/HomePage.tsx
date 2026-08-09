@@ -1,3 +1,4 @@
+import AlertsPanel from "@/components/3_organisms/AlertsPanel/AlertsPanel";
 import ThemeTabTrigger from "@/components/2_molecules/ThemeTabTrigger/ThemeTabTrigger";
 import AssetInterface from "@/components/3_organisms/AssetInterface/AssetInterface";
 import ConfigPanel from "@/components/3_organisms/ConfigPanel/ConfigPanel";
@@ -33,6 +34,7 @@ type HomeTabId =
     | "scanner-c"
     | "scanner-chat"
     | "signals"
+    | "alerts"
     | "risk"
     | "pnl"
     | "journal"
@@ -46,6 +48,7 @@ function initialTabRefreshKeys(): Record<HomeTabId, number> {
         "scanner-c": 0,
         "scanner-chat": 0,
         signals: 0,
+        alerts: 0,
         risk: 0,
         pnl: 0,
         journal: 0,
@@ -252,6 +255,9 @@ const HomePage = () => {
                     <ThemeTabTrigger value="signals" currentTab={activeTab} onReselect={bumpTabRefresh}>
                         Signals
                     </ThemeTabTrigger>
+                    <ThemeTabTrigger value="alerts" currentTab={activeTab} onReselect={bumpTabRefresh}>
+                        Alerts
+                    </ThemeTabTrigger>
                     <ThemeTabTrigger value="risk" currentTab={activeTab} onReselect={bumpTabRefresh}>
                         Risk desk
                     </ThemeTabTrigger>
@@ -336,6 +342,13 @@ const HomePage = () => {
                     <SignalsMonitorPanel
                         active={activeTab === "signals"}
                         refreshKey={tabRefreshKeys.signals}
+                    />
+                </Tabs.Content>
+
+                <Tabs.Content value="alerts">
+                    <AlertsPanel
+                        active={activeTab === "alerts"}
+                        refreshKey={tabRefreshKeys.alerts}
                     />
                 </Tabs.Content>
 
