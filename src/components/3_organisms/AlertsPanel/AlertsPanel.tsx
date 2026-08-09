@@ -144,7 +144,7 @@ export default function AlertsPanel({ active, refreshKey }: AlertsPanelProps) {
   };
 
   const save = async () => {
-    const symbol = form.symbol.trim();
+    const symbol = form.symbol.trim().toUpperCase();
     const price = Number(form.price);
     if (!symbol || !(price > 0)) {
       setError("Symbol and a price > 0 are required");
@@ -497,12 +497,16 @@ export default function AlertsPanel({ active, refreshKey }: AlertsPanelProps) {
                     </Text>
                     <Input
                       value={form.symbol}
-                      onChange={(e) => setForm((f) => ({ ...f, symbol: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, symbol: e.target.value.toUpperCase() }))
+                      }
                       placeholder="BTC"
                       size="sm"
                       fontFamily="mono"
                       fontSize="xs"
                       autoFocus
+                      autoCapitalize="characters"
+                      style={{ textTransform: "uppercase" }}
                     />
                   </Box>
                   <Box>
