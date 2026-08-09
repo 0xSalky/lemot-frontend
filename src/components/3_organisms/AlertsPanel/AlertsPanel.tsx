@@ -199,6 +199,7 @@ export default function AlertsPanel({ active, refreshKey }: AlertsPanelProps) {
     : health.telegram_configured
       ? "armed"
       : "telegram off";
+  const telegramHint = health && !health.telegram_configured ? health.telegram_hint : null;
 
   return (
     <Box rounded="md" {...themedPanelStyle(tokens, "strong")}>
@@ -245,6 +246,11 @@ export default function AlertsPanel({ active, refreshKey }: AlertsPanelProps) {
             <Text fontFamily="mono" fontSize="2xs" color={tokens.panelMuted}>
               tf {timeframe} · closed candle touch · {statusLabel}
             </Text>
+            {telegramHint ? (
+              <Text fontFamily="mono" fontSize="2xs" color={tokens.warn} maxW="42rem">
+                {telegramHint}
+              </Text>
+            ) : null}
           </Stack>
         </Flex>
 

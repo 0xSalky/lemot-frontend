@@ -20,6 +20,7 @@ export interface AlertsHealth {
   timeframe: string;
   poll_seconds: number;
   telegram_configured: boolean;
+  telegram_hint?: string | null;
   alert_count: number;
   last_poll_at: string | null;
 }
