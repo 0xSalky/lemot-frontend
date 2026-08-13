@@ -226,16 +226,31 @@ export async function proxyTradingPatch(
     return;
   }
 
-  const upstream = await fetch(`${creds.baseUrl}${path}${upstreamQuery(req)}`, {
-    method: "PATCH",
-    headers: {
-      "X-API-Key": creds.apiKey,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body ?? req.body ?? {}),
-  });
+  try {
+    const upstream = await fetch(`${creds.baseUrl}${path}${upstreamQuery(req)}`, {
+      method: "PATCH",
+      headers: {
+        "X-API-Key": creds.apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body ?? req.body ?? {}),
+    });
 
-  await forwardUpstreamResponse(res, upstream);
+    await forwardUpstreamResponse(res, upstream);
+  } catch (error) {
+    console.error("[trading proxy] upstream PATCH failed", {
+      path,
+      source: creds.source,
+      baseUrl: creds.baseUrl,
+      error,
+    });
+    res.status(502).json({
+      detail:
+        error instanceof Error
+          ? `Trading API unreachable (${creds.baseUrl}): ${error.message}`
+          : `Trading API unreachable (${creds.baseUrl})`,
+    });
+  }
 }
 
 export async function proxyTradingDelete(

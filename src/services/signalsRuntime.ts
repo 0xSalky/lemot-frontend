@@ -30,10 +30,17 @@ export async function patchSignalsRuntime(
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(
+    const detail =
       typeof body.detail === "string"
         ? body.detail
-        : "Failed to update signals runtime",
+        : Array.isArray(body.detail)
+          ? body.detail
+              .map((item: { msg?: string }) => item?.msg)
+              .filter(Boolean)
+              .join("; ")
+          : "";
+    throw new Error(
+      detail || `Failed to update signals runtime (HTTP ${res.status})`,
     );
   }
   const body = await res.json().catch(() => ({}));
