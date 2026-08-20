@@ -13,8 +13,13 @@ export function normalizeTradingPairSymbol(raw: string): string | null {
   return symbol;
 }
 
+const PINNED_TRADING_PAIRS = ["BTC", "ETH", "SOL", "HYPE"] as const;
+
 export function sortTradingPairs(pairs: readonly string[]): string[] {
   const unique = [...new Set(pairs)];
-  const rest = unique.filter((pair) => pair !== "BTC").sort((a, b) => a.localeCompare(b));
-  return unique.includes("BTC") ? ["BTC", ...rest] : rest;
+  const pinned = PINNED_TRADING_PAIRS.filter((pair) => unique.includes(pair));
+  const rest = unique
+    .filter((pair) => !PINNED_TRADING_PAIRS.includes(pair as (typeof PINNED_TRADING_PAIRS)[number]))
+    .sort((a, b) => a.localeCompare(b));
+  return [...pinned, ...rest];
 }
