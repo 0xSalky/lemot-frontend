@@ -17,9 +17,7 @@ export type ThemeTokens = {
     panelBg: string;
     panelBgUser: string;
     panelBorder: string;
-    /** Themed border glow for standard cards — softer than signals terminal. */
     panelGlow: string;
-    /** Stronger glow (signals terminal and emphasis surfaces). */
     panelGlowStrong: string;
     inlineStrong: string;
     inlineEm: string;

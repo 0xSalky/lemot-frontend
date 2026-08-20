@@ -42,24 +42,3 @@ export const NATR_MULTIPLIER = "2.5";
 
 /** Main content column: full width on small screens, max half viewport on large. */
 export const CONTENT_MAX_WIDTH = { base: "100%", lg: "55vw" } as const;
-
-/** Feature flags — when false, hide that profile everywhere (tabs, signals, PnL, journal, config). */
-export const IS_PROFILE_B_ACTIVE = false;
-export const IS_PROFILE_C_ACTIVE = true;
-
-export type AppProfile = "a" | "b" | "c";
-
-/** Live signals / risk / journal trading profiles (C is scanner-only). */
-export type SignalsProfile = "a" | "b";
-
-export function isProfileActive(profile: AppProfile): boolean {
-  if (profile === "b") return IS_PROFILE_B_ACTIVE;
-  if (profile === "c") return IS_PROFILE_C_ACTIVE;
-  return true;
-}
-
-export function activeSignalsProfiles(): SignalsProfile[] {
-  const profiles: SignalsProfile[] = ["a"];
-  if (IS_PROFILE_B_ACTIVE) profiles.push("b");
-  return profiles;
-}

@@ -9,7 +9,7 @@ import {
   type AccountBalanceResponse,
   type ManualAccountConnectionState,
 } from "@/types/accountBalanceTypes";
-import { formatUsd } from "@/components/3_organisms/TradeJournalPanel/journalFormat";
+import { formatUsd } from "@/lib/money";
 import AddTradingPairDialog from "@/components/2_molecules/AddTradingPairDialog/AddTradingPairDialog";
 import { Box, Flex, IconButton, Spinner, Stack, Text } from "@chakra-ui/react";
 import { keyframes } from "@emotion/react";

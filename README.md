@@ -1,6 +1,6 @@
 # lemot-frontend
 
-Next.js UI for the lemot trading bot.
+Next.js UI: **Pairs** (open trades) and **Alerts**.
 
 ## Getting started
 
